@@ -1,8 +1,7 @@
 use std::ops::AddAssign;
 use std::{str::FromStr, ops::Add};
 use num_bigint::BigUint;
-use stellar_strkey::*;
-use stellar_strkey::Strkey::PublicKeyEd25519;
+
 use stellar_strkey::ed25519::{PublicKey, MuxedAccount};
 
 pub struct Account {
