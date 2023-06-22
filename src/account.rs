@@ -1,3 +1,4 @@
+use std::ops::AddAssign;
 use std::{str::FromStr, ops::Add};
 use num_bigint::BigUint;
 use stellar_strkey::*;
