@@ -30,7 +30,7 @@ fn check_fast_signing() -> ActualMethods {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn check_fast_signing() -> ActualMethods {
-    check_fast_signing_rs()
+    check_fast_signing_native()
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -62,7 +62,7 @@ fn check_fast_signing_browser() -> ActualMethods {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn check_fast_signing_rs() -> ActualMethods {
+fn check_fast_signing_native() -> ActualMethods {
     use libsodium_sys::{crypto_sign_seed_keypair};
     use libsodium_sys::crypto_sign_detached;
     
