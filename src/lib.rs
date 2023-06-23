@@ -3,3 +3,4 @@
 mod account;
 mod hashing;
 mod network;
+mod signing;

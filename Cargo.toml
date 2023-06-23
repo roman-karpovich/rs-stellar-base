@@ -7,6 +7,9 @@ edition = "2021"
 
 [dependencies]
 arrayref = "0.3.7"
+lazy_static = "1.4.0"
+libsodium-sys = "0.2.7"
 num-bigint = "0.4.3"
 sha2 = "0.10.7"
 stellar-strkey = "0.0.7"
+
