@@ -47,7 +47,7 @@ fn check_fast_signing_browser() -> ActualMethods {
     fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
         let mut data_u8 = data;
         let mut secret_key_u8 = secret_key;
-        let signed_msg = nacl::sign::sign(&mut data_u8, &mut secret_key_u8).unwrap();
+        let signed_msg = nacl::sign::signature(&mut data_u8, &mut secret_key_u8).unwrap();
         let mut signature = [0u8; 64];
         
         for i in 0..signed_msg.len() {
