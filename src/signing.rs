@@ -11,15 +11,15 @@ struct ActualMethods {
     verify: fn(&[u8], &[u8], &[u8]) -> bool,
 }
 
-fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
+pub fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
     (ACTUAL_METHODS.sign)(data, secret_key)
 }
 
-fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
+pub fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
     (ACTUAL_METHODS.verify)(data, signature, public_key)
 }
 
-fn generate(secret_key: &[u8]) -> [u8; 32] {
+pub fn generate(secret_key: &[u8]) -> [u8; 32] {
     (ACTUAL_METHODS.generate)(secret_key)
 }
 
