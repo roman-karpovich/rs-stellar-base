@@ -2,7 +2,7 @@
 name = "rs-stellar-base"
 version = "0.1.0"
 edition = "2021"
-description = "A high-level library Rust client library for interacting with Soroban smart contracts on the Stellar blockchain"
+description = "A low level Rust library that offers a comprehensive set of functions for reading, writing, hashing, and signing primitive XDR constructs utilized in the Stellar network"
 license = "Apache-2.0"
 readme = "README.md"
 repository = "https://github.com/rahul-soshte/rs-stellar-base"
