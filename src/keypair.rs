@@ -5,7 +5,7 @@ use crate::hashing::hash;
 use nacl::sign::{generate_keypair, signature};
 use sha2::Sha512;
 use stellar_strkey::{Strkey, ed25519::{PublicKey, PrivateKey}};
-use stellar_xdr::{AccountId, Uint256, Uint64};
+use stellar_xdr::{AccountId, Uint256, Uint64, WriteXdr, SignatureHint, Signature, DecoratedSignature};
 use rand_core::{RngCore, OsRng};
 use stellar_xdr::MuxedAccountMed25519;
 
@@ -163,5 +163,40 @@ impl Keypair {
                 )
         });    
     } 
-   
+
+    pub fn raw_pubkey(&self) -> [u8; 32] {
+        let mut array: [u8; 32] = [0; 32];
+
+        for (i, &value) in self.public_key.iter().enumerate() {
+            array[i] = value;
+        }
+
+        return array;
+    }
+
+    pub fn signature_hint(&self) -> Option<Vec<u8>>  {
+        let a = Self::xdr_account_id(&self).to_xdr().unwrap();
+        if a.len() >= 4 {
+            let start_index = a.len() - 4;
+            Some(a[start_index..].to_vec())
+        } else {
+            None
+        }
+    }
+  
+   pub fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature{
+        let signature = Self::sign(&self, data).unwrap();
+        let hint = Self::signature_hint(&self).unwrap();
+        let mut hint_u8: [u8; 4] = [0; 4];
+        hint_u8.copy_from_slice(&hint[..4]);
+        let val =  SignatureHint::from(hint_u8);
+        let signature_xdr = Signature::try_from(signature).unwrap();
+        let decorated_signature = stellar_xdr::DecoratedSignature {
+            hint: val,
+            signature: signature_xdr,
+        };
+
+        return decorated_signature 
+   }
+
 }
