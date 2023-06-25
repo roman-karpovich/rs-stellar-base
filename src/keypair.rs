@@ -5,8 +5,9 @@ use crate::hashing::hash;
 use nacl::sign::{generate_keypair, signature};
 use sha2::Sha512;
 use stellar_strkey::{Strkey, ed25519::{PublicKey, PrivateKey}};
-use stellar_xdr::{AccountId, Uint256};
+use stellar_xdr::{AccountId, Uint256, Uint64};
 use rand_core::{RngCore, OsRng};
+use stellar_xdr::MuxedAccountMed25519;
 
 use crate::signing::{generate,sign, verify};
 use hex::FromHex;
@@ -139,6 +140,28 @@ impl Keypair {
         account_id
 
     }
- 
+    
+    pub fn xdr_public_key(&self) -> stellar_xdr::PublicKey {
+        stellar_xdr::PublicKey::PublicKeyTypeEd25519(Uint256(
+            PublicKey::from_payload(
+                &self.public_key,
+            )
+            .unwrap()
+            .0,
+        ))
+    }
+
+    pub fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::MuxedAccount {
+        return stellar_xdr::MuxedAccount::MuxedEd25519(MuxedAccountMed25519 {
+            id: Uint64::from_str(id).unwrap(),
+            ed25519: Uint256(
+                    PublicKey::from_payload(
+                        &self.public_key,
+                    )
+                    .unwrap()
+                    .0,
+                )
+        });    
+    } 
    
 }
