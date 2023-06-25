@@ -5,7 +5,7 @@ use crate::hashing::hash;
 use nacl::sign::{generate_keypair, signature};
 use sha2::Sha512;
 use stellar_strkey::{Strkey, ed25519::{PublicKey, PrivateKey}};
-use stellar_xdr::AccountId;
+use stellar_xdr::{AccountId, Uint256};
 use rand_core::{RngCore, OsRng};
 
 use crate::signing::{generate,sign, verify};
@@ -126,5 +126,19 @@ impl Keypair {
             Err("No network selected. Please pass a network argument, e.g. `Keypair::master(Some(Networks::PUBLIC))`.".into())
         }
     }
-    
+    pub fn xdr_account_id(&self) -> AccountId {
+        
+        let account_id = AccountId(stellar_xdr::PublicKey::PublicKeyTypeEd25519(Uint256(
+            PublicKey::from_payload(
+                &self.public_key,
+            )
+            .unwrap()
+            .0,
+        )));
+
+        account_id
+
+    }
+ 
+   
 }
