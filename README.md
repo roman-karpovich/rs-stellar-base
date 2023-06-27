@@ -16,7 +16,7 @@ stellar-baselib = "0.1.0"
 And this to your code:
 
 ```rust
-use stellar-baselib::*;
+use stellar_baselib::*;
 ```
 
 ## Coding Best Practices Used
