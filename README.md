@@ -2,6 +2,23 @@
 
 A library that offers a comprehensive set of functions for reading, writing, hashing, and signing primitive XDR constructs utilized in the Stellar network. it provides a nice abstraction for building and signing transactions
 
+**This project is currently in early development and is not yet functional. It is a work in progress and is subject to significant changes, including the addition or removal of features and modifications to its functionality.**
+
+## Quickstart
+
+Add this to your Cargo.toml:
+
+```toml
+[dependencies]
+stellar-baselib = "0.1.0"
+```
+
+And this to your code:
+
+```rust
+use stellar-baselib::*;
+```
+
 ## Coding Best Practices Used
 
 1. All Rust code is linted with Clippy with the command `cargo clippy`. If preferred to ignore its advice, do so explicitly:
