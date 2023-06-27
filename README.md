@@ -1,5 +1,9 @@
 # Stellar Base Library
 
+![Crates.io](https://img.shields.io/crates/v/stellar-baselib)
+![Crates.io](https://img.shields.io/crates/l/stellar-baselib)
+![Crates.io](https://img.shields.io/crates/d/stellar-baselib)
+
 A library that offers a comprehensive set of functions for reading, writing, hashing, and signing primitive XDR constructs utilized in the Stellar network. it provides a nice abstraction for building and signing transactions
 
 **This project is currently in early development and is not yet functional. It is a work in progress and is subject to significant changes, including the addition or removal of features and modifications to its functionality.**
