@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 
+#[derive(Debug)]
 pub struct Account {
     account_id: String,
     sequence: BigUint,
@@ -41,4 +42,50 @@ impl Account {
     pub fn increment_sequence_number(&mut self) {
         self.sequence.add_assign(BigUint::from(1_u32));
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    const ACCOUNT: &str = "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB";
+    const MUXED_ADDRESS: &str = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
+    const UNDERLYING_ACCOUNT: &str = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
+
+    #[test]
+    fn test_account_constructor_invalid_address() {
+        let result = Account::new("GBBB", "100");
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap().to_string(), "accountId is invalid")
+    }
+
+    #[test]
+    fn test_account_constructor_valid() {
+        let account = Account::new(ACCOUNT, "100").unwrap();
+        assert_eq!(account.account_id(), ACCOUNT);
+        assert_eq!(account.sequence_number(), "100");
+    }
+
+    #[test]
+    fn test_account_constructor_muxed_account() {
+        let result = Account::new(MUXED_ADDRESS, "123");
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap().to_string(), "accountId is an M-address; use MuxedAccount instead")
+    }
+
+    #[test]
+    fn test_account_increment_sequence_number() {
+        let mut account = Account::new(
+            "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
+            "100",
+        )
+        .unwrap();
+
+        account.increment_sequence_number();
+        assert_eq!(account.sequence_number(), "101");
+        account.increment_sequence_number();
+        account.increment_sequence_number();
+        assert_eq!(account.sequence_number(), "103");
+    }
+
 }
