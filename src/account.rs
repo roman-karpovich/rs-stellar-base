@@ -1,7 +1,32 @@
+//! Create a new `Account` object.
+//!
+//! `Account` represents a single account in the Stellar network and its sequence
+//! number. `Account` tracks the sequence number as it is used by `TransactionBuilder`.
+//!
+//! # Examples
+//!
+//! ```
+//! use stellar_baselib::account::Account;
+//!
+//! let account = Account::new(
+//!     "GB3KJPLFUYN5VL6R3GU3EGCGVCKFDSD7BEDX42HWG5BWFKB3KQGJJRMA",
+//!     "123456789",
+//! );
+//! ```
+//!
+//! # Arguments
+//!
+//! * `accountId` - ID of the account (ex. `GB3KJPLFUYN5VL6R3GU3EGCGVCKFDSD7BEDX42HWG5BWFKB3KQGJJRMA`).
+//!     If you provide a muxed account address, this will throw; use `MuxedAccount` instead.
+//! * `sequence` - Current sequence number of the account.
+//!
+//! # Errors
+//!
+//! This function can return an error if the provided `accountId` is invalid or
+//! if `sequence` is not a valid string.
 use num_bigint::BigUint;
 use std::ops::AddAssign;
 use std::str::FromStr;
-
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 
 #[derive(Debug)]
