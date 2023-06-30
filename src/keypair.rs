@@ -24,6 +24,38 @@ pub struct Keypair {
 }
 
 impl Keypair {
+
+    fn new(public_key: Option<[u8; 32]>, secret_key: Option<[u8; 32]>) -> Result<Self, Box<dyn Error>> {
+
+        if let Some(secret_key) = secret_key {
+
+        let sec_seed = secret_key;
+        let public_key_gen = generate(&sec_seed);
+        let mut secret_key = Vec::new();
+        secret_key.extend_from_slice(&sec_seed);
+        secret_key.extend_from_slice(&public_key_gen);
+        
+        if let Some(public_key_arg) = public_key {
+            if public_key_arg != public_key_gen {
+                return Err("secretKey does not match publicKey".into());
+            }
+        }
+        
+        Ok(Self {
+            secret_seed: Some(sec_seed.to_vec()),
+            public_key: public_key_gen.to_vec(),
+            secret_key: Some(secret_key),
+        })
+
+        } else {
+            Ok(Self {
+                secret_seed: None,
+                public_key: public_key.unwrap().to_vec(),
+                secret_key: None,
+            })
+        }
+    }
+
     fn new_from_secret_key(secret_seed: Vec<u8>) -> Result<Self, Box<dyn Error>> {
         if secret_seed.len() != 32 {
             return Err("secret_key length is invalid".into());
@@ -56,7 +88,7 @@ impl Keypair {
         })
     }
 
-    pub fn from_secret_key(secret: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn from_secret(secret: &str) -> Result<Self, Box<dyn Error>> {
         let raw_secret = PrivateKey::from_str(secret).unwrap().0;
         Keypair::from_raw_ed25519_seed(&raw_secret)
     }
@@ -216,3 +248,26 @@ impl Keypair {
     }
 }
 
+#[cfg(test)]
+mod tests {
+
+    use lazy_static::__Deref;
+
+    use super::*;
+    
+    #[test]
+    fn keypair_constructor_fails_when_secret_key_does_not_match_public_key() {
+        let secret = "SD7X7LEHBNMUIKQGKPARG5TDJNBHKC346OUARHGZL5ITC6IJPXHILY36";
+        let kp = Keypair::from_secret(secret).unwrap();
+        let mut secret_key = kp.raw_secret_key().unwrap();
+        let c = secret_key.as_slice();
+        let mut public_key = PublicKey::from_str(kp.public_key().as_str()).unwrap().0;
+        public_key[0] = 0; // Make public key invalid
+        let keypair = Keypair::new(Some(public_key), Some(c.try_into().unwrap()));
+        assert!(keypair.is_err());
+        assert_eq!(keypair.err().unwrap().to_string(), "secretKey does not match publicKey")
+
+    }
+    
+  
+}
