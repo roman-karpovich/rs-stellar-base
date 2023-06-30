@@ -23,6 +23,12 @@ And this to your code:
 use stellar_baselib::*;
 ```
 
+## How to run tests
+
+```bash
+cargo test
+```
+
 ## Coding Best Practices Used
 
 1. All Rust code is linted with Clippy with the command `cargo clippy`. If preferred to ignore its advice, do so explicitly:
