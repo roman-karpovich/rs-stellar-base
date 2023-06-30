@@ -12,6 +12,7 @@ use stellar_xdr::MuxedAccountMed25519;
 use stellar_xdr::{
     AccountId, DecoratedSignature, Signature, SignatureHint, Uint256, Uint64, WriteXdr,
 };
+use std::str;
 
 use crate::signing::{generate, sign, verify};
 use hex::FromHex;
@@ -107,6 +108,9 @@ impl Keypair {
     }
 
     pub fn from_raw_ed25519_seed(seed: &[u8]) -> Result<Self, Box<dyn Error>> {
+        if seed.len()>=33 {
+            return Err("Invalid seed length".into());
+        }
         Self::new_from_secret_key(seed.to_vec())
     }
 
@@ -118,10 +122,10 @@ impl Keypair {
         &self.public_key
     }
 
-    pub fn secret_key(&mut self) -> Result<String, Box<dyn Error>> {
-        match &mut self.secret_seed {
+    pub fn secret_key(&self) -> Result<String, Box<dyn Error>> {
+        match &self.secret_seed {
             None => Err("no secret_key available".into()),
-            Some(s) => Ok(PrivateKey::from_payload(s).unwrap().to_string()),
+            Some(s) => Ok(PrivateKey::from_payload(s).unwrap().clone().to_string()),
         }
     }
 
@@ -251,6 +255,7 @@ impl Keypair {
 #[cfg(test)]
 mod tests {
 
+    use hex_literal::hex;
     use lazy_static::__Deref;
 
     use super::*;
@@ -268,6 +273,90 @@ mod tests {
         assert_eq!(keypair.err().unwrap().to_string(), "secretKey does not match publicKey")
 
     }
+
+    #[test]
+    fn test_create_keypair_from_secret() {
+        let secret = "SD7X7LEHBNMUIKQGKPARG5TDJNBHKC346OUARHGZL5ITC6IJPXHILY36";
+        let expected_public_key = "GDFQVQCYYB7GKCGSCUSIQYXTPLV5YJ3XWDMWGQMDNM4EAXAL7LITIBQ7";
+        let keypair = Keypair::from_secret(secret).unwrap();
+        assert_eq!(keypair.public_key().as_str(), expected_public_key);
+        assert_eq!(keypair.secret_key().unwrap().as_str(), secret);
+    }
+
+    #[test]
+    #[should_panic]
+
+    fn test_create_keypair_from_invalid_secret() {
+        let invalid_secrets = vec![
+            "hel0",
+            "SBWUBZ3SIPLLF5CCXLWUB2Z6UBTYAW34KVXOLRQ5HDAZG4ZY7MHNBWJ1",
+            "masterpassphrasemasterpassphrase",
+            "gsYRSEQhTffqA9opPepAENCr2WG6z5iBHHubxxbRzWaHf8FBWcu",
+        ];
+        Keypair::from_secret(invalid_secrets[0]).unwrap();
+        Keypair::from_secret(invalid_secrets[1]).unwrap();
+        Keypair::from_secret(invalid_secrets[2]).unwrap();
+        Keypair::from_secret(invalid_secrets[3]).unwrap();
+    }
+
+    #[test]
+    fn test_create_keypair_from_raw_ed25519_seed() {
+        let seed = "masterpassphrasemasterpassphrase";
+        let expected_public_key = "GAXDYNIBA5E4DXR5TJN522RRYESFQ5UNUXHIPTFGVLLD5O5K552DF5ZH";
+        let expected_secret = "SBWWC43UMVZHAYLTONYGQ4TBONSW2YLTORSXE4DBONZXA2DSMFZWLP2R";
+        let expected_raw_public_key = hex!("2e3c35010749c1de3d9a5bdd6a31c12458768da5ce87cca6aad63ebbaaef7432");
+        let keypair = Keypair::from_raw_ed25519_seed(seed.as_bytes()).unwrap();
+
+        assert_eq!(keypair.public_key(), expected_public_key);
+        assert_eq!(keypair.secret_key().unwrap().as_str(), expected_secret);
+        assert_eq!(keypair.raw_public_key().as_slice(), expected_raw_public_key);
+    }
+
+    #[test]
+    fn test_create_keypair_invalid_raw_ed25519_seed() {
+            Keypair::from_raw_ed25519_seed(b"masterpassphrasemasterpassphras").is_err();
+            Keypair::from_raw_ed25519_seed(b"masterpassphrasemasterpassphrase1").is_err();
+            Keypair::from_raw_ed25519_seed(b"").is_err();
+            Keypair::from_raw_ed25519_seed(b"\0").is_err();
+    }
+
+    #[test]
+    fn test_create_keypair_from_public_key() {
+        let public_key = "GAXDYNIBA5E4DXR5TJN522RRYESFQ5UNUXHIPTFGVLLD5O5K552DF5ZH";
+        let expected_public_key = "GAXDYNIBA5E4DXR5TJN522RRYESFQ5UNUXHIPTFGVLLD5O5K552DF5ZH";
+        let expected_raw_public_key = hex!("2e3c35010749c1de3d9a5bdd6a31c12458768da5ce87cca6aad63ebbaaef7432");
+
+        let keypair = Keypair::from_public_key(public_key).unwrap();
+
+        assert_eq!(keypair.public_key().as_str(), expected_public_key);
+        assert_eq!(keypair.raw_public_key().as_slice(), expected_raw_public_key);
+    }
     
-  
+    #[test]
+    fn test_create_keypair_from_invalid_public_key() {
+        let invalid_public_keys = vec![
+            "hel0",
+            "masterpassphrasemasterpassphrase",
+            "sfyjodTxbwLtRToZvi6yQ1KnpZriwTJ7n6nrASFR6goRviCU3Ff",
+        ];
+
+        Keypair::from_public_key(invalid_public_keys[0]).is_err();
+        Keypair::from_public_key(invalid_public_keys[1]).is_err();
+        Keypair::from_public_key(invalid_public_keys[2]).is_err();
+    }   
+
+    #[test]
+    fn test_create_random_keypair() {
+        let keypair = Keypair::random().unwrap();
+    }
+
+    #[test]
+    fn test_xdr_muxed_account_with_ed25519_key_type() {
+        let public_key = "GAXDYNIBA5E4DXR5TJN522RRYESFQ5UNUXHIPTFGVLLD5O5K552DF5ZH";
+        let keypair = Keypair::from_public_key(public_key).unwrap();
+        let muxed = keypair.xdr_muxed_account_id("1");
+    }
+
+
+    //TODO: Sign Decorated Signature Tests
 }
