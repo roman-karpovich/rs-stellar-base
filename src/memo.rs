@@ -1,6 +1,11 @@
 
-use std::{error::Error, str::FromStr};
+//! A memo is a field that can be included in a transaction
+//! 
+//! It can be used to attach additional information to it.
+//! It is similar to adding a note 
+//! or comment to a transaction for reference purposes.
 
+use std::{error::Error, str::FromStr};
 use crate::xdr;
 
 /// Maximum length of text memo.

@@ -1,3 +1,4 @@
+//! Utility Sha256 Hash Function 
 use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 
