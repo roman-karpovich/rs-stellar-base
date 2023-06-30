@@ -1,5 +1,9 @@
-use std::{error::Error, str::FromStr};
 
+//! `Keypair` represents public (and secret) keys of the account.
+//!
+//! Currently `Keypair` only supports ed25519 but in the future, this class can be an abstraction layer for other
+//! public-key signature systems.
+use std::{error::Error, str::FromStr};
 use crate::hashing::hash;
 use nacl::sign::{generate_keypair, signature};
 use rand_core::{OsRng, RngCore};
