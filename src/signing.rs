@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use hex_literal::hex;
 
 lazy_static! {
     static ref ACTUAL_METHODS: ActualMethods = check_fast_signing();
@@ -123,5 +124,39 @@ fn check_fast_signing_native() -> ActualMethods {
         generate,
         sign,
         verify,
+    }
+}
+
+#[cfg(test)]
+mod tests { 
+    use super::*;
+
+    #[test]
+    fn test_hash_string() {
+        let data = b"hello world";
+        let expected_sig = hex!(
+            "587d4b472eeef7d07aafcd0b049640b0bb3f39784118c2e2b73a04fa2f64c9c538b4b2d0f5335e968a480021fdc23e98c0ddf424cb15d8131df8cb6c4bb58309"
+        );
+        let actual_sig = sign(data, &hex!(
+            "1123740522f11bfef6b3671f51e159ccf589ccf8965262dd5f97d1721d383dd4ffbdd7ef9933fe7249dc5ca1e7120b6d7b7b99a7a367e1a2fc6cb062fe420437"
+        ));
+        assert_eq!(expected_sig, actual_sig);
+    }
+    #[test]
+    fn test_verify_string() {
+        let data = b"hello world";
+        let sig = hex!(
+            "587d4b472eeef7d07aafcd0b049640b0bb3f39784118c2e2b73a04fa2f64c9c538b4b2d0f5335e968a480021fdc23e98c0ddf424cb15d8131df8cb6c4bb58309"
+        );
+        let bad_sig = hex!(
+            "687d4b472eeef7d07aafcd0b049640b0bb3f39784118c2e2b73a04fa2f64c9c538b4b2d0f5335e968a480021fdc23e98c0ddf424cb15d8131df8cb6c4bb58309"
+        );
+        let public_key = hex!(
+            "ffbdd7ef9933fe7249dc5ca1e7120b6d7b7b99a7a367e1a2fc6cb062fe420437"
+        );
+
+        assert!(verify(data, &sig, &public_key));
+        assert!(!verify(b"corrupted", &sig, &public_key));
+        assert!(!verify(data, &bad_sig, &public_key));
     }
 }
