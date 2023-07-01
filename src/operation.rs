@@ -63,9 +63,6 @@ mod tests {
         ).unwrap();
 
         let op = Operation::to_xdr(&op).unwrap();
-        // var operation = StellarBase.xdr.Operation.fromXDR(
-        //     Buffer.from(xdr, 'hex')
-        //   );
         let op_from = Operation::from_xdr(op.as_slice()).unwrap().body;        
     
         if let OperationBody::CreateAccount(op) = &op_from {
