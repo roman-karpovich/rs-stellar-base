@@ -24,6 +24,8 @@ sha2 = "0.10.7"
 stellar-strkey = "0.0.7"
 stellar-xdr =  { version = "0.0.16", default-features = true, features = [] }
 hex-literal = "0.4.1"
+num-traits = "0.2.15"
+hyper = "0.14.27"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 libsodium-sys = "0.2.7"
