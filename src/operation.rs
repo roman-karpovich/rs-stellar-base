@@ -2,7 +2,10 @@ use num_bigint::BigInt;
 use num_traits::{Zero, FromPrimitive, Num, Signed};
 use num_traits::identities::One;
 use std::str::FromStr;
-
+pub use crate::operations::create_account::create_account;
+use stellar_xdr::WriteXdr;
+use stellar_xdr::Type::Int64;
+use hex_literal::hex;
 pub(crate) fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
     if !value.is_empty() {
         if let Ok(amount) = BigInt::from_str_radix(value, 10) {
@@ -29,8 +32,6 @@ pub(crate) fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
     false
 }
 
-
-
 pub fn to_xdr_amount(value: &str) -> Result<stellar_xdr::Int64, Box<dyn std::error::Error>> {
     let amount = BigInt::from_str_radix(value, 10)?;
     let one = BigInt::one();
@@ -38,4 +39,45 @@ pub fn to_xdr_amount(value: &str) -> Result<stellar_xdr::Int64, Box<dyn std::err
     let xdr_string = xdr_amount.to_string();
     let xdr_int64 = stellar_xdr::Int64::from_str(&xdr_string)?;
     Ok(xdr_int64)
+}
+
+#[cfg(test)]
+mod tests { 
+
+    use stellar_xdr::{Operation, ReadXdr, OperationBody, Int64};
+
+    use crate::{account::Account, keypair::Keypair};
+
+    use super::*;
+
+    #[test]
+    fn create_account_op_test() {
+        let destination = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ".to_string();
+        let destination_hex = hex!("899b2840ed5636c56ddc5f14b23975f79f1ba2388d2694e4c56ecdddc960e5ef");
+        // println!("Destination hex {:?}", destination_hex);
+        let starting_balance = "1000".to_string();
+    
+        let op = create_account(
+            destination.clone(),
+            starting_balance,
+        ).unwrap();
+
+        let op = Operation::to_xdr(&op).unwrap();
+        // var operation = StellarBase.xdr.Operation.fromXDR(
+        //     Buffer.from(xdr, 'hex')
+        //   );
+        let op_from = Operation::from_xdr(op.as_slice()).unwrap().body;        
+    
+        if let OperationBody::CreateAccount(op) = &op_from {
+                assert_eq!(op.starting_balance, 1000);
+                let mut result: [u8; 32] = Default::default();
+                result[..32].clone_from_slice(&destination_hex);              
+                let key = Keypair::new(Some(result), None).unwrap();
+                let val = key.xdr_public_key();
+                assert_eq!(op.destination.0, val);
+            } else {
+            panic!("op is not the type expected");
+            }
+        }
+
 }

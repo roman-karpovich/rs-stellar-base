@@ -30,7 +30,7 @@ pub struct Keypair {
 
 impl Keypair {
 
-    fn new(public_key: Option<[u8; 32]>, secret_key: Option<[u8; 32]>) -> Result<Self, Box<dyn Error>> {
+    pub fn new(public_key: Option<[u8; 32]>, secret_key: Option<[u8; 32]>) -> Result<Self, Box<dyn Error>> {
 
         if let Some(secret_key) = secret_key {
 
@@ -99,11 +99,15 @@ impl Keypair {
     }
 
     pub fn from_public_key(public_key: &str) -> Result<Self, Box<dyn Error>> {
+        // println!("key val {:?}", public_key);
+
         let decoded = PublicKey::from_str(public_key)?;
+        // println!("Decoded String {}", decoded.to_string());
         if decoded.0.len() != 32 {
             return Err("Invalid Stellar public key".into());
         }
 
+        // println!("Decoded Vec {:?}", decoded.0);
         Ok(Self {
             public_key: decoded.0.to_vec(),
             secret_seed: None,
