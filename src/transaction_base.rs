@@ -5,12 +5,12 @@ use crate::keypair::Keypair;
 pub struct TxBase {
     network_passphrase: String,
     tx: String,
-    signatures: Vec<DecoratedSignature>,
+    signatures: VecM<DecoratedSignature, 20>,
     fee: String,
 }
 
 impl TxBase {
-    pub fn new(tx: String, signatures: Vec<DecoratedSignature>, fee: String, network_passphrase: String) -> Result<TxBase, Box<dyn std::error::Error>> {
+    pub fn new(tx: String, signatures: VecM<DecoratedSignature, 20>, fee: String, network_passphrase: String) -> Result<TxBase, Box<dyn std::error::Error>> {
         Ok(TxBase {
             network_passphrase,
             tx,
