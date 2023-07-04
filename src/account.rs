@@ -18,7 +18,7 @@ use std::ops::AddAssign;
 use std::str::FromStr;
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Account {
     account_id: String,
     sequence: BigUint,

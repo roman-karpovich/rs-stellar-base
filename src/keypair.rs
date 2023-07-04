@@ -151,9 +151,10 @@ impl Keypair {
         if !self.can_sign() {
             return Err("cannot sign, no secret_key available".into());
         }
+        println!("Key {:?}", &self.secret_key);
 
         if let Some(s) = &self.secret_key {
-            sign(data, s);
+            return Ok(sign(data, s).to_vec());
         }
 
         Err("error while signing".into())
@@ -217,6 +218,7 @@ impl Keypair {
     }
 
     pub fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature {
+        println!("Data {:?}", data);
         let signature = Self::sign(self, data).unwrap();
         let hint = Self::signature_hint(self).unwrap();
         let mut hint_u8: [u8; 4] = [0; 4];

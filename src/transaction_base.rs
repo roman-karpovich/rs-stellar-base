@@ -2,6 +2,7 @@ use stellar_xdr::*;
 use crate::hashing::hash;
 use crate::keypair::Keypair;
 
+#[derive(Default, Clone)]
 pub struct TxBase {
     network_passphrase: String,
     tx: String,
@@ -51,8 +52,8 @@ impl TxBase {
         self.network_passphrase = network_passphrase;
     }
     
-    pub fn add_decorated_signature(&mut self, signature: DecoratedSignature) {
-        self.signatures.push(signature);
-    }
+    // pub fn add_decorated_signature(&mut self, signature: DecoratedSignature) {
+    //     self.signatures.push(signature);
+    // }
     
 }
