@@ -21,12 +21,14 @@ use std::str;
 use crate::signing::{generate, sign, verify};
 use hex::FromHex;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Keypair {
     public_key: Vec<u8>,
     secret_key: Option<Vec<u8>>,
     secret_seed: Option<Vec<u8>>,
 }
+
+
 
 impl Keypair {
 

@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use num_bigint::BigUint;
 use stellar_xdr::DecoratedSignature;
-
+use hex_literal::hex;
 
 use stellar_xdr::Memo;
 use stellar_xdr::MuxedAccount;
@@ -123,19 +123,27 @@ impl TransactionBuilder {
     }
 
     pub fn build(&mut self ) -> Transaction {
-        // let seq_num = BigUint::from_str(self.source.clone().unwrap().sequence_number().as_str()).unwrap();
+        let seq_num = BigUint::from_str(self.source.clone().unwrap().sequence_number().as_str()).unwrap();
         let fee = self.fee.unwrap().checked_mul(self.operations.clone().unwrap().len().try_into().unwrap());
-            let test_tx = stellar_xdr::Transaction {
-                source_account: MuxedAccount::Ed25519(Uint256([0; 32])),
-                fee: 0,
-                seq_num: SequenceNumber(1),
-                cond: Preconditions::None,
-                memo: Memo::Text("Stellar".as_bytes().try_into().unwrap()),
-                operations: [].to_vec().try_into().unwrap(),
-                ext: TransactionExt::V0,
-            };
+        let val = self.source.clone().unwrap();
+        let vv = val.clone();
+        let vv2 = vv.account_id();
+        let binding = hex::encode(vv2).clone();
+        let hex_val = binding.as_bytes().clone();
+        let mut array: [u8; 32] = [0; 32];
+        array.copy_from_slice(&hex_val[..32]);
+
+        let tx_obj = stellar_xdr::Transaction {
+            source_account: MuxedAccount::Ed25519(Uint256::from(array)), // MuxedAccount::Ed25519(Uint256([0; 32]))
+            fee: fee.unwrap(),
+            seq_num: SequenceNumber(0_i64),
+            cond: Preconditions::None,
+            memo: Memo::None,
+            operations: self.operations.clone().unwrap().try_into().unwrap(),
+            ext: TransactionExt::V0,
+        };
         Transaction {
-            tx: Some(test_tx),
+            tx: Some(tx_obj),
             network_passphrase: self.network_passphrase.clone().unwrap(),
             signatures: Vec::new(),
             fee: fee.unwrap(),
@@ -158,6 +166,7 @@ impl TransactionBuilder {
 
 #[cfg(test)]
 mod tests { 
+
     use crate::{account::Account, keypair::Keypair, network::Networks, operations::create_account};
     use super::*;
 
@@ -169,16 +178,21 @@ mod tests {
         let signer  = Keypair::random().unwrap();
         let mut tx = TransactionBuilder::new(source, Networks::TESTNET)
             .fee(100_u32)
-            .add_operation(create_account(destination, "10".to_string()).unwrap())
+            // .add_operation(create_account(destination, "10".to_string()).unwrap())
             .build();
 
-        let signed_tx = tx.sign(&[signer]);
-    
-        // let env = signed_tx.into_envelope().into_inner();
-    
+        tx.sign(&[signer.clone()]);
+        let binding = tx.signatures[0].signature.clone();
+        let raw_sig = binding.as_slice();
+        let g: String = hex::encode(raw_sig);
+        let hex_val = g.as_bytes().clone();
+        let mut array: [u8; 32] = [0; 32];
+        array.copy_from_slice(&hex_val[..32]);
+        // let g = hex!(raw_sig.to_string());
         // let raw_sig = env.signatures()[0].signature().clone();
-        // let verified = signer.verify(&env.tx.hash().as_bytes(), &raw_sig);
-        // assert_eq!(verified, true);
+        // println!("{:?}", tx.hash());
+        let verified = signer.verify(&tx.hash(),&array );
+        assert_eq!(verified, true);
     }
     
 }

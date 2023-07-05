@@ -110,7 +110,19 @@ fn check_fast_signing_native() -> ActualMethods {
     }
 
     fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
+
+        
         unsafe {
+            let val = libsodium_sys::crypto_sign_verify_detached(
+                signature.as_ptr(),
+                data.as_ptr(),
+                data.len() as u64,
+                public_key.as_ptr(),
+            );
+
+            print!("Value of verification {}", val);
+            // panic!("{}");
+            // true
             libsodium_sys::crypto_sign_verify_detached(
                 signature.as_ptr(),
                 data.as_ptr(),
