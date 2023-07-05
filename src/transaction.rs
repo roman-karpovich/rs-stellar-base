@@ -26,6 +26,7 @@ use crate::transaction_base::TxBase;
 use stellar_xdr::TransactionV0Envelope;
 use crate::operation::create_account;
 
+#[derive(Debug)]
 pub struct Transaction {
     tx: Option<stellar_xdr::Transaction>,
     network_passphrase: String,
@@ -167,6 +168,8 @@ impl TransactionBuilder {
 #[cfg(test)]
 mod tests { 
 
+    use core::panic;
+
     use crate::{account::Account, keypair::Keypair, network::Networks, operations::create_account};
     use super::*;
 
@@ -174,25 +177,31 @@ mod tests {
     fn test_creates_and_signs() {
         let source = Account::new("GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB", "20").unwrap();
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
-        // let signer = Keypair::master(Some(Networks::TESTNET)).unwrap();
-        let signer  = Keypair::random().unwrap();
+        let signer = Keypair::master(Some(Networks::TESTNET)).unwrap();
+        // let signer  = Keypair::random().unwrap();
         let mut tx = TransactionBuilder::new(source, Networks::TESTNET)
             .fee(100_u32)
-            // .add_operation(create_account(destination, "10".to_string()).unwrap())
+            .add_operation(create_account(destination, "10".to_string()).unwrap())
             .build();
 
+        // println!("{:?}", tx);
         tx.sign(&[signer.clone()]);
+
         let binding = tx.signatures[0].signature.clone();
         let raw_sig = binding.as_slice();
+        // println!("Raw Signature {:?}", raw_sig);
+        // println!("{}", raw_sig.len());
         let g: String = hex::encode(raw_sig);
         let hex_val = g.as_bytes().clone();
-        let mut array: [u8; 32] = [0; 32];
-        array.copy_from_slice(&hex_val[..32]);
+        // println!("hex val {:?}", hex_val);
+        let mut array: [u8; 64] = [0; 64];
+        array.copy_from_slice(&hex_val[..64]);
         // let g = hex!(raw_sig.to_string());
         // let raw_sig = env.signatures()[0].signature().clone();
-        // println!("{:?}", tx.hash());
+        println!("okay what are we finding here {:?}", &tx.hash());
         let verified = signer.verify(&tx.hash(),&array );
         assert_eq!(verified, true);
+        // panic!("test");
     }
     
 }

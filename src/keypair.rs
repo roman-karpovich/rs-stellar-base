@@ -269,6 +269,7 @@ mod tests {
 
     use hex_literal::hex;
     use lazy_static::__Deref;
+    use sha2::digest::crypto_common::Key;
 
     use super::*;
     
@@ -369,6 +370,13 @@ mod tests {
         let muxed = keypair.xdr_muxed_account_id("1");
     }
 
+    #[test]
+    fn test_sign_decorated() {
+        let the_secret = "SD7X7LEHBNMUIKQGKPARG5TDJNBHKC346OUARHGZL5ITC6IJPXHILY36";
+        let kp = Keypair::from_secret(&the_secret).unwrap();
+        let message = "test post please ignore".as_bytes();
+        let sign: DecoratedSignature = kp.sign_decorated(&message);
+        assert_eq!(sign.hint.0.to_vec(), vec![0x0B, 0xFA, 0xD1, 0x34]);
+    }
 
-    //TODO: Sign Decorated Signature Tests
 }
