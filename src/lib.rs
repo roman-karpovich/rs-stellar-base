@@ -12,6 +12,5 @@ pub mod xdr;
 pub mod utils;
 pub mod operations;
 pub mod operation;
-pub mod transaction_base;
 pub mod transaction;
 
