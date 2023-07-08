@@ -187,7 +187,6 @@ mod tests {
         let raw_sig = binding.as_slice();
         let mut array: [u8; 64] = [0; 64];
         array.copy_from_slice(&raw_sig[..64]);
-        println!("okay what are we finding here {:?}", &tx.hash());
         let verified = signer.verify(&tx.hash(),&array );
         
     }
