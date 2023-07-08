@@ -1,3 +1,4 @@
+//! This module provides the signing functionality used by the stellar network
 use lazy_static::lazy_static;
 use hex_literal::hex;
 
@@ -11,14 +12,16 @@ struct ActualMethods {
     verify: fn(&[u8], &[u8], &[u8]) -> bool,
 }
 
+/// Sign the message with the given secrey key
 pub fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
     (ACTUAL_METHODS.sign)(data, secret_key)
 }
-
+/// Verify the signature
 pub fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
     (ACTUAL_METHODS.verify)(data, signature, public_key)
 }
 
+/// Generate Keypair
 pub fn generate(secret_key: &[u8]) -> [u8; 32] {
     (ACTUAL_METHODS.generate)(secret_key)
 }

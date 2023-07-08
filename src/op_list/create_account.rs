@@ -6,6 +6,8 @@ use stellar_strkey::ed25519::PublicKey;
 use crate::operation::is_valid_amount;
 use stellar_xdr::MuxedAccount;
 use hex_literal::hex;
+
+/// Creates and funds a new account with the specified starting balance
 pub fn create_account(destination: String, starting_balance: String) -> Result<Operation, Box<dyn std::error::Error>> {
     
     let key = PublicKey::from_string(&destination);

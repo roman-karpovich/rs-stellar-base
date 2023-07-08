@@ -1,4 +1,4 @@
-//! Contains passphrases for common networks:
+//! Contains passphrases for common networks
 
 /// - `Networks::PUBLIC`: `Public Global Stellar Network ; September 2015`
 /// - `Networks::TESTNET`: `Test SDF Network ; September 2015`

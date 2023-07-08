@@ -25,6 +25,7 @@ pub struct Account {
 }
 
 impl Account {
+    /// Creates a new Account
     pub fn new(account_id: &str, sequence: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let muxed_key = MuxedAccount::from_string(account_id);
 
@@ -45,14 +46,17 @@ impl Account {
         })
     }
 
+    /// Returns the account identifier 
     pub fn account_id(&self) -> &str {
         &self.account_id
     }
-
+    
+    /// Returns the sequence number
     pub fn sequence_number(&self) -> String {
         self.sequence.to_string()
     }
 
+    /// Increments the sequence number
     pub fn increment_sequence_number(&mut self) {
         self.sequence.add_assign(BigUint::from(1_u32));
     }

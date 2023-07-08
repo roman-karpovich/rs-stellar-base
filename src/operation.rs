@@ -1,12 +1,14 @@
+//! Operations are individual commands that modify the ledger.
 use num_bigint::BigInt;
 use num_traits::{Zero, FromPrimitive, Num, Signed};
 use num_traits::identities::One;
 use std::str::FromStr;
-pub use crate::operations::create_account::create_account;
 use stellar_xdr::WriteXdr;
 use stellar_xdr::Type::Int64;
 use hex_literal::hex;
-pub(crate) fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
+
+/// Validates that a given amount is possible for a Stellar asset.
+pub fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
     if !value.is_empty() {
         if let Ok(amount) = BigInt::from_str_radix(value, 10) {
             if !allow_zero && amount.is_zero() {
@@ -32,6 +34,7 @@ pub(crate) fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
     false
 }
 
+/// xdr representation of the amount value
 pub fn to_xdr_amount(value: &str) -> Result<stellar_xdr::Int64, Box<dyn std::error::Error>> {
     let amount = BigInt::from_str_radix(value, 10)?;
     let one = BigInt::one();
@@ -46,7 +49,7 @@ mod tests {
 
     use stellar_xdr::{Operation, ReadXdr, OperationBody, Int64};
 
-    use crate::{account::Account, keypair::Keypair};
+    use crate::{account::Account, keypair::Keypair, op_list::create_account::create_account};
 
     use super::*;
 
