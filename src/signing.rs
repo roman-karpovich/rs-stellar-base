@@ -1,6 +1,6 @@
 //! This module provides the signing functionality used by the stellar network
-use lazy_static::lazy_static;
 use hex_literal::hex;
+use lazy_static::lazy_static;
 
 lazy_static! {
     static ref ACTUAL_METHODS: ActualMethods = check_fast_signing();
@@ -88,10 +88,7 @@ fn check_fast_signing_native() -> ActualMethods {
     use libsodium_sys::crypto_sign_detached;
     use libsodium_sys::crypto_sign_seed_keypair;
 
-  
-
     fn generate(secret_key: &[u8]) -> [u8; 32] {
-        
         unsafe {
             libsodium_sys::sodium_init();
         };
@@ -111,8 +108,6 @@ fn check_fast_signing_native() -> ActualMethods {
     }
 
     fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
-      
-
         unsafe {
             unsafe {
                 let mut signature = [0u8; libsodium_sys::crypto_sign_BYTES as usize];
@@ -131,9 +126,6 @@ fn check_fast_signing_native() -> ActualMethods {
     }
 
     fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
-
-       
-
         unsafe {
             let val = libsodium_sys::crypto_sign_verify_detached(
                 raw_ptr_char_immut!(signature),
@@ -142,11 +134,7 @@ fn check_fast_signing_native() -> ActualMethods {
                 raw_ptr_char_immut!(public_key),
             );
 
-            if val == 0 {
-                return true;
-            } else {
-                return false;
-            }
+            val == 0
         }
     }
 
@@ -158,7 +146,7 @@ fn check_fast_signing_native() -> ActualMethods {
 }
 
 #[cfg(test)]
-mod tests { 
+mod tests {
     use super::*;
 
     #[test]
@@ -181,9 +169,7 @@ mod tests {
         let bad_sig = hex!(
             "687d4b472eeef7d07aafcd0b049640b0bb3f39784118c2e2b73a04fa2f64c9c538b4b2d0f5335e968a480021fdc23e98c0ddf424cb15d8131df8cb6c4bb58309"
         );
-        let public_key = hex!(
-            "ffbdd7ef9933fe7249dc5ca1e7120b6d7b7b99a7a367e1a2fc6cb062fe420437"
-        );
+        let public_key = hex!("ffbdd7ef9933fe7249dc5ca1e7120b6d7b7b99a7a367e1a2fc6cb062fe420437");
 
         assert!(verify(data, &sig, &public_key));
         assert!(!verify(b"corrupted", &sig, &public_key));

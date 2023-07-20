@@ -46,11 +46,11 @@ impl Account {
         })
     }
 
-    /// Returns the account identifier 
+    /// Returns the account identifier
     pub fn account_id(&self) -> &str {
         &self.account_id
     }
-    
+
     /// Returns the sequence number
     pub fn sequence_number(&self) -> String {
         self.sequence.to_string()
@@ -65,9 +65,10 @@ impl Account {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     const ACCOUNT: &str = "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB";
-    const MUXED_ADDRESS: &str = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
+    const MUXED_ADDRESS: &str =
+        "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
     const UNDERLYING_ACCOUNT: &str = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
 
     #[test]
@@ -88,7 +89,10 @@ mod tests {
     fn test_account_constructor_muxed_account() {
         let result = Account::new(MUXED_ADDRESS, "123");
         assert!(result.is_err());
-        assert_eq!(result.err().unwrap().to_string(), "accountId is an M-address; use MuxedAccount instead")
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "accountId is an M-address; use MuxedAccount instead"
+        )
     }
 
     #[test]
@@ -105,5 +109,4 @@ mod tests {
         account.increment_sequence_number();
         assert_eq!(account.sequence_number(), "103");
     }
-
 }

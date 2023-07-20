@@ -1,13 +1,13 @@
-
 //! `Keypair` represents public (and secret) keys of the account.
 //!
 //! Currently `Keypair` only supports ed25519 but in the future, this class can be an abstraction layer for other
 //! public-key signature systems.
-use std::{error::Error, str::FromStr};
 use crate::hashing::hash;
 use nacl::sign::{generate_keypair, signature};
 use rand_core::{OsRng, RngCore};
 use sha2::Sha512;
+use std::str;
+use std::{error::Error, str::FromStr};
 use stellar_strkey::{
     ed25519::{PrivateKey, PublicKey},
     Strkey,
@@ -16,7 +16,6 @@ use stellar_xdr::MuxedAccountMed25519;
 use stellar_xdr::{
     AccountId, DecoratedSignature, Signature, SignatureHint, Uint256, Uint64, WriteXdr,
 };
-use std::str;
 
 use crate::signing::{generate, sign, verify};
 use hex::FromHex;
@@ -28,32 +27,30 @@ pub struct Keypair {
     secret_seed: Option<Vec<u8>>,
 }
 
-
-
 impl Keypair {
-	/// Creates new keypair obj
-    pub fn new(public_key: Option<[u8; 32]>, secret_key: Option<[u8; 32]>) -> Result<Self, Box<dyn Error>> {
-
+    /// Creates new keypair obj
+    pub fn new(
+        public_key: Option<[u8; 32]>,
+        secret_key: Option<[u8; 32]>,
+    ) -> Result<Self, Box<dyn Error>> {
         if let Some(secret_key) = secret_key {
+            let sec_seed = secret_key;
+            let public_key_gen = generate(&sec_seed);
+            let mut secret_key = Vec::new();
+            secret_key.extend_from_slice(&sec_seed);
+            secret_key.extend_from_slice(&public_key_gen);
 
-        let sec_seed = secret_key;
-        let public_key_gen = generate(&sec_seed);
-        let mut secret_key = Vec::new();
-        secret_key.extend_from_slice(&sec_seed);
-        secret_key.extend_from_slice(&public_key_gen);
-        
-        if let Some(public_key_arg) = public_key {
-            if public_key_arg != public_key_gen {
-                return Err("secretKey does not match publicKey".into());
+            if let Some(public_key_arg) = public_key {
+                if public_key_arg != public_key_gen {
+                    return Err("secretKey does not match publicKey".into());
+                }
             }
-        }
-        
-        Ok(Self {
-            secret_seed: Some(sec_seed.to_vec()),
-            public_key: public_key_gen.to_vec(),
-            secret_key: Some(secret_key),
-        })
 
+            Ok(Self {
+                secret_seed: Some(sec_seed.to_vec()),
+                public_key: public_key_gen.to_vec(),
+                secret_key: Some(secret_key),
+            })
         } else {
             Ok(Self {
                 secret_seed: None,
@@ -62,7 +59,7 @@ impl Keypair {
             })
         }
     }
-	
+
     /// Creates a keypair obj from secret seed
     fn new_from_secret_key(secret_seed: Vec<u8>) -> Result<Self, Box<dyn Error>> {
         if secret_seed.len() != 32 {
@@ -105,7 +102,6 @@ impl Keypair {
 
     /// Create Keypair obj from given public key
     pub fn from_public_key(public_key: &str) -> Result<Self, Box<dyn Error>> {
-
         let decoded = PublicKey::from_str(public_key)?;
         if decoded.0.len() != 32 {
             return Err("Invalid Stellar public key".into());
@@ -120,7 +116,7 @@ impl Keypair {
 
     /// Create keypair obj from seed value
     pub fn from_raw_ed25519_seed(seed: &[u8]) -> Result<Self, Box<dyn Error>> {
-        if seed.len()>=33 {
+        if seed.len() >= 33 {
             return Err("Invalid seed length".into());
         }
         Self::new_from_secret_key(seed.to_vec())
@@ -172,7 +168,6 @@ impl Keypair {
 
     /// verifies if signature for the data is valid
     pub fn verify(&self, data: &[u8], signature: &[u8]) -> bool {
-        
         verify(data, signature, self.public_key.as_slice())
     }
 
@@ -205,7 +200,7 @@ impl Keypair {
             PublicKey::from_payload(&self.public_key).unwrap().0,
         ))
     }
-    
+
     /// xdr representation of the public key
     pub fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::MuxedAccount {
         stellar_xdr::MuxedAccount::MuxedEd25519(MuxedAccountMed25519 {
@@ -263,6 +258,7 @@ impl Keypair {
             hint.copy_from_slice(&data[data.len() - 4..]);
         } else {
             hint[..data.len()].copy_from_slice(data);
+            #[allow(clippy::needless_range_loop)]
             for i in data.len()..4 {
                 hint[i] = 0;
             }
@@ -289,7 +285,7 @@ mod tests {
     use sha2::digest::crypto_common::Key;
 
     use super::*;
-    
+
     #[test]
     fn keypair_constructor_fails_when_secret_key_does_not_match_public_key() {
         let secret = "SD7X7LEHBNMUIKQGKPARG5TDJNBHKC346OUARHGZL5ITC6IJPXHILY36";
@@ -300,8 +296,10 @@ mod tests {
         public_key[0] = 0; // Make public key invalid
         let keypair = Keypair::new(Some(public_key), Some(c.try_into().unwrap()));
         assert!(keypair.is_err());
-        assert_eq!(keypair.err().unwrap().to_string(), "secretKey does not match publicKey")
-
+        assert_eq!(
+            keypair.err().unwrap().to_string(),
+            "secretKey does not match publicKey"
+        )
     }
 
     #[test]
@@ -334,7 +332,8 @@ mod tests {
         let seed = "masterpassphrasemasterpassphrase";
         let expected_public_key = "GAXDYNIBA5E4DXR5TJN522RRYESFQ5UNUXHIPTFGVLLD5O5K552DF5ZH";
         let expected_secret = "SBWWC43UMVZHAYLTONYGQ4TBONSW2YLTORSXE4DBONZXA2DSMFZWLP2R";
-        let expected_raw_public_key = hex!("2e3c35010749c1de3d9a5bdd6a31c12458768da5ce87cca6aad63ebbaaef7432");
+        let expected_raw_public_key =
+            hex!("2e3c35010749c1de3d9a5bdd6a31c12458768da5ce87cca6aad63ebbaaef7432");
         let keypair = Keypair::from_raw_ed25519_seed(seed.as_bytes()).unwrap();
 
         assert_eq!(keypair.public_key(), expected_public_key);
@@ -344,24 +343,25 @@ mod tests {
 
     #[test]
     fn test_create_keypair_invalid_raw_ed25519_seed() {
-            Keypair::from_raw_ed25519_seed(b"masterpassphrasemasterpassphras").is_err();
-            Keypair::from_raw_ed25519_seed(b"masterpassphrasemasterpassphrase1").is_err();
-            Keypair::from_raw_ed25519_seed(b"").is_err();
-            Keypair::from_raw_ed25519_seed(b"\0").is_err();
+        Keypair::from_raw_ed25519_seed(b"masterpassphrasemasterpassphras").is_err();
+        Keypair::from_raw_ed25519_seed(b"masterpassphrasemasterpassphrase1").is_err();
+        Keypair::from_raw_ed25519_seed(b"").is_err();
+        Keypair::from_raw_ed25519_seed(b"\0").is_err();
     }
 
     #[test]
     fn test_create_keypair_from_public_key() {
         let public_key = "GAXDYNIBA5E4DXR5TJN522RRYESFQ5UNUXHIPTFGVLLD5O5K552DF5ZH";
         let expected_public_key = "GAXDYNIBA5E4DXR5TJN522RRYESFQ5UNUXHIPTFGVLLD5O5K552DF5ZH";
-        let expected_raw_public_key = hex!("2e3c35010749c1de3d9a5bdd6a31c12458768da5ce87cca6aad63ebbaaef7432");
+        let expected_raw_public_key =
+            hex!("2e3c35010749c1de3d9a5bdd6a31c12458768da5ce87cca6aad63ebbaaef7432");
 
         let keypair = Keypair::from_public_key(public_key).unwrap();
 
         assert_eq!(keypair.public_key().as_str(), expected_public_key);
         assert_eq!(keypair.raw_public_key().as_slice(), expected_raw_public_key);
     }
-    
+
     #[test]
     fn test_create_keypair_from_invalid_public_key() {
         let invalid_public_keys = vec![
@@ -373,7 +373,7 @@ mod tests {
         Keypair::from_public_key(invalid_public_keys[0]).is_err();
         Keypair::from_public_key(invalid_public_keys[1]).is_err();
         Keypair::from_public_key(invalid_public_keys[2]).is_err();
-    }   
+    }
 
     #[test]
     fn test_create_random_keypair() {
@@ -395,5 +395,4 @@ mod tests {
         let sign: DecoratedSignature = kp.sign_decorated(&message);
         assert_eq!(sign.hint.0.to_vec(), vec![0x0B, 0xFA, 0xD1, 0x34]);
     }
-
 }

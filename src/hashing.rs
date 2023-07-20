@@ -1,4 +1,4 @@
-//! Utility Sha256 Hash Function 
+//! Utility Sha256 Hash Function
 use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 
@@ -11,7 +11,7 @@ pub fn hash<T: AsRef<[u8]>>(data: T) -> [u8; 32] {
 }
 
 #[cfg(test)]
-mod tests { 
+mod tests {
     use super::*;
 
     #[test]
@@ -45,5 +45,4 @@ mod tests {
         let actual_hex = hex::encode(actual_hash);
         assert_eq!(actual_hex, expected_hex);
     }
-
 }

@@ -2,10 +2,15 @@ use std::collections::hash_map::ValuesMut;
 use std::error::Error;
 use std::str::FromStr;
 
+use hex_literal::hex;
 use num_bigint::BigUint;
 use stellar_xdr::DecoratedSignature;
-use hex_literal::hex;
 
+use crate::account::Account;
+use crate::hashing::hash;
+use crate::keypair::Keypair;
+use crate::op_list::create_account::create_account;
+use stellar_xdr::LedgerBounds;
 use stellar_xdr::Memo;
 use stellar_xdr::MuxedAccount;
 use stellar_xdr::Operation;
@@ -14,18 +19,13 @@ use stellar_xdr::ReadXdr;
 use stellar_xdr::SequenceNumber;
 use stellar_xdr::Signature;
 use stellar_xdr::TimeBounds;
-use stellar_xdr::LedgerBounds;
 use stellar_xdr::TransactionEnvelope;
 use stellar_xdr::TransactionExt;
+use stellar_xdr::TransactionV0Envelope;
 use stellar_xdr::TransactionV1Envelope;
 use stellar_xdr::Uint256;
 use stellar_xdr::VecM;
 use stellar_xdr::WriteXdr;
-use crate::account::Account;
-use crate::hashing::hash;
-use crate::keypair::Keypair;
-use stellar_xdr::TransactionV0Envelope;
-use crate::op_list::create_account::create_account;
 
 #[derive(Debug)]
 pub struct Transaction {
@@ -49,8 +49,8 @@ pub struct Transaction {
 
 impl Transaction {
     fn signature_base(&self) -> Vec<u8> {
-        let mut tx = self.tx.clone().unwrap().clone();
-        let tagged_tx =stellar_xdr::TransactionSignaturePayloadTaggedTransaction::Tx(tx);
+        let mut tx = self.tx.clone().unwrap();
+        let tagged_tx = stellar_xdr::TransactionSignaturePayloadTaggedTransaction::Tx(tx);
         let tx_sig = stellar_xdr::TransactionSignaturePayload {
             network_id: stellar_xdr::Hash(hash(self.network_passphrase.as_str())),
             tagged_transaction: tagged_tx,
@@ -58,8 +58,8 @@ impl Transaction {
         tx_sig.to_xdr().unwrap()
     }
 
-    fn hash(&self) ->  [u8; 32]{
-        hash(&self.signature_base())
+    fn hash(&self) -> [u8; 32] {
+        hash(self.signature_base())
     }
 
     fn sign(&mut self, keypairs: &[Keypair]) {
@@ -72,9 +72,10 @@ impl Transaction {
         self.hash = Some(tx_hash);
     }
 
-    fn to_envelope(&mut self) -> Result<TransactionEnvelope, Box<dyn Error>> {
+    fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
         let raw_tx = self.tx.to_xdr().unwrap();
-        let mut signatures = VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
+        let mut signatures =
+            VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
         let envelope = match self.envelope_type {
             stellar_xdr::EnvelopeType::TxV0 => {
                 let transaction_v0 = stellar_xdr::TransactionV0Envelope {
@@ -98,7 +99,7 @@ impl Transaction {
                 .into());
             }
         };
-    
+
         Ok(envelope)
     }
 }
@@ -119,12 +120,11 @@ pub struct TransactionBuilder {
     min_account_sequence_age: Option<u32>,
     min_account_sequence_ledger_gap: Option<u32>,
     extra_signers: Option<Vec<stellar_xdr::AccountId>>,
-    operations: Option<Vec<Operation>>
+    operations: Option<Vec<Operation>>,
 }
 
 impl TransactionBuilder {
     pub fn new(source_account: Account, network: &str) -> Self {
-
         Self {
             tx: None,
             network_passphrase: Some(network.to_string()),
@@ -140,15 +140,14 @@ impl TransactionBuilder {
             min_account_sequence_age: None,
             min_account_sequence_ledger_gap: None,
             extra_signers: None,
-            operations: Some(Vec::new())
+            operations: Some(Vec::new()),
         }
-       
-	}
+    }
 
     pub fn fee(&mut self, fee: impl Into<u32>) -> &mut Self {
-		self.fee.insert(fee.into());
-		self
-	}
+        self.fee.insert(fee.into());
+        self
+    }
 
     pub fn add_operation(&mut self, operation: Operation) -> &mut Self {
         if let Some(ref mut vec) = self.operations {
@@ -157,13 +156,17 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn build(&mut self ) -> Transaction {
-        let seq_num = BigUint::from_str(self.source.clone().unwrap().sequence_number().as_str()).unwrap();
-        let fee = self.fee.unwrap().checked_mul(self.operations.clone().unwrap().len().try_into().unwrap());
+    pub fn build(&mut self) -> Transaction {
+        let seq_num =
+            BigUint::from_str(self.source.clone().unwrap().sequence_number().as_str()).unwrap();
+        let fee = self
+            .fee
+            .unwrap()
+            .checked_mul(self.operations.clone().unwrap().len().try_into().unwrap());
         let val = self.source.clone().unwrap();
-        let vv = val.clone();
+        let vv = val;
         let vv2 = vv.account_id();
-        let binding = hex::encode(vv2).clone();
+        let binding = hex::encode(vv2);
         let hex_val = binding.as_bytes();
         let mut array: [u8; 32] = [0; 32];
         array.copy_from_slice(&hex_val[..32]);
@@ -196,23 +199,25 @@ impl TransactionBuilder {
             hash: None,
         }
     }
-
 }
 
-
 #[cfg(test)]
-mod tests { 
+mod tests {
 
     use core::panic;
 
     use sha2::digest::crypto_common::Key;
 
-    use crate::{account::Account, keypair::Keypair, network::Networks};
     use super::*;
+    use crate::{account::Account, keypair::Keypair, network::Networks};
 
     #[test]
     fn test_creates_and_signs() {
-        let source = Account::new("GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB", "20").unwrap();
+        let source = Account::new(
+            "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
+            "20",
+        )
+        .unwrap();
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let signer = Keypair::master(Some(Networks::TESTNET)).unwrap();
         let mut tx = TransactionBuilder::new(source, Networks::TESTNET)
@@ -222,8 +227,7 @@ mod tests {
 
         tx.sign(&[signer.clone()]);
         let sig = &tx.signatures[0].signature.0;
-        let verified = signer.verify(&tx.hash(),sig);
+        let verified = signer.verify(&tx.hash(), sig);
         assert_eq!(verified, true);
     }
-    
 }
