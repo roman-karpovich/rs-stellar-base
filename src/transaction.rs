@@ -25,7 +25,7 @@ use crate::account::Account;
 use crate::hashing::hash;
 use crate::keypair::Keypair;
 use stellar_xdr::TransactionV0Envelope;
-use crate::operation::create_account;
+use crate::op_list::create_account::create_account;
 
 #[derive(Debug)]
 pub struct Transaction {
@@ -207,7 +207,7 @@ mod tests {
 
     use sha2::digest::crypto_common::Key;
 
-    use crate::{account::Account, keypair::Keypair, network::Networks, operations::create_account};
+    use crate::{account::Account, keypair::Keypair, network::Networks};
     use super::*;
 
     #[test]
