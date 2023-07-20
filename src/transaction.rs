@@ -29,22 +29,22 @@ use stellar_xdr::WriteXdr;
 
 #[derive(Debug)]
 pub struct Transaction {
-    tx: Option<stellar_xdr::Transaction>,
-    network_passphrase: String,
-    signatures: Vec<DecoratedSignature>,
-    fee: u32,
-    envelope_type: stellar_xdr::EnvelopeType,
-    memo: Option<stellar_xdr::Memo>,
-    sequence: String,
-    source: String,
-    time_bounds: Option<TimeBounds>,
-    ledger_bounds: Option<LedgerBounds>,
-    min_account_sequence: Option<String>,
-    min_account_sequence_age: u32,
-    min_account_sequence_ledger_gap: u32,
-    extra_signers: Vec<stellar_xdr::AccountId>,
-    operations: Option<Vec<Operation>>,
-    hash: Option<[u8; 32]>,
+    pub tx: Option<stellar_xdr::Transaction>,
+    pub network_passphrase: String,
+    pub signatures: Vec<DecoratedSignature>,
+    pub fee: u32,
+    pub envelope_type: stellar_xdr::EnvelopeType,
+    pub memo: Option<stellar_xdr::Memo>,
+    pub sequence: String,
+    pub source: String,
+    pub time_bounds: Option<TimeBounds>,
+    pub ledger_bounds: Option<LedgerBounds>,
+    pub min_account_sequence: Option<String>,
+    pub min_account_sequence_age: u32,
+    pub min_account_sequence_ledger_gap: u32,
+    pub extra_signers: Vec<stellar_xdr::AccountId>,
+    pub operations: Option<Vec<Operation>>,
+    pub hash: Option<[u8; 32]>,
 }
 
 impl Transaction {
@@ -58,11 +58,11 @@ impl Transaction {
         tx_sig.to_xdr().unwrap()
     }
 
-    fn hash(&self) -> [u8; 32] {
+    pub fn hash(&self) -> [u8; 32] {
         hash(self.signature_base())
     }
 
-    fn sign(&mut self, keypairs: &[Keypair]) {
+    pub fn sign(&mut self, keypairs: &[Keypair]) {
         let tx_hash: [u8; 32] = self.hash();
         for kp in keypairs {
             let sig = kp.sign_decorated(&tx_hash);
@@ -72,7 +72,7 @@ impl Transaction {
         self.hash = Some(tx_hash);
     }
 
-    fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
+    pub fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
         let raw_tx = self.tx.to_xdr().unwrap();
         let mut signatures =
             VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
