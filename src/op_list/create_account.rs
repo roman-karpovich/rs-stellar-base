@@ -22,7 +22,7 @@ pub fn create_account(destination: String, starting_balance: String) -> Result<O
     let dest = Keypair::from_public_key(&destination).unwrap().xdr_account_id();
     let starting_balance = to_xdr_amount(&starting_balance)?;
     let body  = stellar_xdr::OperationBody::CreateAccount(
-        CreateAccountOp { destination: dest, starting_balance: starting_balance }
+        CreateAccountOp { destination: dest, starting_balance }
     );
 
     Ok(stellar_xdr::Operation {source_account: None, body})

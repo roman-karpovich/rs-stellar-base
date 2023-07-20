@@ -164,7 +164,7 @@ impl TransactionBuilder {
         let vv = val.clone();
         let vv2 = vv.account_id();
         let binding = hex::encode(vv2).clone();
-        let hex_val = binding.as_bytes().clone();
+        let hex_val = binding.as_bytes();
         let mut array: [u8; 32] = [0; 32];
         array.copy_from_slice(&hex_val[..32]);
 
