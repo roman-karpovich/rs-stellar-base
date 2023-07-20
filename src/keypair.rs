@@ -21,12 +21,14 @@ use std::str;
 use crate::signing::{generate, sign, verify};
 use hex::FromHex;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Keypair {
     public_key: Vec<u8>,
     secret_key: Option<Vec<u8>>,
     secret_seed: Option<Vec<u8>>,
 }
+
+
 
 impl Keypair {
 	/// Creates new keypair obj
@@ -159,9 +161,10 @@ impl Keypair {
         if !self.can_sign() {
             return Err("cannot sign, no secret_key available".into());
         }
+        // println!("Key {:?}", &self.secret_key);
 
         if let Some(s) = &self.secret_key {
-            sign(data, s);
+            return Ok(sign(data, s).to_vec());
         }
 
         Err("error while signing".into())
@@ -169,7 +172,8 @@ impl Keypair {
 
     /// verifies if signature for the data is valid
     pub fn verify(&self, data: &[u8], signature: &[u8]) -> bool {
-        verify(signature, data, &self.public_key)
+        
+        verify(data, signature, self.public_key.as_slice())
     }
 
     /// Creates a Random Keypair
@@ -282,6 +286,7 @@ mod tests {
 
     use hex_literal::hex;
     use lazy_static::__Deref;
+    use sha2::digest::crypto_common::Key;
 
     use super::*;
     
@@ -382,6 +387,13 @@ mod tests {
         let muxed = keypair.xdr_muxed_account_id("1");
     }
 
+    #[test]
+    fn test_sign_decorated() {
+        let the_secret = "SD7X7LEHBNMUIKQGKPARG5TDJNBHKC346OUARHGZL5ITC6IJPXHILY36";
+        let kp = Keypair::from_secret(&the_secret).unwrap();
+        let message = "test post please ignore".as_bytes();
+        let sign: DecoratedSignature = kp.sign_decorated(&message);
+        assert_eq!(sign.hint.0.to_vec(), vec![0x0B, 0xFA, 0xD1, 0x34]);
+    }
 
-    //TODO: Sign Decorated Signature Tests
 }

@@ -70,24 +70,40 @@ fn check_fast_signing_browser() -> ActualMethods {
     }
 }
 
+macro_rules! raw_ptr_char {
+    ($name: ident) => {
+        $name.as_mut_ptr() as *mut libc::c_uchar
+    };
+}
+
+/// make invoking ffi functions more readable
+macro_rules! raw_ptr_char_immut {
+    ($name: ident) => {
+        $name.as_ptr() as *const libc::c_uchar
+    };
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 fn check_fast_signing_native() -> ActualMethods {
     use libsodium_sys::crypto_sign_detached;
     use libsodium_sys::crypto_sign_seed_keypair;
 
-    unsafe {
-        libsodium_sys::sodium_init();
-    };
+  
 
     fn generate(secret_key: &[u8]) -> [u8; 32] {
+        
+        unsafe {
+            libsodium_sys::sodium_init();
+        };
+
         unsafe {
             let mut pk = [0u8; libsodium_sys::crypto_sign_PUBLICKEYBYTES as usize];
             let mut sk = [0u8; libsodium_sys::crypto_sign_SECRETKEYBYTES as usize];
 
             libsodium_sys::crypto_sign_seed_keypair(
-                pk.as_mut_ptr(),
-                sk.as_mut_ptr(),
-                secret_key.as_ptr() as *const _,
+                raw_ptr_char!(pk),
+                raw_ptr_char!(sk),
+                raw_ptr_char_immut!(secret_key),
             );
 
             pk
@@ -95,15 +111,17 @@ fn check_fast_signing_native() -> ActualMethods {
     }
 
     fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
+      
+
         unsafe {
             unsafe {
                 let mut signature = [0u8; libsodium_sys::crypto_sign_BYTES as usize];
 
                 libsodium_sys::crypto_sign_detached(
-                    signature.as_mut_ptr(),
+                    raw_ptr_char!(signature),
                     std::ptr::null_mut(),
-                    data.as_ptr(),
-                    data.len() as u64,
+                    raw_ptr_char_immut!(data),
+                    data.len() as libc::c_ulonglong,
                     secret_key.as_ptr(),
                 );
 
@@ -113,13 +131,22 @@ fn check_fast_signing_native() -> ActualMethods {
     }
 
     fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
+
+       
+
         unsafe {
-            libsodium_sys::crypto_sign_verify_detached(
-                signature.as_ptr(),
-                data.as_ptr(),
-                data.len() as u64,
-                public_key.as_ptr(),
-            ) == 0
+            let val = libsodium_sys::crypto_sign_verify_detached(
+                raw_ptr_char_immut!(signature),
+                raw_ptr_char_immut!(data),
+                data.len() as libc::c_ulonglong,
+                raw_ptr_char_immut!(public_key),
+            );
+
+            if val == 0 {
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 
@@ -147,7 +174,7 @@ mod tests {
     }
     #[test]
     fn test_verify_string() {
-        let data = b"hello world";
+        let data = "hello world".as_bytes();
         let sig = hex!(
             "587d4b472eeef7d07aafcd0b049640b0bb3f39784118c2e2b73a04fa2f64c9c538b4b2d0f5335e968a480021fdc23e98c0ddf424cb15d8131df8cb6c4bb58309"
         );
