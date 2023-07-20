@@ -1,4 +1,5 @@
 use std::collections::hash_map::ValuesMut;
+use std::error::Error;
 use std::str::FromStr;
 
 use num_bigint::BigUint;
@@ -9,6 +10,7 @@ use stellar_xdr::Memo;
 use stellar_xdr::MuxedAccount;
 use stellar_xdr::Operation;
 use stellar_xdr::Preconditions;
+use stellar_xdr::ReadXdr;
 use stellar_xdr::SequenceNumber;
 use stellar_xdr::Signature;
 use stellar_xdr::TimeBounds;
@@ -42,6 +44,7 @@ pub struct Transaction {
     min_account_sequence_ledger_gap: u32,
     extra_signers: Vec<stellar_xdr::AccountId>,
     operations: Option<Vec<Operation>>,
+    hash: Option<[u8; 32]>,
 }
 
 impl Transaction {
@@ -60,11 +63,43 @@ impl Transaction {
     }
 
     fn sign(&mut self, keypairs: &[Keypair]) {
-        let tx_hash = self.hash();
+        let tx_hash: [u8; 32] = self.hash();
         for kp in keypairs {
             let sig = kp.sign_decorated(&tx_hash);
             self.signatures.push(sig);
         }
+
+        self.hash = Some(tx_hash);
+    }
+
+    fn to_envelope(&mut self) -> Result<TransactionEnvelope, Box<dyn Error>> {
+        let raw_tx = self.tx.to_xdr().unwrap();
+        let mut signatures = VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
+        let envelope = match self.envelope_type {
+            stellar_xdr::EnvelopeType::TxV0 => {
+                let transaction_v0 = stellar_xdr::TransactionV0Envelope {
+                    tx: stellar_xdr::TransactionV0::from_xdr(&raw_tx).unwrap(), // Make a copy of tx
+                    signatures,
+                };
+                stellar_xdr::TransactionEnvelope::TxV0(transaction_v0)
+            }
+            stellar_xdr::EnvelopeType::Tx => {
+                let transaction_v1 = stellar_xdr::TransactionV1Envelope {
+                    tx: stellar_xdr::Transaction::from_xdr(&raw_tx).unwrap(), // Make a copy of tx
+                    signatures,
+                };
+                stellar_xdr::TransactionEnvelope::Tx(transaction_v1)
+            }
+            _ => {
+                return Err(format!(
+                    "Invalid TransactionEnvelope: expected an envelopeTypeTxV0 or envelopeTypeTx but received an {:?}.",
+                    self.envelope_type
+                )
+                .into());
+            }
+        };
+    
+        Ok(envelope)
     }
 }
 
@@ -136,7 +171,7 @@ impl TransactionBuilder {
         let tx_obj = stellar_xdr::Transaction {
             source_account: MuxedAccount::Ed25519(Uint256::from(array)), // MuxedAccount::Ed25519(Uint256([0; 32]))
             fee: fee.unwrap(),
-            seq_num: SequenceNumber(0_i64),
+            seq_num: SequenceNumber(1_i64),
             cond: Preconditions::None,
             memo: Memo::None,
             operations: self.operations.clone().unwrap().try_into().unwrap(),
@@ -157,7 +192,8 @@ impl TransactionBuilder {
             min_account_sequence_age: 0,
             min_account_sequence_ledger_gap: 0,
             extra_signers: Vec::new(),
-            operations: self.operations.clone()
+            operations: self.operations.clone(),
+            hash: None,
         }
     }
 
@@ -168,6 +204,8 @@ impl TransactionBuilder {
 mod tests { 
 
     use core::panic;
+
+    use sha2::digest::crypto_common::Key;
 
     use crate::{account::Account, keypair::Keypair, network::Networks, operations::create_account};
     use super::*;
@@ -183,12 +221,9 @@ mod tests {
             .build();
 
         tx.sign(&[signer.clone()]);
-        let binding = tx.signatures[0].signature.clone();
-        let raw_sig = binding.as_slice();
-        let mut array: [u8; 64] = [0; 64];
-        array.copy_from_slice(&raw_sig[..64]);
-        let verified = signer.verify(&tx.hash(),&array );
-        
+        let sig = &tx.signatures[0].signature.0;
+        let verified = signer.verify(&tx.hash(),sig);
+        assert_eq!(verified, true);
     }
     
 }

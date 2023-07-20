@@ -153,7 +153,7 @@ impl Keypair {
         if !self.can_sign() {
             return Err("cannot sign, no secret_key available".into());
         }
-        println!("Key {:?}", &self.secret_key);
+        // println!("Key {:?}", &self.secret_key);
 
         if let Some(s) = &self.secret_key {
             return Ok(sign(data, s).to_vec());
@@ -163,7 +163,8 @@ impl Keypair {
     }
 
     pub fn verify(&self, data: &[u8], signature: &[u8]) -> bool {
-        verify(signature, data, &self.public_key)
+        
+        verify(data, signature, self.public_key.as_slice())
     }
 
     pub fn random() -> Result<Self, Box<dyn Error>> {
@@ -220,7 +221,6 @@ impl Keypair {
     }
 
     pub fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature {
-        println!("Data {:?}", data);
         let signature = Self::sign(self, data).unwrap();
         let hint = Self::signature_hint(self).unwrap();
         let mut hint_u8: [u8; 4] = [0; 4];
