@@ -3,9 +3,10 @@ use std::{str::FromStr, cmp::Ordering};
 
 use crate::utils::util::trim_end;
 use stellar_strkey::Strkey::{PublicKeyEd25519, self};
-use stellar_xdr::*;
+use stellar_xdr::{*};
 use crate::keypair::Keypair;
 use regex::Regex;
+use stellar_xdr::Asset::CreditAlphanum4;
 
 #[derive(Debug, Clone)]
 pub struct Asset {
@@ -41,6 +42,58 @@ impl Asset {
         })
     }
 
+    fn from_operation(asset_xdr: stellar_xdr::Asset) -> Result<Asset, String> {
+        match asset_xdr {
+            stellar_xdr::Asset::Native => Ok(Asset::native()),
+            stellar_xdr::Asset::CreditAlphanum4(alphaNum4) => {
+                let anum = alphaNum4;
+                let issuer = Some(anum.issuer.0);
+                let issuer = if let Some(PublicKey::PublicKeyTypeEd25519(inner)) = issuer {
+                    Some(stellar_strkey::ed25519::PublicKey(inner.0).to_string())
+                } else {
+                    None
+                };
+                let code = trim_end(anum.asset_code.to_string(), '\0');
+                Ok(Asset::new(&code, issuer.as_deref())?)
+            }
+            stellar_xdr::Asset::CreditAlphanum12(alphaNum12) => {
+                let anum = alphaNum12;
+                let issuer = Some(anum.issuer.0);
+                let issuer = if let Some(PublicKey::PublicKeyTypeEd25519(inner)) = issuer {
+                    Some(stellar_strkey::ed25519::PublicKey(inner.0).to_string())
+                } else {
+                    None
+                };
+                let code = trim_end(anum.asset_code.to_string(), '\0');                // let code = anum.asset_code().trim_end_matches('\0').to_string();
+                Ok(Asset::new(&code, issuer.as_deref())?)
+            }
+            _ => Err(format!("Invalid asset type: {:?}", asset_xdr)),
+        }
+    }
+
+    fn _to_xdr_object(&self, xdr_asset: stellar_xdr::Asset) -> stellar_xdr::Asset {
+        if self.is_native() {
+            return stellar_xdr::Asset::Native;
+        } else {
+            let xdr_type;
+            let xdr_type_string: &str;
+            if self.code.len() <= 4 {
+                xdr_type = stellar_xdr::AssetType::CreditAlphanum4;
+                xdr_type_string = "asset_type_credit_alphanum4";
+            } else {
+                xdr_type = stellar_xdr::AssetType::CreditAlphanum12;
+                xdr_type_string = "asset_type_credit_alphanum12";
+            }
+            let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
+            let padded_code = format!("{:width$}", self.code, width = pad_length).replace(" ", "\0");
+            let asset_type = stellar_xdr::Asset::CreditAlphanum4(AlphaNum4 { asset_code: AssetCode4::from_str(&padded_code).unwrap(), issuer: Keypair::from_public_key(&self.issuer.clone().unwrap()).unwrap().xdr_account_id()});
+            asset_type
+
+        }
+
+        
+    }
+
     fn ascii_compare(a: &str, b: &str) -> Ordering {
         let a_uppercase = a.to_ascii_uppercase();
         let b_uppercase = b.to_ascii_uppercase();
@@ -52,6 +105,73 @@ impl Asset {
         Self {
             code: "XLM".to_string(),
             issuer: None,
+        }
+    }
+
+    fn is_native(&self) -> bool {
+        self.issuer.is_none()
+    }
+
+    fn compare(asset_a: &Asset, asset_b: &Asset) -> Result<Ordering, String> {
+
+        if asset_a.equals(asset_b) {
+            return Ok(Ordering::Equal);
+        }
+
+        let xdr_a_type = asset_a.get_raw_asset_type()?;
+        let xdr_b_type = asset_b.get_raw_asset_type()?;
+
+        if xdr_a_type != xdr_b_type {
+            return Ok(xdr_a_type.cmp(&xdr_b_type));
+        }
+
+        let code_compare = Self::ascii_compare(&asset_a.get_code().unwrap_or("".to_owned()), &asset_b.get_code().unwrap_or("".to_owned()));
+        if code_compare != Ordering::Equal {
+            return Ok(code_compare);
+        }
+
+        Ok(Self::ascii_compare(&asset_a.get_issuer().unwrap_or("".to_owned()), &asset_b.get_issuer().unwrap_or("".to_owned())))
+    }
+
+    fn get_asset_type(&self) -> String {
+        match self.get_raw_asset_type() {
+            Ok(stellar_xdr::AssetType::Native) => "native".to_string(),
+            Ok(stellar_xdr::AssetType::CreditAlphanum4) => "credit_alphanum4".to_string(),
+            Ok(stellar_xdr::AssetType::CreditAlphanum12) => "credit_alphanum12".to_string(),
+            _ => "unknown".to_string(),
+        }
+    }
+
+    fn get_raw_asset_type(&self) -> Result<stellar_xdr::AssetType, String> {
+        if self.is_native() {
+            Ok(stellar_xdr::AssetType::Native)
+        } else if self.code.len() <= 4 {
+            Ok(stellar_xdr::AssetType::CreditAlphanum4)
+        } else {
+            Ok(stellar_xdr::AssetType::CreditAlphanum12)
+        }
+    }
+
+    fn equals(&self, asset: &Asset) -> bool {
+        self.get_code() == asset.get_code() && self.get_issuer() == asset.get_issuer()
+    }
+    
+    fn get_code(&self) -> Option<String> {
+        Some(self.code.clone())
+    }
+
+    fn get_issuer(&self) -> Option<String> {
+        self.issuer.clone()
+    }
+
+    fn to_string(&self) -> String {
+        if self.is_native() {
+            return "native".to_string();
+        }
+
+        match (self.get_code(), self.get_issuer()) {
+            (Some(code), Some(issuer)) => format!("{}:{}", code, issuer),
+            _ => "".to_string(),
         }
     }
     
