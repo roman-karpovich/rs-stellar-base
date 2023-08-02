@@ -21,9 +21,11 @@ impl Asset {
                 "Asset code is invalid (maximum alphanumeric, 12 characters at max)".to_string(),
             );
         }
+
         if code.to_lowercase() != "xlm" && issuer.is_none() {
             return Err("Issuer cannot be null".to_string());
         }
+
         if let Some(issuer) = issuer {
                 if Strkey::from_str(issuer).is_err() {
                     return Err("Not a valid ed25519 public key".to_string())
@@ -202,4 +204,28 @@ impl Asset {
         }
     }
     
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::Asset;
+
+    
+    #[test]
+    fn test_no_issuer_for_non_xlm_asset() {
+        let err_val = Asset::new("USD", None).unwrap_err();
+        assert_eq!(err_val, "Issuer cannot be null");
+    }
+
+    #[test]
+    fn test_invalid_asset_code() {
+        let err_val = Asset::new("", Some("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")).unwrap_err();
+        assert_eq!(err_val, "Asset code is invalid (maximum alphanumeric, 12 characters at max)");
+        let err_val = super::Asset::new("1234567890123", Some("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")).unwrap_err();
+        assert_eq!(err_val, "Asset code is invalid (maximum alphanumeric, 12 characters at max)");
+        let err_val = Asset::new("ab_", Some("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ")).unwrap_err();
+        assert_eq!(err_val, "Asset code is invalid (maximum alphanumeric, 12 characters at max)");
+
+    }
 }
