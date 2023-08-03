@@ -228,4 +228,51 @@ mod tests {
         assert_eq!(err_val, "Asset code is invalid (maximum alphanumeric, 12 characters at max)");
 
     }
+
+    #[test]
+    fn test_native_asset_code() {
+        let asset = Asset::native();
+        assert_eq!(asset.get_code().unwrap(), "XLM");
+    }
+
+    #[test]
+    fn test_asset_code() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("USD", Some(issuer)).unwrap();
+        assert_eq!(asset.get_code().unwrap(), "USD");
+    }
+
+    #[test]
+    fn test_native_asset_issuer() {
+        let asset = Asset::native();
+        assert!(asset.get_issuer().is_none());
+    }
+
+    #[test]
+    fn test_non_native_asset_issuer() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("USD", Some(issuer)).unwrap();
+        assert_eq!(asset.get_issuer(), Some(issuer.to_string()));
+    }
+
+    #[test]
+    fn test_native_asset_type() {
+        let asset = Asset::native();
+        assert_eq!(asset.get_asset_type(), "native");
+    }
+
+    #[test]
+    fn test_credit_alphanum4_asset_type() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("ABCD", Some(issuer)).unwrap();
+        assert_eq!(asset.get_asset_type(), "credit_alphanum4");
+    }
+
+    #[test]
+    fn test_credit_alphanum12_asset_type() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("ABCDEF", Some(issuer)).unwrap();
+        assert_eq!(asset.get_asset_type(), "credit_alphanum12");
+    }
+
 }
