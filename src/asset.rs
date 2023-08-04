@@ -17,7 +17,9 @@ pub struct Asset {
 
 impl Asset {
     pub fn new(code: &str, issuer: Option<&str>) -> Result<Self, String> {
+
         if !Regex::new(r"^[a-zA-Z0-9]{1,12}$").unwrap().is_match(code) {
+            // println!("{}", code);
             return Err(
                 "Asset code is invalid (maximum alphanumeric, 12 characters at max)".to_string(),
             );
@@ -56,7 +58,7 @@ impl Asset {
                 } else {
                     None
                 };
-                let code = trim_end(anum.asset_code.to_string(), '\0');
+                let code = trim_end(String::from_utf8(anum.asset_code.as_slice().into()).unwrap(), '\0');
                 Ok(Asset::new(&code, issuer.as_deref())?)
             }
             stellar_xdr::Asset::CreditAlphanum12(alpha_num_12) => {
@@ -67,7 +69,8 @@ impl Asset {
                 } else {
                     None
                 };
-                let code = trim_end(anum.asset_code.to_string(), '\0');                // let code = anum.asset_code().trim_end_matches('\0').to_string();
+                // println!("Asset Code {:?}", String::from_utf8(anum.asset_code.as_slice().into()).unwrap());
+                let code = trim_end( String::from_utf8(anum.asset_code.as_slice().into()).unwrap(), '\0');               
                 Ok(Asset::new(&code, issuer.as_deref())?)
             }
             _ => Err(format!("Invalid asset type: {:?}", asset_xdr)),
@@ -270,10 +273,21 @@ impl Asset {
         
     }
 
-    fn ascii_compare(a: &str, b: &str) -> Ordering {
+    fn ascii_compare(a: &str, b: &str) -> i32 {
         let a_uppercase = a.to_ascii_uppercase();
         let b_uppercase = b.to_ascii_uppercase();
-        a_uppercase.as_bytes().cmp(b_uppercase.as_bytes())
+        let result = a_uppercase.as_bytes().cmp(b_uppercase.as_bytes());
+        match result {
+            Ordering::Less => {
+                return -1;
+            }
+            Ordering::Equal => {
+                return 0;
+            }
+            Ordering::Greater => {
+                return 1;
+            }
+        }
     }
 
     fn native() -> Self {
@@ -288,25 +302,30 @@ impl Asset {
         self.issuer.is_none()
     }
 
-    fn compare(asset_a: &Asset, asset_b: &Asset) -> Result<Ordering, String> {
+    fn compare(asset_a: &Asset, asset_b: &Asset) -> i32 {
 
         if asset_a.equals(asset_b) {
-            return Ok(Ordering::Equal);
+            return 0;
         }
 
-        let xdr_a_type = asset_a.get_raw_asset_type()?;
-        let xdr_b_type = asset_b.get_raw_asset_type()?;
+        let xdr_a_type = asset_a.get_raw_asset_type();
+        let xdr_b_type = asset_b.get_raw_asset_type();
 
         if xdr_a_type != xdr_b_type {
-            return Ok(xdr_a_type.cmp(&xdr_b_type));
+            let result = xdr_a_type.cmp(&xdr_b_type);
+            if result == Ordering::Less {
+                return -1;
+            } else  {
+                return 1;
+            }
         }
 
         let code_compare = Self::ascii_compare(&asset_a.get_code().unwrap_or("".to_owned()), &asset_b.get_code().unwrap_or("".to_owned()));
-        if code_compare != Ordering::Equal {
-            return Ok(code_compare);
+        if code_compare != 0 {
+            return code_compare;
         }
 
-        Ok(Self::ascii_compare(&asset_a.get_issuer().unwrap_or("".to_owned()), &asset_b.get_issuer().unwrap_or("".to_owned())))
+        return Self::ascii_compare(&asset_a.get_issuer().unwrap_or("".to_owned()), &asset_b.get_issuer().unwrap_or("".to_owned()));
     }
 
     fn get_asset_type(&self) -> String {
@@ -354,10 +373,25 @@ impl Asset {
 }
 
 
+impl ToString for Asset {
+    fn to_string(&self) -> String {
+        
+        if self.is_native() {
+            return "native".to_string();
+        }
+
+        match (self.get_code(), self.get_issuer()) {
+            (Some(code), Some(issuer)) => format!("{}:{}", code, issuer),
+            _ => "".to_string(),
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::Asset;
-    use stellar_xdr::WriteXdr;
+    use stellar_xdr::{WriteXdr, AssetCode4, AlphaNum4, AccountId, PublicKey, Uint256, AssetCode12, AlphaNum12};
 
     
     #[test]
@@ -550,6 +584,109 @@ mod tests {
         let xdr = stellar_xdr::Asset::Native;
         let asset = Asset::from_operation(xdr).unwrap();
         assert!(asset.is_native());
+
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
+            stellar_strkey::ed25519::PublicKey::from_string(
+                issuer.clone()
+            )
+            .unwrap()
+            .0,
+        )));
+
+        let mut asset_code: [u8; 4] = [0; 4];
+
+        for (i, b) in "KHL".as_bytes().iter().enumerate() {
+            asset_code[i] = *b;
+        }
+        let xdr = stellar_xdr::Asset::CreditAlphanum4(AlphaNum4 {
+            asset_code: AssetCode4(asset_code),
+            issuer: addr.clone(),
+        });
+
+        let asset = Asset::from_operation(xdr).unwrap();
+       
+        assert_eq!("KHL", asset.get_code().unwrap());
+        assert_eq!(issuer.to_string(), asset.get_issuer().unwrap());
+
     }
 
+    #[test]
+    fn test_parse_12_alphanum_xdr_asset() {
+    
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
+            stellar_strkey::ed25519::PublicKey::from_string(
+                issuer.clone()
+            )
+            .unwrap()
+            .0,
+        )));
+        let mut asset_code: [u8; 12] = [0; 12];
+
+        for (i, b) in "KHLTOKEN".as_bytes().iter().enumerate() {
+            asset_code[i] = *b;
+        }
+        let xdr = stellar_xdr::Asset::CreditAlphanum12(AlphaNum12 {
+            asset_code: AssetCode12(asset_code),
+            issuer: addr.clone(),
+        });
+        
+        let asset = Asset::from_operation(xdr).unwrap();
+        assert_eq!("KHLTOKEN", asset.get_code().unwrap());
+        assert_eq!(issuer.to_string(), asset.get_issuer().unwrap());
+
+    }
+
+    #[test]
+    fn test_to_string_native() {
+        let asset = Asset::native();
+        assert_eq!(asset.to_string(), "native");
+    }
+
+    #[test]
+    fn test_to_string_non_native() {
+        let asset = Asset::new(
+            "USD",
+            Some("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ"),
+        ).unwrap();
+        assert_eq!(
+            asset.to_string(),
+            "USD:GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ"
+        );
+    }
+
+    #[test]
+    fn test_compare_works() {
+        let asset_a = Asset::new(
+            "ARST",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        let asset_b = Asset::new(
+            "USD",
+            Some("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ"),
+        ).unwrap();
+
+        Asset::compare(&asset_a, &asset_b);
+    }
+
+    #[test]
+    fn test_compare_equal_assets() {
+        let xlm = Asset::native();
+        let asset_a = Asset::new(
+            "ARST",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        let asset_b = Asset::new(
+            "USD",
+            Some("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ"),
+        ).unwrap();
+
+        // println!("Result {:?}",Asset::compare(&xlm.clone(), &xlm).);
+        assert_eq!(Asset::compare(&xlm.clone(), &xlm), 0);
+        assert_eq!(Asset::compare(&asset_a.clone(), &asset_a), 0);
+        assert_eq!(Asset::compare(&asset_b.clone(), &asset_b), 0);
+    }
 }
