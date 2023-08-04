@@ -95,6 +95,12 @@ impl Asset {
                 let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
                 let padded_code = format!("{:width$}", self.code, width = pad_length).replace(" ", "\0");
                 
+                let mut asset_code: [u8; 4] = [0; 4];
+
+                for (i, b) in self.code.as_bytes().iter().enumerate() {
+                    asset_code[i] = *b;
+                }
+
                 let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
                     stellar_strkey::ed25519::PublicKey::from_string(
                         &self.issuer.clone().unwrap()
@@ -104,7 +110,7 @@ impl Asset {
                 )));
 
                 let asset = stellar_xdr::TrustLineAsset::CreditAlphanum4(AlphaNum4 {
-                    asset_code: AssetCode4::from_str(&padded_code).unwrap(),
+                    asset_code: AssetCode4(asset_code),
                     issuer: addr.clone(),
                 });
 
@@ -115,6 +121,13 @@ impl Asset {
                 let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
                 let padded_code = format!("{:width$}", self.code, width = pad_length).replace(" ", "\0");
 
+                let mut asset_code: [u8; 12] = [0; 12];
+
+                for (i, b) in self.code.as_bytes().iter().enumerate() {
+                    asset_code[i] = *b;
+                }
+
+
                 let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
                     stellar_strkey::ed25519::PublicKey::from_string(
                         &self.issuer.clone().unwrap()
@@ -124,7 +137,7 @@ impl Asset {
                 )));
 
                 let asset = stellar_xdr::TrustLineAsset::CreditAlphanum12(AlphaNum12 {
-                    asset_code: AssetCode12::from_str(&padded_code).unwrap(),
+                    asset_code: AssetCode12(asset_code),
                     issuer: addr.clone(),
                 });
 
@@ -143,6 +156,12 @@ impl Asset {
                 let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
                 let padded_code = format!("{:width$}", self.code, width = pad_length).replace(" ", "\0");
                 
+                let mut asset_code: [u8; 4] = [0; 4];
+
+                for (i, b) in self.code.as_bytes().iter().enumerate() {
+                    asset_code[i] = *b;
+                }
+
                 let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
                     stellar_strkey::ed25519::PublicKey::from_string(
                         &self.issuer.clone().unwrap()
@@ -152,7 +171,7 @@ impl Asset {
                 )));
 
                 let asset = stellar_xdr::ChangeTrustAsset::CreditAlphanum4(AlphaNum4 {
-                    asset_code: AssetCode4::from_str(&padded_code).unwrap(),
+                    asset_code: AssetCode4(asset_code),
                     issuer: addr.clone(),
                 });
 
@@ -163,6 +182,13 @@ impl Asset {
                 let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
                 let padded_code = format!("{:width$}", self.code, width = pad_length).replace(" ", "\0");
 
+                let mut asset_code: [u8; 12] = [0; 12];
+
+                for (i, b) in self.code.as_bytes().iter().enumerate() {
+                    asset_code[i] = *b;
+                }
+
+
                 let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
                     stellar_strkey::ed25519::PublicKey::from_string(
                         &self.issuer.clone().unwrap()
@@ -172,7 +198,7 @@ impl Asset {
                 )));
 
                 let asset = stellar_xdr::ChangeTrustAsset::CreditAlphanum12(AlphaNum12 {
-                    asset_code: AssetCode12::from_str(&padded_code).unwrap(),
+                    asset_code: AssetCode12(asset_code),
                     issuer: addr.clone(),
                 });
 
@@ -190,8 +216,6 @@ impl Asset {
                 
                 let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
                 
-                // let padded_code = format!("{:width$}", self.code, width = pad_length).replace(" ", "\0");
-                // let str_val = padded_code.as_str();
                 let mut asset_code: [u8; 4] = [0; 4];
 
                 for (i, b) in self.code.as_bytes().iter().enumerate() {
@@ -219,6 +243,11 @@ impl Asset {
             } else {
                 let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
                 let padded_code = format!("{:width$}", self.code, width = pad_length).replace(" ", "\0");
+                let mut asset_code: [u8; 12] = [0; 12];
+
+                for (i, b) in self.code.as_bytes().iter().enumerate() {
+                    asset_code[i] = *b;
+                }
 
                 let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
                     stellar_strkey::ed25519::PublicKey::from_string(
@@ -229,7 +258,7 @@ impl Asset {
                 )));
 
                 let asset = stellar_xdr::Asset::CreditAlphanum12(AlphaNum12 {
-                    asset_code: AssetCode12::from_str(&padded_code).unwrap(),
+                    asset_code: AssetCode12(asset_code),
                     issuer: addr.clone(),
                 });
 
@@ -421,7 +450,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_alphanum_asset() {
+    fn test_parse_3_alphanum_asset() {
         let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
         let asset = Asset::new("USD", Some(issuer)).unwrap();
         let xdr = asset.to_xdr_object();
@@ -430,6 +459,97 @@ mod tests {
             stellar_xdr::Asset::CreditAlphanum4(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("USD\0".to_string())),
             _ => panic!("Error")
         }
+
+        let xdr = asset.to_change_trust_xdr_object();
+        match xdr {
+            stellar_xdr::ChangeTrustAsset::CreditAlphanum4(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("USD\0".to_string())),
+            _ => panic!("Error")
+        }
+
+        let xdr = asset.to_trust_line_xdr_object();
+        match xdr {
+            stellar_xdr::TrustLineAsset::CreditAlphanum4(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("USD\0".to_string())),
+            _ => panic!("Error")
+        }
+    }
+
+    #[test]
+    fn test_parse_4_alphanum_asset() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("BART", Some(issuer)).unwrap();
+        let xdr = asset.to_xdr_object();
+        
+        match xdr {
+            stellar_xdr::Asset::CreditAlphanum4(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("BART".to_string())),
+            _ => panic!("Error")
+        }
+
+        let xdr = asset.to_change_trust_xdr_object();
+        match xdr {
+            stellar_xdr::ChangeTrustAsset::CreditAlphanum4(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("BART".to_string())),
+            _ => panic!("Error")
+        }
+
+        let xdr = asset.to_trust_line_xdr_object();
+        match xdr {
+            stellar_xdr::TrustLineAsset::CreditAlphanum4(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("BART".to_string())),
+            _ => panic!("Error")
+        }
+    }
+
+    #[test]
+    fn test_parse_5_alphanum_asset() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("12345", Some(issuer)).unwrap();
+        let xdr = asset.to_xdr_object();
+        
+        match xdr {
+            stellar_xdr::Asset::CreditAlphanum12(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("12345\0\0\0\0\0\0\0".to_string())),
+            _ => panic!("Error")
+        }
+
+        let xdr = asset.to_change_trust_xdr_object();
+        match xdr {
+            stellar_xdr::ChangeTrustAsset::CreditAlphanum12(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("12345\0\0\0\0\0\0\0".to_string())),
+            _ => panic!("Error")
+        }
+
+        let xdr = asset.to_trust_line_xdr_object();
+        match xdr {
+            stellar_xdr::TrustLineAsset::CreditAlphanum12(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("12345\0\0\0\0\0\0\0".to_string())),
+            _ => panic!("Error")
+        }
+    }
+
+    #[test]
+    fn test_parse_12_alphanum_asset() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("123456789012", Some(issuer)).unwrap();
+        let xdr = asset.to_xdr_object();
+        
+        match xdr {
+            stellar_xdr::Asset::CreditAlphanum12(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("123456789012".to_string())),
+            _ => panic!("Error")
+        }
+
+        let xdr = asset.to_change_trust_xdr_object();
+        match xdr {
+            stellar_xdr::ChangeTrustAsset::CreditAlphanum12(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("123456789012".to_string())),
+            _ => panic!("Error")
+        }
+
+        let xdr = asset.to_trust_line_xdr_object();
+        match xdr {
+            stellar_xdr::TrustLineAsset::CreditAlphanum12(x) => assert_eq!(hex::encode(x.asset_code), hex::encode("123456789012".to_string())),
+            _ => panic!("Error")
+        }
+    }
+
+    #[test]
+    fn test_parse_xdr_asset() {
+        let xdr = stellar_xdr::Asset::Native;
+        let asset = Asset::from_operation(xdr).unwrap();
+        assert!(asset.is_native());
     }
 
 }
