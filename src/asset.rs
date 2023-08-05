@@ -274,9 +274,9 @@ impl Asset {
     }
 
     fn ascii_compare(a: &str, b: &str) -> i32 {
-        let a_uppercase = a.to_ascii_uppercase();
-        let b_uppercase = b.to_ascii_uppercase();
-        let result = a_uppercase.as_bytes().cmp(b_uppercase.as_bytes());
+        let a = a;
+        let b = b;
+        let result = a.as_bytes().cmp(b.as_bytes());
         match result {
             Ordering::Less => {
                 return -1;
@@ -324,6 +324,7 @@ impl Asset {
         if code_compare != 0 {
             return code_compare;
         }
+        println!("Are we getting here {:?}", asset_b);
 
         return Self::ascii_compare(&asset_a.get_issuer().unwrap_or("".to_owned()), &asset_b.get_issuer().unwrap_or("".to_owned()));
     }
@@ -688,5 +689,99 @@ mod tests {
         assert_eq!(Asset::compare(&xlm.clone(), &xlm), 0);
         assert_eq!(Asset::compare(&asset_a.clone(), &asset_a), 0);
         assert_eq!(Asset::compare(&asset_b.clone(), &asset_b), 0);
+    }
+
+    #[test]
+    fn test_compare_assets() {
+        let xlm = Asset::native();
+        let asset_a = Asset::new(
+            "ARST",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        let asset_b = Asset::new(
+            "ARSTANUM12",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        // println!("Result {:?}",Asset::compare(&xlm.clone(), &xlm).);
+        assert_eq!(Asset::compare(&xlm.clone(), &xlm), 0);
+        assert_eq!(Asset::compare(&xlm.clone(), &asset_a), -1);
+        assert_eq!(Asset::compare(&xlm.clone(), &asset_b), -1);
+
+        assert_eq!(Asset::compare(&asset_a.clone(), &xlm), 1);
+        assert_eq!(Asset::compare(&asset_a.clone(), &asset_a), 0);
+        assert_eq!(Asset::compare(&asset_a.clone(), &asset_b), -1);
+
+        assert_eq!(Asset::compare(&asset_b.clone(), &xlm), 1);
+        assert_eq!(Asset::compare(&asset_b.clone(), &asset_a), 1);
+        assert_eq!(Asset::compare(&asset_b.clone(), &asset_b), 0);
+
+    }
+
+
+    #[test]
+    fn test_compare_asset() {
+        let asset_arst = Asset::new(
+            "ARST",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        let asset_usdx = Asset::new(
+            "USDA",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        // println!("Result {:?}",Asset::compare(&xlm.clone(), &xlm).);
+        assert_eq!(Asset::compare(&asset_arst.clone(), &asset_arst), 0);
+        assert_eq!(Asset::compare(&asset_arst.clone(), &asset_usdx), -1);
+
+
+        assert_eq!(Asset::compare(&asset_usdx.clone(), &asset_arst), 1);
+        assert_eq!(Asset::compare(&asset_usdx.clone(), &asset_usdx), 0);
+
+        let asset_lower = Asset::new(
+            "aRST",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        assert_eq!(Asset::compare(&asset_arst.clone(), &asset_lower), -1);
+        assert_eq!(Asset::compare(&asset_lower.clone(), &asset_arst), 1);
+    }
+
+    
+    #[test]
+    fn test_compare_asset_issuers() {
+        let asset_a = Asset::new(
+            "ARST",
+            Some("GB7TAYRUZGE6TVT7NHP5SMIZRNQA6PLM423EYISAOAP3MKYIQMVYP2JO"),
+        ).unwrap();
+
+        let asset_b = Asset::new(
+            "ARST",
+            Some("GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ"),
+        ).unwrap();
+
+        assert_eq!(Asset::compare(&asset_a.clone(), &asset_b), -1);
+        assert_eq!(Asset::compare(&asset_a.clone(), &asset_a), 0);
+
+
+        assert_eq!(Asset::compare(&asset_b.clone(), &asset_a), 1);
+        assert_eq!(Asset::compare(&asset_b.clone(), &asset_b), 0);
+    }
+
+    #[test]
+    fn test_compare_upper_lower() {
+        let asset_a = Asset::new(
+            "B",
+            Some("GA7NLOF4EHWMJF6DBXXV2H6AYI7IHYWNFZR6R52BYBLY7TE5Q74AIDRA"),
+        ).unwrap();
+
+        let asset_b = Asset::new(
+            "a",
+            Some("GA7NLOF4EHWMJF6DBXXV2H6AYI7IHYWNFZR6R52BYBLY7TE5Q74AIDRA"),
+        ).unwrap();
+
+        assert_eq!(Asset::compare(&asset_a.clone(), &asset_b), -1);
     }
 }
