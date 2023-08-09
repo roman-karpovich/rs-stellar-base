@@ -14,3 +14,4 @@ pub mod transaction;
 pub mod utils;
 pub mod xdr;
 pub mod asset;
+pub mod muxed_account;
