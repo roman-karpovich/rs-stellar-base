@@ -67,3 +67,21 @@ pub fn _encode_muxed_account_fully_to_address(muxed_account: &stellar_xdr::Muxed
     muxed_account.to_string()
     
 }
+
+pub fn extract_base_address(address: &str) -> Result<String, Box<dyn std::error::Error>> {
+    
+    let key = PublicKey::from_string(address);
+   
+    if key.is_ok() {
+        return Ok(address.to_string());
+    }
+    
+    let key = MuxedAccount::from_string(address);
+    if key.is_err() {
+        return Err(format!("expected muxed account (M...), got {}", address).into());
+    }
+    let muxed_account = decode_address_to_muxed_account(address); // Replace with your actual decoding function
+    let ed25519_key = muxed_account.ed25519;
+    let encoded_ed25519 = PublicKey::from_payload(&ed25519_key).unwrap();
+    Ok(encoded_ed25519.to_string())
+}
