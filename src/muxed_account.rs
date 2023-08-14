@@ -130,7 +130,7 @@ mod tests {
             stellar_xdr::CryptoKeyType::MuxedEd25519
         );
 
-        // let mux_xdr = mux.to_xdr_object();
+        let mux_xdr = mux.to_xdr_object();
         // mux.account.
         // // assert!(mux
         // //     .ed25519()
