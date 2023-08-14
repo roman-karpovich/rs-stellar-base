@@ -6,7 +6,6 @@ use stellar_strkey::Strkey::MuxedAccountEd25519;
 
 use crate::muxed_account;
 
-/// Create MuxedAccount obj from string
 pub fn decode_address_to_muxed_account(address: &str) -> MuxedAccount {
     MuxedAccount::from_string(address).unwrap()
 }
@@ -21,12 +20,13 @@ pub fn encode_muxed_account(address: &str, id: &str) -> stellar_xdr::MuxedAccoun
     if !id.parse::<u64>().is_ok() {
         panic!("id should be a string representing a number (uint64)");
     }
-    let binding = key.unwrap().clone().to_string();
-    let val = binding.as_bytes();
+ 
+    let vv = key.clone().unwrap().0;
+
     stellar_xdr::MuxedAccount::MuxedEd25519(
         stellar_xdr::MuxedAccountMed25519 {
             id: id.parse::<u64>().unwrap(),
-            ed25519: Uint256(*array_ref!(val, 0, 32))
+            ed25519: Uint256(*array_ref!(vv, 0, 32))
         }
     )
 }
@@ -64,7 +64,13 @@ pub fn _encode_muxed_account_fully_to_address(muxed_account: &stellar_xdr::Muxed
         id: inner_value.id,
     };
 
-    muxed_account.to_string()
+    let strkey = MuxedAccountEd25519(
+        muxed_account
+    );
+
+    let str_result = format!("{strkey}");
+
+    str_result
     
 }
 

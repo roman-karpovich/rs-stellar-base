@@ -49,13 +49,15 @@ impl MuxedAccount {
             stellar_xdr::MuxedAccount::MuxedEd25519(x) => x,
             _ => return Err("Bad XDR".into())
         };
-        
+
         let muxed_xdr = stellar_xdr::MuxedAccount::MuxedEd25519(
             stellar_xdr::MuxedAccountMed25519 {
                 id: id.parse::<u64>().unwrap(),
                 ed25519: val.ed25519.clone(),
             }
         );
+        self.muxed_xdr = muxed_xdr;
+
         self.m_address = encode_muxed_account_to_address(&self.muxed_xdr); // Replace with your actual encoding function
         self.id = id.to_string();
 
@@ -89,6 +91,57 @@ impl MuxedAccount {
 
     fn equals(&self, other_muxed_account: &MuxedAccount) -> bool {
         self.account.account_id() == other_muxed_account.account.account_id()
+    }
+    
+}
+
+#[cfg(test)]
+mod tests {
+    use stellar_strkey::{ed25519, Strkey};
+    use crate::utils::decode_encode_muxed_account::{encode_muxed_account, encode_muxed_account_to_address, decode_address_to_muxed_account, extract_base_address};    use super::*;
+    fn assert_convert_roundtrip(s: &str, strkey: &Strkey) {
+        let strkey_result = Strkey::from_string(s).unwrap();
+        assert_eq!(&strkey_result, strkey);
+        let str_result = format!("{strkey}");
+        assert_eq!(s, str_result)
+    }
+    
+    #[test]
+    fn test_generate_addresses() {
+
+        let pubkey = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
+        let mpubkey_zero = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ";
+        let mpubkey_id = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAABUTGI4";
+
+        let mut base_account = Account::new(pubkey, "1").unwrap(); 
+        let mut mux = MuxedAccount::new(base_account, "0").expect("Error creating MuxedAccount");
+        
+        assert_eq!(mux.base_account().account_id(), pubkey);
+        assert_eq!(mux.account_id(), "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ");
+        assert_eq!(mux.id(), "0");
+
+        mux.set_id("420").expect("Error setting MuxedAccount ID");
+        assert_eq!(mux.id(), "420");
+        assert_eq!(mux.account_id(), mpubkey_id);
+
+        let mux_xdr = mux.to_xdr_object().discriminant();
+        assert_eq!(
+            mux_xdr,
+            stellar_xdr::CryptoKeyType::MuxedEd25519
+        );
+
+        // let mux_xdr = mux.to_xdr_object();
+        // mux.account.
+        // // assert!(mux
+        // //     .ed25519()
+        // //     .eq(StrKey::decode_ed25519_public_key(pubkey).expect("Error decoding Ed25519 public key")));
+        // // assert_eq!(
+        // //     inner_mux.id(),
+        // //     xdr::Uint64::from_string("420").expect("Error creating Uint64 from string")
+        // // );
+
+       let encoded_address =  encode_muxed_account_to_address(mux_xdr); // Implement this function
+        assert_eq!(encoded_address, mux.account_id());
     }
     
 }
