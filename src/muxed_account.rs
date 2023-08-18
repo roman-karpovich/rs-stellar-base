@@ -1,6 +1,6 @@
 use stellar_strkey::ed25519::PublicKey;
-
 use crate::{account::Account, utils::decode_encode_muxed_account::{encode_muxed_account, encode_muxed_account_to_address, decode_address_to_muxed_account, extract_base_address}};
+use arrayref::array_ref;
 
 pub struct MuxedAccount {
     account: Account,
@@ -99,12 +99,7 @@ impl MuxedAccount {
 mod tests {
     use stellar_strkey::{ed25519, Strkey};
     use crate::utils::decode_encode_muxed_account::{encode_muxed_account, encode_muxed_account_to_address, decode_address_to_muxed_account, extract_base_address};    use super::*;
-    fn assert_convert_roundtrip(s: &str, strkey: &Strkey) {
-        let strkey_result = Strkey::from_string(s).unwrap();
-        assert_eq!(&strkey_result, strkey);
-        let str_result = format!("{strkey}");
-        assert_eq!(s, str_result)
-    }
+   
     
     #[test]
     fn test_generate_addresses() {
@@ -131,14 +126,24 @@ mod tests {
         );
 
         let mux_xdr = mux.to_xdr_object();
+
+        let inner_mux = match mux_xdr {
+            stellar_xdr::MuxedAccount::MuxedEd25519(x) => x,
+            _ => panic!("Bad XDR"),
+        };
+
         // mux.account.
-        // // assert!(mux
-        // //     .ed25519()
-        // //     .eq(StrKey::decode_ed25519_public_key(pubkey).expect("Error decoding Ed25519 public key")));
-        // // assert_eq!(
-        // //     inner_mux.id(),
-        // //     xdr::Uint64::from_string("420").expect("Error creating Uint64 from string")
-        // // );
+        let key = PublicKey::from_string(pubkey);
+        
+        let vv = key.clone().unwrap().0;
+
+        assert_eq!(inner_mux.ed25519,stellar_xdr::Uint256::from(*array_ref!(vv, 0, 32)));
+
+        assert_eq!(
+            inner_mux.id,
+            stellar_xdr::Uint64::from("420".parse::<u64>().unwrap())
+        );
+
 
        let encoded_address =  encode_muxed_account_to_address(mux_xdr); // Implement this function
         assert_eq!(encoded_address, mux.account_id());
