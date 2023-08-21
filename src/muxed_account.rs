@@ -51,7 +51,7 @@ impl MuxedAccount {
     }
 
     fn set_id(&mut self, id: &str) -> Result<(), Box<dyn std::error::Error>> {
-        if !id.chars().all(|c| c.is_digit(10)) {
+        if !id.chars().all(|c| c.is_ascii_digit()) {
             return Err("id should be a string representing a number (uint64)".into());
         }
 

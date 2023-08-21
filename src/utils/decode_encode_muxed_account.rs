@@ -17,7 +17,7 @@ pub fn encode_muxed_account(address: &str, id: &str) -> stellar_xdr::MuxedAccoun
     if key.is_err() {
         panic!("address should be a Stellar account ID (G...)");
     }
-    if !id.parse::<u64>().is_ok() {
+    if id.parse::<u64>().is_err() {
         panic!("id should be a string representing a number (uint64)");
     }
  
@@ -42,9 +42,9 @@ pub fn encode_muxed_account_to_address(muxed_account: &stellar_xdr::MuxedAccount
         _ => panic!("Expected Ed25519 variant"),
     };
 
-   let key = PublicKey::from_payload(&inner_value.0).unwrap().to_string();
+   
 
-   key
+   PublicKey::from_payload(&inner_value.0).unwrap().to_string()
 }
 
 pub fn _encode_muxed_account_fully_to_address(muxed_account: &stellar_xdr::MuxedAccount) -> String {
