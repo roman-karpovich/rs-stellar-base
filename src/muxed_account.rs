@@ -1,19 +1,21 @@
+use std::{cell::RefCell, rc::Rc};
+
 use stellar_strkey::ed25519::PublicKey;
 use crate::{account::Account, utils::decode_encode_muxed_account::{encode_muxed_account, encode_muxed_account_to_address, decode_address_to_muxed_account, extract_base_address}};
 use arrayref::array_ref;
 
 pub struct MuxedAccount {
-    account: Account,
+    account: Rc<RefCell<Account>>,
     muxed_xdr: stellar_xdr::MuxedAccount,
     m_address: String,
     id: String,
 }
 
 impl MuxedAccount {
-    fn new(base_account: Account, id: &str) ->  Result<Self, Box<dyn std::error::Error>>  {
-        let account_id = base_account.account_id();
+    fn new( base_account: Rc<RefCell<Account>>, id: &str) ->  Result<Self, Box<dyn std::error::Error>>  {
+        let account_id = base_account.borrow().account_id().to_owned();
         
-        let key = PublicKey::from_string(account_id);
+        let key = PublicKey::from_string(&account_id);
 
         if key.is_err() {
             return Err("accountId is invalid".into());
@@ -34,10 +36,18 @@ impl MuxedAccount {
         let muxed_account = decode_address_to_muxed_account(m_address); // Replace with your actual decoding function
         let g_address = extract_base_address(m_address)?; // Replace with your actual extraction function
         let id = muxed_account.id;
+        let mut account = Account::new(&g_address, sequence_num).unwrap(); // Replace with the appropriate way to create an Account
+        let account_rc = Rc::new(RefCell::new(account));
 
-        let account = Account::new(&g_address, sequence_num).unwrap(); // Replace with the appropriate way to create an Account
-        
-        Self::new(account, &id.to_string())
+        let muxed_xdr = encode_muxed_account(&g_address, &id.to_string()); 
+        let m_address = encode_muxed_account_to_address(&muxed_xdr); 
+        // Self::new(&mut account.clone(), &id.to_string())
+        Ok(Self {
+            account: account_rc,
+            id: id.to_string(),
+            muxed_xdr,
+            m_address,
+        })
     }
 
     fn set_id(&mut self, id: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -65,8 +75,8 @@ impl MuxedAccount {
     }
 
 
-    fn base_account(&self) -> &Account {
-        &self.account
+    fn base_account(&self) -> Rc<RefCell<Account>> {
+        self.account.clone()
     }
 
     fn account_id(&self) -> &str {
@@ -78,11 +88,11 @@ impl MuxedAccount {
     }
 
     fn sequence_number(&self) -> String {
-        self.account.sequence_number()
+        self.account.borrow().sequence_number()
     }
 
     fn increment_sequence_number(&mut self) {
-        self.account.increment_sequence_number();
+        self.account.borrow_mut().increment_sequence_number();
     }
 
     fn to_xdr_object(&self) -> &stellar_xdr::MuxedAccount {
@@ -90,15 +100,16 @@ impl MuxedAccount {
     }
 
     fn equals(&self, other_muxed_account: &MuxedAccount) -> bool {
-        self.account.account_id() == other_muxed_account.account.account_id()
+        self.account.borrow().account_id() == other_muxed_account.account.borrow().account_id()
     }
     
 }
 
 #[cfg(test)]
 mod tests {
+
     use stellar_strkey::{ed25519, Strkey};
-    use crate::utils::decode_encode_muxed_account::{encode_muxed_account, encode_muxed_account_to_address, decode_address_to_muxed_account, extract_base_address};    use super::*;
+    use crate::{utils::decode_encode_muxed_account::{encode_muxed_account, encode_muxed_account_to_address, decode_address_to_muxed_account, extract_base_address}, keypair::Keypair};    use super::*;
    
     
     #[test]
@@ -109,9 +120,11 @@ mod tests {
         let mpubkey_id = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAABUTGI4";
 
         let mut base_account = Account::new(pubkey, "1").unwrap(); 
-        let mut mux = MuxedAccount::new(base_account, "0").expect("Error creating MuxedAccount");
+        let base_account_rc = Rc::new(RefCell::new(base_account));
+
+        let mut mux = MuxedAccount::new(base_account_rc.clone(), "0").expect("Error creating MuxedAccount");
         
-        assert_eq!(mux.base_account().account_id(), pubkey);
+        assert_eq!(mux.base_account().borrow().account_id(), pubkey);
         assert_eq!(mux.account_id(), "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ");
         assert_eq!(mux.id(), "0");
 
@@ -144,9 +157,81 @@ mod tests {
             stellar_xdr::Uint64::from("420".parse::<u64>().unwrap())
         );
 
-
-       let encoded_address =  encode_muxed_account_to_address(mux_xdr); // Implement this function
+        let encoded_address =  encode_muxed_account_to_address(mux_xdr); // Implement this function
         assert_eq!(encoded_address, mux.account_id());
     }
+
+    #[test]
+    fn test_sequence_numbers() {
+        let pubkey = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
+        let base_account = Account::new(pubkey, "12345").unwrap(); 
+        let base_account_rc = Rc::new(RefCell::new(base_account));
+
+        let mut mux1 = MuxedAccount::new(base_account_rc.clone(), "1").unwrap();
+        let mut mux2 = MuxedAccount::new(base_account_rc.clone(), "2").unwrap();
+
+        assert_eq!(base_account_rc.borrow().sequence_number(), "12345");
+        assert_eq!(mux1.sequence_number(), "12345");
+        assert_eq!(mux2.sequence_number(), "12345");
+
+        mux1.increment_sequence_number();
+
+        // println!("Checking value {:?}",base_account.sequence_number());
+        assert_eq!(base_account_rc.borrow().sequence_number(), "12346");
+        assert_eq!(mux1.sequence_number(), "12346");
+        assert_eq!(mux2.sequence_number(), "12346");
+
+        mux2.increment_sequence_number();
+
+        assert_eq!(base_account_rc.borrow().sequence_number(), "12347");
+        assert_eq!(mux1.sequence_number(), "12347");
+        assert_eq!(mux2.sequence_number(), "12347");
+
+        base_account_rc.borrow_mut().increment_sequence_number();
+
+        assert_eq!(base_account_rc.borrow().sequence_number(),  "12348");
+        assert_eq!(mux1.sequence_number(),  "12348");
+        assert_eq!(mux2.sequence_number(),  "12348");
+    }
     
+    #[test]
+    fn test_virtual_accounts_creation() {
+        let pubkey = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
+        let mpubkey_zero = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ";
+        let mpubkey_id = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAABUTGI4";
+
+        let base_account = Account::new(pubkey, "12345").unwrap();
+        let base_account_rc = Rc::new(RefCell::new(base_account));
+
+        let mux1 = MuxedAccount::new(base_account_rc.clone(), "1").unwrap();
+
+        let base_account_mux1 = mux1.base_account();
+        let mut mux2 = MuxedAccount::new(base_account_mux1.clone(), "420").unwrap();
+
+        assert_eq!(mux2.id(), "420");
+        assert_eq!(mux2.account_id(), mpubkey_id);
+        assert_eq!(mux2.sequence_number(), "12345");
+
+        let base_account_mux2 = mux2.base_account();
+        let mux3 = MuxedAccount::new(base_account_mux2.clone(), "3").unwrap();
+
+        mux2.increment_sequence_number();
+
+        assert_eq!(mux1.sequence_number(), "12346");
+        assert_eq!(mux2.sequence_number(), "12346");
+        assert_eq!(mux3.sequence_number(), "12346");
+    }
+
+    #[test]
+    fn test_parse_m_addresses() {
+        let pubkey = "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ";
+        let mpubkey_zero = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ";
+        let mpubkey_id = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAABUTGI4";
+        let mux1 = MuxedAccount::from_address(mpubkey_zero, "123").unwrap();
+
+        assert_eq!(mux1.id(), "0");
+        assert_eq!(mux1.account_id(), mpubkey_zero);
+        assert_eq!(mux1.base_account().borrow().account_id(), pubkey);
+        assert_eq!(mux1.sequence_number(), "123");
+    }
 }
