@@ -45,15 +45,14 @@ impl MuxedAccount {
         m_address: &str,
         sequence_num: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let muxed_account = decode_address_to_muxed_account(m_address); // Replace with your actual decoding function
-        let g_address = extract_base_address(m_address)?; // Replace with your actual extraction function
+        let muxed_account = decode_address_to_muxed_account(m_address); 
+        let g_address = extract_base_address(m_address)?; 
         let id = muxed_account.id;
-        let mut account = Account::new(&g_address, sequence_num).unwrap(); // Replace with the appropriate way to create an Account
+        let mut account = Account::new(&g_address, sequence_num).unwrap();
         let account_rc = Rc::new(RefCell::new(account));
 
         let muxed_xdr = encode_muxed_account(&g_address, &id.to_string());
         let m_address = encode_muxed_account_to_address(&muxed_xdr);
-        // Self::new(&mut account.clone(), &id.to_string())
         Ok(Self {
             account: account_rc,
             id: id.to_string(),

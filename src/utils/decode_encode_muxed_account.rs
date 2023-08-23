@@ -7,6 +7,10 @@ use stellar_xdr::*;
 use crate::muxed_account;
 
 pub fn decode_address_to_muxed_account(address: &str) -> MuxedAccount {
+    if MuxedAccount::from_str(&address).is_ok() {
+        decode_address_fully_to_muxed_account(address);
+    }
+
     MuxedAccount::from_string(address).unwrap()
 }
 
@@ -39,6 +43,15 @@ pub fn encode_muxed_account_to_address(muxed_account: &stellar_xdr::MuxedAccount
     };
 
     PublicKey::from_payload(&inner_value.0).unwrap().to_string()
+}
+pub fn decode_address_fully_to_muxed_account(address: &str) -> stellar_xdr::MuxedAccount {
+    let binding = MuxedAccount::from_str(&address).unwrap();
+    let id = Uint64::from_str(&binding.id.to_string()).unwrap();
+    let key = binding.ed25519;
+    stellar_xdr::MuxedAccount::MuxedEd25519(stellar_xdr::MuxedAccountMed25519 {
+        id,
+        ed25519: Uint256(*array_ref!(key, 0, 32)),
+    })
 }
 
 pub fn _encode_muxed_account_fully_to_address(muxed_account: &stellar_xdr::MuxedAccount) -> String {
