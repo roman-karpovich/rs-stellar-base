@@ -15,3 +15,4 @@ pub mod signing;
 pub mod transaction;
 pub mod utils;
 pub mod xdr;
+pub mod memo;
