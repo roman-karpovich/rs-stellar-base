@@ -15,8 +15,3 @@ pub fn verify_checksum(expected: &[u8], actual: &[u8]) -> bool {
 
     true
 }
-
-
-
-
-

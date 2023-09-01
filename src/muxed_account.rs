@@ -45,8 +45,8 @@ impl MuxedAccount {
         m_address: &str,
         sequence_num: &str,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let muxed_account = decode_address_to_muxed_account(m_address); 
-        let g_address = extract_base_address(m_address)?; 
+        let muxed_account = decode_address_to_muxed_account(m_address);
+        let g_address = extract_base_address(m_address)?;
         let id = muxed_account.id;
         let mut account = Account::new(&g_address, sequence_num).unwrap();
         let account_rc = Rc::new(RefCell::new(account));

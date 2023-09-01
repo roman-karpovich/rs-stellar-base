@@ -10,7 +10,6 @@ use std::str::FromStr;
 const MAX_INT: u32 = (1 << 31) - 1;
 
 fn best_r(raw_number: &str) -> Result<String, &'static str> {
-
     let mut number = if raw_number.contains('.') {
         let parts: Vec<&str> = raw_number.split('.').collect();
         let integer_part = parts[0];
@@ -24,7 +23,7 @@ fn best_r(raw_number: &str) -> Result<String, &'static str> {
     } else {
         BigRational::from_str(raw_number).unwrap()
     };
-    
+
     let mut fractions = vec![
         (BigInt::zero(), BigInt::one()),
         (BigInt::one(), BigInt::zero()),
@@ -77,9 +76,12 @@ mod tests {
 
     #[test]
     fn correctly_calculates_best_rational_approximation() {
-       
-        let binding = BigRational::new(BigInt::from_str("118").unwrap(), BigInt::from_str("37").unwrap()).to_string();
-        
+        let binding = BigRational::new(
+            BigInt::from_str("118").unwrap(),
+            BigInt::from_str("37").unwrap(),
+        )
+        .to_string();
+
         let tests = vec![
             ("1,10", "0.1"),
             ("1,100", "0.01"),
