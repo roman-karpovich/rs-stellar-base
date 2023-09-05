@@ -14,15 +14,15 @@ impl SignerKey {
         if val.is_err() {
             panic!("Invalid Type")
         }
-        let to_return = match val.unwrap() {
+        
+
+        match val.unwrap() {
             stellar_strkey::Strkey::SignedPayloadEd25519(x) => XDRSignerKey::Ed25519SignedPayload(SignerKeyEd25519SignedPayload { ed25519: stellar_xdr::Uint256(x.ed25519), payload: x.payload.try_into().unwrap()}),
             stellar_strkey::Strkey::PublicKeyEd25519(x) => XDRSignerKey::Ed25519(stellar_xdr::Uint256(x.0)),
             stellar_strkey::Strkey::PreAuthTx(x) => XDRSignerKey::PreAuthTx(stellar_xdr::Uint256(x.0)),
             stellar_strkey::Strkey::HashX(x) => XDRSignerKey::HashX(stellar_xdr::Uint256(x.0)),
             _ => panic!("Invalid Type"),
-        };
-
-        to_return
+        }
     }
 
     pub fn encode_signer_key(signer_key: &XDRSignerKey) -> String {

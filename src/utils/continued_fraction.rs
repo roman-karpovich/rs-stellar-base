@@ -39,7 +39,7 @@ fn best_r(raw_number: &str) -> Result<String, &'static str> {
         let h = &a * &fractions[fractions.len() - 1].0 + &fractions[fractions.len() - 2].0;
         let k = &a * &fractions[fractions.len() - 1].1 + &fractions[fractions.len() - 2].1;
 
-        if &h > &MAX_INT.into() || &k > &MAX_INT.into() {
+        if h > MAX_INT.into() || k > MAX_INT.into() {
             break;
         }
 
