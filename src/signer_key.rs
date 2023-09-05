@@ -1,39 +1,57 @@
 use core::panic;
 use std::{collections::HashMap, str::FromStr};
 
-use stellar_strkey::{ed25519::{SignedPayload, PublicKey}, PreAuthTx, HashX};
+use stellar_strkey::{
+    ed25519::{PublicKey, SignedPayload},
+    HashX, PreAuthTx,
+};
 use stellar_xdr::{SignerKey as XDRSignerKey, SignerKeyEd25519SignedPayload};
 
 pub struct SignerKey;
 
 impl SignerKey {
-    
     pub fn decode_address(address: &str) -> XDRSignerKey {
-      
         let val = stellar_strkey::Strkey::from_string(address);
         if val.is_err() {
             panic!("Invalid Type")
         }
-        
 
         match val.unwrap() {
-            stellar_strkey::Strkey::SignedPayloadEd25519(x) => XDRSignerKey::Ed25519SignedPayload(SignerKeyEd25519SignedPayload { ed25519: stellar_xdr::Uint256(x.ed25519), payload: x.payload.try_into().unwrap()}),
-            stellar_strkey::Strkey::PublicKeyEd25519(x) => XDRSignerKey::Ed25519(stellar_xdr::Uint256(x.0)),
-            stellar_strkey::Strkey::PreAuthTx(x) => XDRSignerKey::PreAuthTx(stellar_xdr::Uint256(x.0)),
+            stellar_strkey::Strkey::SignedPayloadEd25519(x) => {
+                XDRSignerKey::Ed25519SignedPayload(SignerKeyEd25519SignedPayload {
+                    ed25519: stellar_xdr::Uint256(x.ed25519),
+                    payload: x.payload.try_into().unwrap(),
+                })
+            }
+            stellar_strkey::Strkey::PublicKeyEd25519(x) => {
+                XDRSignerKey::Ed25519(stellar_xdr::Uint256(x.0))
+            }
+            stellar_strkey::Strkey::PreAuthTx(x) => {
+                XDRSignerKey::PreAuthTx(stellar_xdr::Uint256(x.0))
+            }
             stellar_strkey::Strkey::HashX(x) => XDRSignerKey::HashX(stellar_xdr::Uint256(x.0)),
             _ => panic!("Invalid Type"),
         }
     }
 
     pub fn encode_signer_key(signer_key: &XDRSignerKey) -> String {
-
         match signer_key {
-            XDRSignerKey::Ed25519(x) => stellar_strkey::Strkey::PublicKeyEd25519(PublicKey::from_payload(&x.0).unwrap()).to_string(),
-            XDRSignerKey::PreAuthTx(x) => stellar_strkey::Strkey::PreAuthTx(PreAuthTx(x.0)).to_string(),
+            XDRSignerKey::Ed25519(x) => {
+                stellar_strkey::Strkey::PublicKeyEd25519(PublicKey::from_payload(&x.0).unwrap())
+                    .to_string()
+            }
+            XDRSignerKey::PreAuthTx(x) => {
+                stellar_strkey::Strkey::PreAuthTx(PreAuthTx(x.0)).to_string()
+            }
             XDRSignerKey::HashX(x) => stellar_strkey::Strkey::HashX(HashX(x.0)).to_string(),
-            XDRSignerKey::Ed25519SignedPayload(x) => stellar_strkey::Strkey::SignedPayloadEd25519(SignedPayload { ed25519: x.ed25519.0, payload: x.payload.clone().into_vec()}).to_string(),
+            XDRSignerKey::Ed25519SignedPayload(x) => {
+                stellar_strkey::Strkey::SignedPayloadEd25519(SignedPayload {
+                    ed25519: x.ed25519.0,
+                    payload: x.payload.clone().into_vec(),
+                })
+                .to_string()
+            }
         }
-       
     }
 }
 
@@ -56,7 +74,7 @@ fn assert_panic<F: FnOnce(), S: AsRef<str>>(f: F, expected_msg: S) {
 }
 
 mod tests {
-    use stellar_xdr::{WriteXdr, ReadXdr};
+    use stellar_xdr::{ReadXdr, WriteXdr};
 
     use super::*;
     #[derive(Debug)]
@@ -64,7 +82,7 @@ mod tests {
         strkey: &'static str,
         r#type: stellar_xdr::SignerKeyType,
     }
-    
+
     static TEST_CASES: [TestCase; 4] = [
         TestCase {
             strkey: "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
@@ -90,11 +108,11 @@ mod tests {
             let skey = SignerKey::decode_address(test_case.strkey);
 
             assert_eq!(skey.discriminant(), test_case.r#type);
-    
+
             let raw_xdr = skey.to_xdr().unwrap();
             let raw_sk = stellar_xdr::SignerKey::from_xdr(raw_xdr).unwrap();
             assert_eq!(raw_sk, skey);
-    
+
             let address = SignerKey::encode_signer_key(&skey);
             assert_eq!(address, test_case.strkey);
         }
@@ -125,7 +143,5 @@ mod tests {
             ()
         };
         assert_panic(scenario_1, "Invalid Type")
-
     }
-
 }
