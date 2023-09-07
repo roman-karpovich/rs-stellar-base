@@ -81,15 +81,15 @@ impl Asset {
         }
     }
 
-    fn to_xdr_object(&self) -> stellar_xdr::Asset {
+    pub fn to_xdr_object(&self) -> stellar_xdr::Asset {
         self._to_xdr_object()
     }
 
-    fn to_change_trust_xdr_object(&self) -> stellar_xdr::ChangeTrustAsset {
+    pub fn to_change_trust_xdr_object(&self) -> stellar_xdr::ChangeTrustAsset {
         self._to_change_trust_xdr_object()
     }
 
-    fn to_trust_line_xdr_object(&self) -> stellar_xdr::TrustLineAsset {
+    pub fn to_trust_line_xdr_object(&self) -> stellar_xdr::TrustLineAsset {
         self._to_trustline_xdr_object()
     }
 

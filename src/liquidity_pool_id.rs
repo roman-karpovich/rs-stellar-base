@@ -60,6 +60,10 @@ impl LiquidityPoolId {
 
 #[cfg(test)]
 mod tests {
+    use stellar_xdr::{AlphaNum4, AssetCode4};
+
+    use crate::{keypair::Keypair, asset::Asset};
+
     use super::*;
 
     #[test]
@@ -118,6 +122,53 @@ mod tests {
         };
         assert_eq!(val, "dd7b1ab831c273310ddbec6f97870aa83c2fbd78ce22aded37ecbf4f3380fac7");
         assert_eq!("dd7b1ab831c273310ddbec6f97870aa83c2fbd78ce22aded37ecbf4f3380fac7", asset.get_liquidity_pool_id());
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid type")]
+    fn test_invalid_asset_type() {
+        let xdr = TrustLineAsset::Native;
+        LiquidityPoolId::from_operation(xdr);
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid type")]
+    fn test_invalid_asset_type_credit_alphanum4() {
+
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset = Asset::new("KHL", Some(issuer)).unwrap();
+        let asset_xdr = asset.to_trust_line_xdr_object();
+        LiquidityPoolId::from_operation(asset_xdr);
+    }
+    
+    #[test]
+    #[should_panic(expected = "Invalid type")]
+    fn test_invalid_asset_type_credit_alphanum12() {
+        let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let asset_code = "KHLTOKEN";
+        let asset = Asset::new(asset_code, Some(issuer)).unwrap();
+        let asset_xdr = asset.to_trust_line_xdr_object();
+        LiquidityPoolId::from_operation(asset_xdr);
+    }
+
+    #[test]
+    fn test_parses_liquidity_pool_id_asset_xdr() {
+        let pool_id = "dd7b1ab831c273310ddbec6f97870aa83c2fbd78ce22aded37ecbf4f3380fac7";
+        let xdr_pool_id = PoolId(Hash::from_str(pool_id).unwrap());
+        let asset_xdr = TrustLineAsset::PoolShare(xdr_pool_id);
+        let asset = LiquidityPoolId::from_operation(asset_xdr).unwrap();
+        assert_eq!(asset.get_liquidity_pool_id(), pool_id);
+        assert_eq!(asset.get_asset_type(), "liquidity_pool_shares");
+    }
+
+    #[test]
+    fn test_to_string_for_liquidity_pool_assets() {
+        let asset = LiquidityPoolId::new("dd7b1ab831c273310ddbec6f97870aa83c2fbd78ce22aded37ecbf4f3380fac7").unwrap();
+
+        assert_eq!(
+            asset.to_string(),
+            "liquidity_pool:dd7b1ab831c273310ddbec6f97870aa83c2fbd78ce22aded37ecbf4f3380fac7"
+        );
     }
 
 }
