@@ -17,3 +17,4 @@ pub mod signing;
 pub mod transaction;
 pub mod utils;
 pub mod xdr;
+pub mod liquidity_pool_id;
