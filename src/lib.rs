@@ -18,3 +18,5 @@ pub mod transaction;
 pub mod utils;
 pub mod xdr;
 pub mod liquidity_pool_id;
+pub mod liquidity_pool_asset;
+pub mod get_liquidity_pool;

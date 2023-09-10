@@ -8,7 +8,7 @@ use stellar_xdr::Asset::CreditAlphanum4;
 use stellar_xdr::WriteXdr;
 use stellar_xdr::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Asset {
     pub code: String,
     pub issuer: Option<String>,
@@ -45,7 +45,7 @@ impl Asset {
         })
     }
 
-    fn from_operation(asset_xdr: stellar_xdr::Asset) -> Result<Asset, String> {
+    pub fn from_operation(asset_xdr: stellar_xdr::Asset) -> Result<Asset, String> {
         match asset_xdr {
             stellar_xdr::Asset::Native => Ok(Asset::native()),
             stellar_xdr::Asset::CreditAlphanum4(alpha_num_4) => {
@@ -259,7 +259,7 @@ impl Asset {
         self.issuer.is_none()
     }
 
-    fn compare(asset_a: &Asset, asset_b: &Asset) -> i32 {
+    pub fn compare(asset_a: &Asset, asset_b: &Asset) -> i32 {
         if asset_a.equals(asset_b) {
             return 0;
         }
