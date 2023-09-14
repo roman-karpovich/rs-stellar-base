@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use stellar_xdr::{WriteXdr, LiquidityPoolParameters};
+use stellar_xdr::curr::{WriteXdr, LiquidityPoolParameters};
 
 use crate::{asset::Asset, hashing::hash, liquidity_pool_asset};
 
@@ -32,8 +32,8 @@ pub fn get_liquidity_pool_id(
     }
     let va_1 = liquidity_pool_parametes_x.clone().asset_a;
 
-    let lp_type_data = stellar_xdr::LiquidityPoolType::LiquidityPoolConstantProduct.to_xdr();
-    let lp_params_data = stellar_xdr::LiquidityPoolConstantProductParameters {
+    let lp_type_data = stellar_xdr::curr::LiquidityPoolType::LiquidityPoolConstantProduct.to_xdr();
+    let lp_params_data = stellar_xdr::curr::LiquidityPoolConstantProductParameters {
         asset_a: liquidity_pool_parametes_x.clone().asset_a,
         asset_b: liquidity_pool_parametes_x.clone().asset_b,
         fee: liquidity_pool_parametes_x.fee,

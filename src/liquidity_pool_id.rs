@@ -1,5 +1,5 @@
 use regex::Regex;
-use stellar_xdr::{TrustLineAsset, PoolId, ReadXdr, Hash};
+use stellar_xdr::curr::{TrustLineAsset, PoolId, ReadXdr, Hash};
 use std::{error::Error, str::FromStr};
 
 #[derive(Debug, PartialEq)]
@@ -60,7 +60,7 @@ impl LiquidityPoolId {
 
 #[cfg(test)]
 mod tests {
-    use stellar_xdr::{AlphaNum4, AssetCode4};
+    use stellar_xdr::curr::{AlphaNum4, AssetCode4};
 
     use crate::{keypair::Keypair, asset::Asset};
 

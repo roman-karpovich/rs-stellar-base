@@ -12,7 +12,7 @@ use stellar_strkey::ed25519::PublicKey;
 
 pub struct MuxedAccount {
     account: Rc<RefCell<Account>>,
-    muxed_xdr: stellar_xdr::MuxedAccount,
+    muxed_xdr: stellar_xdr::curr::MuxedAccount,
     m_address: String,
     id: String,
 }
@@ -67,12 +67,12 @@ impl MuxedAccount {
         }
 
         let val = match &self.muxed_xdr {
-            stellar_xdr::MuxedAccount::MuxedEd25519(x) => x,
+            stellar_xdr::curr::MuxedAccount::MuxedEd25519(x) => x,
             _ => return Err("Bad XDR".into()),
         };
 
         let muxed_xdr =
-            stellar_xdr::MuxedAccount::MuxedEd25519(stellar_xdr::MuxedAccountMed25519 {
+            stellar_xdr::curr::MuxedAccount::MuxedEd25519(stellar_xdr::curr::MuxedAccountMed25519 {
                 id: id.parse::<u64>().unwrap(),
                 ed25519: val.ed25519.clone(),
             });
@@ -104,7 +104,7 @@ impl MuxedAccount {
         self.account.borrow_mut().increment_sequence_number();
     }
 
-    fn to_xdr_object(&self) -> &stellar_xdr::MuxedAccount {
+    fn to_xdr_object(&self) -> &stellar_xdr::curr::MuxedAccount {
         &self.muxed_xdr
     }
 
@@ -150,12 +150,12 @@ mod tests {
         assert_eq!(mux.account_id(), mpubkey_id);
 
         let mux_xdr = mux.to_xdr_object().discriminant();
-        assert_eq!(mux_xdr, stellar_xdr::CryptoKeyType::MuxedEd25519);
+        assert_eq!(mux_xdr, stellar_xdr::curr::CryptoKeyType::MuxedEd25519);
 
         let mux_xdr = mux.to_xdr_object();
 
         let inner_mux = match mux_xdr {
-            stellar_xdr::MuxedAccount::MuxedEd25519(x) => x,
+            stellar_xdr::curr::MuxedAccount::MuxedEd25519(x) => x,
             _ => panic!("Bad XDR"),
         };
 
@@ -166,12 +166,12 @@ mod tests {
 
         assert_eq!(
             inner_mux.ed25519,
-            stellar_xdr::Uint256::from(*array_ref!(vv, 0, 32))
+            stellar_xdr::curr::Uint256::from(*array_ref!(vv, 0, 32))
         );
 
         assert_eq!(
             inner_mux.id,
-            stellar_xdr::Uint64::from("420".parse::<u64>().unwrap())
+            stellar_xdr::curr::Uint64::from("420".parse::<u64>().unwrap())
         );
 
         let encoded_address = encode_muxed_account_to_address(mux_xdr); // Implement this function

@@ -4,37 +4,37 @@ use std::str::FromStr;
 
 use hex_literal::hex;
 use num_bigint::BigUint;
-use stellar_xdr::DecoratedSignature;
+use stellar_xdr::curr::DecoratedSignature;
 
 use crate::account::Account;
 use crate::hashing::hash;
 use crate::keypair::Keypair;
 use crate::op_list::create_account::create_account;
-use stellar_xdr::LedgerBounds;
-use stellar_xdr::Memo;
-use stellar_xdr::MuxedAccount;
-use stellar_xdr::Operation;
-use stellar_xdr::Preconditions;
-use stellar_xdr::ReadXdr;
-use stellar_xdr::SequenceNumber;
-use stellar_xdr::Signature;
-use stellar_xdr::TimeBounds;
-use stellar_xdr::TransactionEnvelope;
-use stellar_xdr::TransactionExt;
-use stellar_xdr::TransactionV0Envelope;
-use stellar_xdr::TransactionV1Envelope;
-use stellar_xdr::Uint256;
-use stellar_xdr::VecM;
-use stellar_xdr::WriteXdr;
+use stellar_xdr::curr::LedgerBounds;
+use stellar_xdr::curr::Memo;
+use stellar_xdr::curr::MuxedAccount;
+use stellar_xdr::curr::Operation;
+use stellar_xdr::curr::Preconditions;
+use stellar_xdr::curr::ReadXdr;
+use stellar_xdr::curr::SequenceNumber;
+use stellar_xdr::curr::Signature;
+use stellar_xdr::curr::TimeBounds;
+use stellar_xdr::curr::TransactionEnvelope;
+use stellar_xdr::curr::TransactionExt;
+use stellar_xdr::curr::TransactionV0Envelope;
+use stellar_xdr::curr::TransactionV1Envelope;
+use stellar_xdr::curr::Uint256;
+use stellar_xdr::curr::VecM;
+use stellar_xdr::curr::WriteXdr;
 
 #[derive(Debug)]
 pub struct Transaction {
-    pub tx: Option<stellar_xdr::Transaction>,
+    pub tx: Option<stellar_xdr::curr::Transaction>,
     pub network_passphrase: String,
     pub signatures: Vec<DecoratedSignature>,
     pub fee: u32,
-    pub envelope_type: stellar_xdr::EnvelopeType,
-    pub memo: Option<stellar_xdr::Memo>,
+    pub envelope_type: stellar_xdr::curr::EnvelopeType,
+    pub memo: Option<stellar_xdr::curr::Memo>,
     pub sequence: String,
     pub source: String,
     pub time_bounds: Option<TimeBounds>,
@@ -42,7 +42,7 @@ pub struct Transaction {
     pub min_account_sequence: Option<String>,
     pub min_account_sequence_age: u32,
     pub min_account_sequence_ledger_gap: u32,
-    pub extra_signers: Vec<stellar_xdr::AccountId>,
+    pub extra_signers: Vec<stellar_xdr::curr::AccountId>,
     pub operations: Option<Vec<Operation>>,
     pub hash: Option<[u8; 32]>,
 }
@@ -50,9 +50,9 @@ pub struct Transaction {
 impl Transaction {
     fn signature_base(&self) -> Vec<u8> {
         let mut tx = self.tx.clone().unwrap();
-        let tagged_tx = stellar_xdr::TransactionSignaturePayloadTaggedTransaction::Tx(tx);
-        let tx_sig = stellar_xdr::TransactionSignaturePayload {
-            network_id: stellar_xdr::Hash(hash(self.network_passphrase.as_str())),
+        let tagged_tx = stellar_xdr::curr::TransactionSignaturePayloadTaggedTransaction::Tx(tx);
+        let tx_sig = stellar_xdr::curr::TransactionSignaturePayload {
+            network_id: stellar_xdr::curr::Hash(hash(self.network_passphrase.as_str())),
             tagged_transaction: tagged_tx,
         };
         tx_sig.to_xdr().unwrap()
@@ -77,19 +77,19 @@ impl Transaction {
         let mut signatures =
             VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
         let envelope = match self.envelope_type {
-            stellar_xdr::EnvelopeType::TxV0 => {
-                let transaction_v0 = stellar_xdr::TransactionV0Envelope {
-                    tx: stellar_xdr::TransactionV0::from_xdr(&raw_tx).unwrap(), // Make a copy of tx
+            stellar_xdr::curr::EnvelopeType::TxV0 => {
+                let transaction_v0 = stellar_xdr::curr::TransactionV0Envelope {
+                    tx: stellar_xdr::curr::TransactionV0::from_xdr(&raw_tx).unwrap(), // Make a copy of tx
                     signatures,
                 };
-                stellar_xdr::TransactionEnvelope::TxV0(transaction_v0)
+                stellar_xdr::curr::TransactionEnvelope::TxV0(transaction_v0)
             }
-            stellar_xdr::EnvelopeType::Tx => {
-                let transaction_v1 = stellar_xdr::TransactionV1Envelope {
-                    tx: stellar_xdr::Transaction::from_xdr(&raw_tx).unwrap(), // Make a copy of tx
+            stellar_xdr::curr::EnvelopeType::Tx => {
+                let transaction_v1 = stellar_xdr::curr::TransactionV1Envelope {
+                    tx: stellar_xdr::curr::Transaction::from_xdr(&raw_tx).unwrap(), // Make a copy of tx
                     signatures,
                 };
-                stellar_xdr::TransactionEnvelope::Tx(transaction_v1)
+                stellar_xdr::curr::TransactionEnvelope::Tx(transaction_v1)
             }
             _ => {
                 return Err(format!(
@@ -106,12 +106,12 @@ impl Transaction {
 
 #[derive(Default)]
 pub struct TransactionBuilder {
-    tx: Option<stellar_xdr::Transaction>,
+    tx: Option<stellar_xdr::curr::Transaction>,
     network_passphrase: Option<String>,
     signatures: Option<Vec<DecoratedSignature>>,
     fee: Option<u32>,
-    envelope_type: Option<stellar_xdr::EnvelopeType>,
-    memo: Option<stellar_xdr::Memo>,
+    envelope_type: Option<stellar_xdr::curr::EnvelopeType>,
+    memo: Option<stellar_xdr::curr::Memo>,
     sequence: Option<String>,
     source: Option<Account>,
     time_bounds: Option<TimeBounds>,
@@ -119,7 +119,7 @@ pub struct TransactionBuilder {
     min_account_sequence: Option<String>,
     min_account_sequence_age: Option<u32>,
     min_account_sequence_ledger_gap: Option<u32>,
-    extra_signers: Option<Vec<stellar_xdr::AccountId>>,
+    extra_signers: Option<Vec<stellar_xdr::curr::AccountId>>,
     operations: Option<Vec<Operation>>,
 }
 
@@ -171,7 +171,7 @@ impl TransactionBuilder {
         let mut array: [u8; 32] = [0; 32];
         array.copy_from_slice(&hex_val[..32]);
 
-        let tx_obj = stellar_xdr::Transaction {
+        let tx_obj = stellar_xdr::curr::Transaction {
             source_account: MuxedAccount::Ed25519(Uint256::from(array)), // MuxedAccount::Ed25519(Uint256([0; 32]))
             fee: fee.unwrap(),
             seq_num: SequenceNumber(1_i64),
@@ -185,7 +185,7 @@ impl TransactionBuilder {
             network_passphrase: self.network_passphrase.clone().unwrap(),
             signatures: Vec::new(),
             fee: fee.unwrap(),
-            envelope_type: stellar_xdr::EnvelopeType::Tx,
+            envelope_type: stellar_xdr::curr::EnvelopeType::Tx,
             memo: None,
             sequence: "0".to_string(),
             source: self.source.clone().unwrap().account_id().to_string(),

@@ -1,4 +1,4 @@
-use stellar_xdr::{ChangeTrustAsset, LiquidityPoolConstantProductParameters, LiquidityPoolParameters};
+use stellar_xdr::curr::{ChangeTrustAsset, LiquidityPoolConstantProductParameters, LiquidityPoolParameters};
 
 use crate::{asset::Asset, get_liquidity_pool::get_liquidity_pool_id};
 
@@ -32,7 +32,7 @@ impl LiquidityPoolAsset {
             ChangeTrustAsset::PoolShare(x) => {
               
                 let val = match x {
-                    stellar_xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
+                    stellar_xdr::curr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
                 };
 
                 let asset_a = Asset::from_operation(val.asset_a.clone()).unwrap();
@@ -64,7 +64,7 @@ impl LiquidityPoolAsset {
             fee: self.fee,
         };
 
-        stellar_xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(
+        stellar_xdr::curr::LiquidityPoolParameters::LiquidityPoolConstantProduct(
             lp_constant_product_params_xdr
         )
         
@@ -90,7 +90,7 @@ impl LiquidityPoolAsset {
 
 #[cfg(test)]
 mod tests {
-    use stellar_xdr::AlphaNum4;
+    use stellar_xdr::curr::AlphaNum4;
 
     use super::*;
    
@@ -178,7 +178,7 @@ mod tests {
 
         let asset_xdr = Asset::new("KHL", Some(issuer)).unwrap().to_xdr_object();
         let c = match asset_xdr {
-            stellar_xdr::Asset::CreditAlphanum4(x) => x,  
+            stellar_xdr::curr::Asset::CreditAlphanum4(x) => x,  
             _ => panic!("Wrong Type:")
         };
 
@@ -197,7 +197,7 @@ mod tests {
 
         let asset_xdr = Asset::new(asset_code, Some(issuer)).unwrap().to_xdr_object();
         let c = match asset_xdr {
-            stellar_xdr::Asset::CreditAlphanum12(x) => x,  
+            stellar_xdr::curr::Asset::CreditAlphanum12(x) => x,  
             _ => panic!("Wrong Type:")
         };
 

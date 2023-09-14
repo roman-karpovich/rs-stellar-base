@@ -7,8 +7,8 @@ use hex_literal::hex;
 use sha2::digest::crypto_common::Key;
 use stellar_strkey::ed25519::PublicKey;
 use stellar_strkey::*;
-use stellar_xdr::MuxedAccount;
-use stellar_xdr::*;
+use stellar_xdr::curr::MuxedAccount;
+use stellar_xdr::curr::*;
 
 /// Creates and funds a new account with the specified starting balance
 pub fn create_account(
@@ -28,12 +28,12 @@ pub fn create_account(
         .unwrap()
         .xdr_account_id();
     let starting_balance = to_xdr_amount(&starting_balance)?;
-    let body = stellar_xdr::OperationBody::CreateAccount(CreateAccountOp {
+    let body = stellar_xdr::curr::OperationBody::CreateAccount(CreateAccountOp {
         destination: dest,
         starting_balance,
     });
 
-    Ok(stellar_xdr::Operation {
+    Ok(stellar_xdr::curr::Operation {
         source_account: None,
         body,
     })
