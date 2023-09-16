@@ -22,3 +22,4 @@ pub mod liquidity_pool_asset;
 pub mod get_liquidity_pool;
 pub mod claimant;
 pub mod soroban;
+pub mod soroban_data_builder;
