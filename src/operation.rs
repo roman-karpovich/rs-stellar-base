@@ -4,8 +4,8 @@ use num_bigint::BigInt;
 use num_traits::identities::One;
 use num_traits::{FromPrimitive, Num, Signed, Zero};
 use std::str::FromStr;
-use stellar_xdr::curr::Type::Int64;
-use stellar_xdr::curr::WriteXdr;
+use stellar_xdr::next::Type::Int64;
+use stellar_xdr::next::WriteXdr;
 
 /// Validates that a given amount is possible for a Stellar asset.
 pub fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
@@ -41,19 +41,19 @@ pub fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
 }
 
 /// xdr representation of the amount value
-pub fn to_xdr_amount(value: &str) -> Result<stellar_xdr::curr::Int64, Box<dyn std::error::Error>> {
+pub fn to_xdr_amount(value: &str) -> Result<stellar_xdr::next::Int64, Box<dyn std::error::Error>> {
     let amount = BigInt::from_str_radix(value, 10)?;
     let one = BigInt::one();
     let xdr_amount = amount * &one;
     let xdr_string = xdr_amount.to_string();
-    let xdr_int64 = stellar_xdr::curr::Int64::from_str(&xdr_string)?;
+    let xdr_int64 = stellar_xdr::next::Int64::from_str(&xdr_string)?;
     Ok(xdr_int64)
 }
 
 #[cfg(test)]
 mod tests {
 
-    use stellar_xdr::curr::{Int64, Operation, OperationBody, ReadXdr};
+    use stellar_xdr::next::{Int64, Operation, OperationBody, ReadXdr};
 
     use crate::{account::Account, keypair::Keypair, op_list::create_account::create_account};
 

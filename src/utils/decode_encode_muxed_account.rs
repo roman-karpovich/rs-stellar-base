@@ -2,7 +2,7 @@ use arrayref::array_ref;
 use std::str::FromStr;
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 use stellar_strkey::Strkey::MuxedAccountEd25519;
-use stellar_xdr::curr::*;
+use stellar_xdr::next::*;
 
 use crate::muxed_account;
 
@@ -14,7 +14,7 @@ pub fn decode_address_to_muxed_account(address: &str) -> MuxedAccount {
     MuxedAccount::from_string(address).unwrap()
 }
 
-pub fn encode_muxed_account(address: &str, id: &str) -> stellar_xdr::curr::MuxedAccount {
+pub fn encode_muxed_account(address: &str, id: &str) -> stellar_xdr::next::MuxedAccount {
     let key = PublicKey::from_string(address);
 
     if key.is_err() {
@@ -26,41 +26,41 @@ pub fn encode_muxed_account(address: &str, id: &str) -> stellar_xdr::curr::Muxed
 
     let vv = key.clone().unwrap().0;
 
-    stellar_xdr::curr::MuxedAccount::MuxedEd25519(stellar_xdr::curr::MuxedAccountMed25519 {
+    stellar_xdr::next::MuxedAccount::MuxedEd25519(stellar_xdr::next::MuxedAccountMed25519 {
         id: id.parse::<u64>().unwrap(),
         ed25519: Uint256(*array_ref!(vv, 0, 32)),
     })
 }
 
-pub fn encode_muxed_account_to_address(muxed_account: &stellar_xdr::curr::MuxedAccount) -> String {
-    if muxed_account.discriminant() == stellar_xdr::curr::CryptoKeyType::MuxedEd25519 {
+pub fn encode_muxed_account_to_address(muxed_account: &stellar_xdr::next::MuxedAccount) -> String {
+    if muxed_account.discriminant() == stellar_xdr::next::CryptoKeyType::MuxedEd25519 {
         return _encode_muxed_account_fully_to_address(muxed_account);
     }
 
     let inner_value = match muxed_account {
-        stellar_xdr::curr::MuxedAccount::Ed25519(inner) => inner,
+        stellar_xdr::next::MuxedAccount::Ed25519(inner) => inner,
         _ => panic!("Expected Ed25519 variant"),
     };
 
     PublicKey::from_payload(&inner_value.0).unwrap().to_string()
 }
-pub fn decode_address_fully_to_muxed_account(address: &str) -> stellar_xdr::curr::MuxedAccount {
+pub fn decode_address_fully_to_muxed_account(address: &str) -> stellar_xdr::next::MuxedAccount {
     let binding = MuxedAccount::from_str(address).unwrap();
     let id = Uint64::from_str(&binding.id.to_string()).unwrap();
     let key = binding.ed25519;
-    stellar_xdr::curr::MuxedAccount::MuxedEd25519(stellar_xdr::curr::MuxedAccountMed25519 {
+    stellar_xdr::next::MuxedAccount::MuxedEd25519(stellar_xdr::next::MuxedAccountMed25519 {
         id,
         ed25519: Uint256(*array_ref!(key, 0, 32)),
     })
 }
 
-pub fn _encode_muxed_account_fully_to_address(muxed_account: &stellar_xdr::curr::MuxedAccount) -> String {
-    if muxed_account.discriminant() == stellar_xdr::curr::CryptoKeyType::Ed25519 {
+pub fn _encode_muxed_account_fully_to_address(muxed_account: &stellar_xdr::next::MuxedAccount) -> String {
+    if muxed_account.discriminant() == stellar_xdr::next::CryptoKeyType::Ed25519 {
         return encode_muxed_account_to_address(muxed_account);
     }
 
     let inner_value = match muxed_account {
-        stellar_xdr::curr::MuxedAccount::MuxedEd25519(inner) => inner,
+        stellar_xdr::next::MuxedAccount::MuxedEd25519(inner) => inner,
         _ => panic!("Expected Ed25519 variant"),
     };
 

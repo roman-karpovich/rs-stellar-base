@@ -1,6 +1,6 @@
 use stellar_strkey::ed25519::PublicKey;
 // use stellar_xdr::{VecM, ClaimPredicate};
-use stellar_xdr::curr::{VecM, ClaimPredicate};
+use stellar_xdr::next::{VecM, ClaimPredicate};
 
 use crate::keypair::Keypair;
 
@@ -59,12 +59,12 @@ impl Claimant {
         ClaimPredicate::BeforeRelativeTime(seconds)
     }
 
-    pub fn from_xdr(claimant_xdr: stellar_xdr::curr::Claimant) -> Result<Claimant, &'static str> {
+    pub fn from_xdr(claimant_xdr: stellar_xdr::next::Claimant) -> Result<Claimant, &'static str> {
         match claimant_xdr {
-            stellar_xdr::curr::Claimant::ClaimantTypeV0(value) => {
+            stellar_xdr::next::Claimant::ClaimantTypeV0(value) => {
                 let destination_key = value.destination.0;
                 let val = match destination_key {
-                    stellar_xdr::curr::PublicKey::PublicKeyTypeEd25519(x) => x.to_string(),
+                    stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(x) => x.to_string(),
                 };
 
 
@@ -77,13 +77,13 @@ impl Claimant {
         }
     }
 
-    pub fn to_xdr_object(&self) -> stellar_xdr::curr::Claimant {
-        let claimant = stellar_xdr::curr::ClaimantV0 {
+    pub fn to_xdr_object(&self) -> stellar_xdr::next::Claimant {
+        let claimant = stellar_xdr::next::ClaimantV0 {
             destination: Keypair::from_public_key(&self.destination.clone().unwrap().as_str()).unwrap().xdr_account_id(),
             predicate: self.predicate.clone(),
         };
 
-        stellar_xdr::curr::Claimant::ClaimantTypeV0(claimant)
+        stellar_xdr::next::Claimant::ClaimantTypeV0(claimant)
     }
 
     pub fn destination(&self) -> Option<String> {

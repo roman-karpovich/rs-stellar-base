@@ -12,8 +12,8 @@ use stellar_strkey::{
     ed25519::{PrivateKey, PublicKey},
     Strkey,
 };
-use stellar_xdr::curr::MuxedAccountMed25519;
-use stellar_xdr::curr::{
+use stellar_xdr::next::MuxedAccountMed25519;
+use stellar_xdr::next::{
     AccountId, DecoratedSignature, Signature, SignatureHint, Uint256, Uint64, WriteXdr,
 };
 
@@ -189,21 +189,21 @@ impl Keypair {
     }
     /// xdr representation of the account id
     pub fn xdr_account_id(&self) -> AccountId {
-        AccountId(stellar_xdr::curr::PublicKey::PublicKeyTypeEd25519(Uint256(
+        AccountId(stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(Uint256(
             PublicKey::from_payload(&self.public_key).unwrap().0,
         )))
     }
 
     /// xdr representation of the public key
-    pub fn xdr_public_key(&self) -> stellar_xdr::curr::PublicKey {
-        stellar_xdr::curr::PublicKey::PublicKeyTypeEd25519(Uint256(
+    pub fn xdr_public_key(&self) -> stellar_xdr::next::PublicKey {
+        stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(Uint256(
             PublicKey::from_payload(&self.public_key).unwrap().0,
         ))
     }
 
     /// xdr representation of the public key
-    pub fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::curr::MuxedAccount {
-        stellar_xdr::curr::MuxedAccount::MuxedEd25519(MuxedAccountMed25519 {
+    pub fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::next::MuxedAccount {
+        stellar_xdr::next::MuxedAccount::MuxedEd25519(MuxedAccountMed25519 {
             id: Uint64::from_str(id).unwrap(),
             ed25519: Uint256(PublicKey::from_payload(&self.public_key).unwrap().0),
         })
@@ -238,7 +238,7 @@ impl Keypair {
         hint_u8.copy_from_slice(&hint[..4]);
         let val = SignatureHint::from(hint_u8);
         let signature_xdr = Signature::try_from(signature).unwrap();
-        stellar_xdr::curr::DecoratedSignature {
+        stellar_xdr::next::DecoratedSignature {
             hint: val,
             signature: signature_xdr,
         }
@@ -270,7 +270,7 @@ impl Keypair {
 
         let val = SignatureHint::from(hint);
 
-        stellar_xdr::curr::DecoratedSignature {
+        stellar_xdr::next::DecoratedSignature {
             hint: val,
             signature: signature_xdr,
         }

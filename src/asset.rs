@@ -4,9 +4,9 @@ use crate::keypair::Keypair;
 use crate::utils::util::trim_end;
 use regex::Regex;
 use stellar_strkey::Strkey::{self, PublicKeyEd25519};
-use stellar_xdr::curr::Asset::CreditAlphanum4;
-use stellar_xdr::curr::WriteXdr;
-use stellar_xdr::curr::*;
+use stellar_xdr::next::Asset::CreditAlphanum4;
+use stellar_xdr::next::WriteXdr;
+use stellar_xdr::next::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Asset {
@@ -45,10 +45,10 @@ impl Asset {
         })
     }
 
-    pub fn from_operation(asset_xdr: stellar_xdr::curr::Asset) -> Result<Asset, String> {
+    pub fn from_operation(asset_xdr: stellar_xdr::next::Asset) -> Result<Asset, String> {
         match asset_xdr {
-            stellar_xdr::curr::Asset::Native => Ok(Asset::native()),
-            stellar_xdr::curr::Asset::CreditAlphanum4(alpha_num_4) => {
+            stellar_xdr::next::Asset::Native => Ok(Asset::native()),
+            stellar_xdr::next::Asset::CreditAlphanum4(alpha_num_4) => {
                 let anum = alpha_num_4;
                 let issuer = Some(anum.issuer.0);
                 let issuer = if let Some(PublicKey::PublicKeyTypeEd25519(inner)) = issuer {
@@ -62,7 +62,7 @@ impl Asset {
                 );
                 Ok(Asset::new(&code, issuer.as_deref())?)
             }
-            stellar_xdr::curr::Asset::CreditAlphanum12(alpha_num_12) => {
+            stellar_xdr::next::Asset::CreditAlphanum12(alpha_num_12) => {
                 let anum = alpha_num_12;
                 let issuer = Some(anum.issuer.0);
                 let issuer = if let Some(PublicKey::PublicKeyTypeEd25519(inner)) = issuer {
@@ -81,21 +81,21 @@ impl Asset {
         }
     }
 
-    pub fn to_xdr_object(&self) -> stellar_xdr::curr::Asset {
+    pub fn to_xdr_object(&self) -> stellar_xdr::next::Asset {
         self._to_xdr_object()
     }
 
-    pub fn to_change_trust_xdr_object(&self) -> stellar_xdr::curr::ChangeTrustAsset {
+    pub fn to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset {
         self._to_change_trust_xdr_object()
     }
 
-    pub fn to_trust_line_xdr_object(&self) -> stellar_xdr::curr::TrustLineAsset {
+    pub fn to_trust_line_xdr_object(&self) -> stellar_xdr::next::TrustLineAsset {
         self._to_trustline_xdr_object()
     }
 
-    fn _to_trustline_xdr_object(&self) -> stellar_xdr::curr::TrustLineAsset {
+    fn _to_trustline_xdr_object(&self) -> stellar_xdr::next::TrustLineAsset {
         if self.is_native() {
-            stellar_xdr::curr::TrustLineAsset::Native
+            stellar_xdr::next::TrustLineAsset::Native
         } else if self.code.len() <= 4 {
             let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
             let padded_code =
@@ -113,7 +113,7 @@ impl Asset {
                     .0,
             )));
 
-            stellar_xdr::curr::TrustLineAsset::CreditAlphanum4(AlphaNum4 {
+            stellar_xdr::next::TrustLineAsset::CreditAlphanum4(AlphaNum4 {
                 asset_code: AssetCode4(asset_code),
                 issuer: addr.clone(),
             })
@@ -134,16 +134,16 @@ impl Asset {
                     .0,
             )));
 
-            stellar_xdr::curr::TrustLineAsset::CreditAlphanum12(AlphaNum12 {
+            stellar_xdr::next::TrustLineAsset::CreditAlphanum12(AlphaNum12 {
                 asset_code: AssetCode12(asset_code),
                 issuer: addr.clone(),
             })
         }
     }
 
-    fn _to_change_trust_xdr_object(&self) -> stellar_xdr::curr::ChangeTrustAsset {
+    fn _to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset {
         if self.is_native() {
-            stellar_xdr::curr::ChangeTrustAsset::Native
+            stellar_xdr::next::ChangeTrustAsset::Native
         } else if self.code.len() <= 4 {
             let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
             let padded_code =
@@ -161,7 +161,7 @@ impl Asset {
                     .0,
             )));
 
-            stellar_xdr::curr::ChangeTrustAsset::CreditAlphanum4(AlphaNum4 {
+            stellar_xdr::next::ChangeTrustAsset::CreditAlphanum4(AlphaNum4 {
                 asset_code: AssetCode4(asset_code),
                 issuer: addr.clone(),
             })
@@ -182,16 +182,16 @@ impl Asset {
                     .0,
             )));
 
-            stellar_xdr::curr::ChangeTrustAsset::CreditAlphanum12(AlphaNum12 {
+            stellar_xdr::next::ChangeTrustAsset::CreditAlphanum12(AlphaNum12 {
                 asset_code: AssetCode12(asset_code),
                 issuer: addr.clone(),
             })
         }
     }
 
-    fn _to_xdr_object(&self) -> stellar_xdr::curr::Asset {
+    fn _to_xdr_object(&self) -> stellar_xdr::next::Asset {
         if self.is_native() {
-            stellar_xdr::curr::Asset::Native
+            stellar_xdr::next::Asset::Native
         } else if self.code.len() <= 4 {
             let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
 
@@ -209,7 +209,7 @@ impl Asset {
 
             // println!("Padded Code {:?}", padded_code);
 
-            stellar_xdr::curr::Asset::CreditAlphanum4(AlphaNum4 {
+            stellar_xdr::next::Asset::CreditAlphanum4(AlphaNum4 {
                 asset_code: AssetCode4(asset_code),
                 issuer: addr.clone(),
             })
@@ -229,7 +229,7 @@ impl Asset {
                     .0,
             )));
 
-            stellar_xdr::curr::Asset::CreditAlphanum12(AlphaNum12 {
+            stellar_xdr::next::Asset::CreditAlphanum12(AlphaNum12 {
                 asset_code: AssetCode12(asset_code),
                 issuer: addr.clone(),
             })
@@ -293,20 +293,20 @@ impl Asset {
 
     fn get_asset_type(&self) -> String {
         match self.get_raw_asset_type() {
-            Ok(stellar_xdr::curr::AssetType::Native) => "native".to_string(),
-            Ok(stellar_xdr::curr::AssetType::CreditAlphanum4) => "credit_alphanum4".to_string(),
-            Ok(stellar_xdr::curr::AssetType::CreditAlphanum12) => "credit_alphanum12".to_string(),
+            Ok(stellar_xdr::next::AssetType::Native) => "native".to_string(),
+            Ok(stellar_xdr::next::AssetType::CreditAlphanum4) => "credit_alphanum4".to_string(),
+            Ok(stellar_xdr::next::AssetType::CreditAlphanum12) => "credit_alphanum12".to_string(),
             _ => "unknown".to_string(),
         }
     }
 
-    fn get_raw_asset_type(&self) -> Result<stellar_xdr::curr::AssetType, String> {
+    fn get_raw_asset_type(&self) -> Result<stellar_xdr::next::AssetType, String> {
         if self.is_native() {
-            Ok(stellar_xdr::curr::AssetType::Native)
+            Ok(stellar_xdr::next::AssetType::Native)
         } else if self.code.len() <= 4 {
-            Ok(stellar_xdr::curr::AssetType::CreditAlphanum4)
+            Ok(stellar_xdr::next::AssetType::CreditAlphanum4)
         } else {
-            Ok(stellar_xdr::curr::AssetType::CreditAlphanum12)
+            Ok(stellar_xdr::next::AssetType::CreditAlphanum12)
         }
     }
 
@@ -350,7 +350,7 @@ impl ToString for Asset {
 #[cfg(test)]
 mod tests {
     use super::Asset;
-    use stellar_xdr::curr::{
+    use stellar_xdr::next::{
         AccountId, AlphaNum12, AlphaNum4, AssetCode12, AssetCode4, PublicKey, Uint256, WriteXdr,
     };
 
@@ -470,7 +470,7 @@ mod tests {
         let xdr = asset.to_xdr_object();
 
         match xdr {
-            stellar_xdr::curr::Asset::CreditAlphanum4(x) => {
+            stellar_xdr::next::Asset::CreditAlphanum4(x) => {
                 assert_eq!(hex::encode(x.asset_code), hex::encode("USD\0".to_string()))
             }
             _ => panic!("Error"),
@@ -478,7 +478,7 @@ mod tests {
 
         let xdr = asset.to_change_trust_xdr_object();
         match xdr {
-            stellar_xdr::curr::ChangeTrustAsset::CreditAlphanum4(x) => {
+            stellar_xdr::next::ChangeTrustAsset::CreditAlphanum4(x) => {
                 assert_eq!(hex::encode(x.asset_code), hex::encode("USD\0".to_string()))
             }
             _ => panic!("Error"),
@@ -486,7 +486,7 @@ mod tests {
 
         let xdr = asset.to_trust_line_xdr_object();
         match xdr {
-            stellar_xdr::curr::TrustLineAsset::CreditAlphanum4(x) => {
+            stellar_xdr::next::TrustLineAsset::CreditAlphanum4(x) => {
                 assert_eq!(hex::encode(x.asset_code), hex::encode("USD\0".to_string()))
             }
             _ => panic!("Error"),
@@ -500,7 +500,7 @@ mod tests {
         let xdr = asset.to_xdr_object();
 
         match xdr {
-            stellar_xdr::curr::Asset::CreditAlphanum4(x) => {
+            stellar_xdr::next::Asset::CreditAlphanum4(x) => {
                 assert_eq!(hex::encode(x.asset_code), hex::encode("BART".to_string()))
             }
             _ => panic!("Error"),
@@ -508,7 +508,7 @@ mod tests {
 
         let xdr = asset.to_change_trust_xdr_object();
         match xdr {
-            stellar_xdr::curr::ChangeTrustAsset::CreditAlphanum4(x) => {
+            stellar_xdr::next::ChangeTrustAsset::CreditAlphanum4(x) => {
                 assert_eq!(hex::encode(x.asset_code), hex::encode("BART".to_string()))
             }
             _ => panic!("Error"),
@@ -516,7 +516,7 @@ mod tests {
 
         let xdr = asset.to_trust_line_xdr_object();
         match xdr {
-            stellar_xdr::curr::TrustLineAsset::CreditAlphanum4(x) => {
+            stellar_xdr::next::TrustLineAsset::CreditAlphanum4(x) => {
                 assert_eq!(hex::encode(x.asset_code), hex::encode("BART".to_string()))
             }
             _ => panic!("Error"),
@@ -530,7 +530,7 @@ mod tests {
         let xdr = asset.to_xdr_object();
 
         match xdr {
-            stellar_xdr::curr::Asset::CreditAlphanum12(x) => assert_eq!(
+            stellar_xdr::next::Asset::CreditAlphanum12(x) => assert_eq!(
                 hex::encode(x.asset_code),
                 hex::encode("12345\0\0\0\0\0\0\0".to_string())
             ),
@@ -539,7 +539,7 @@ mod tests {
 
         let xdr = asset.to_change_trust_xdr_object();
         match xdr {
-            stellar_xdr::curr::ChangeTrustAsset::CreditAlphanum12(x) => assert_eq!(
+            stellar_xdr::next::ChangeTrustAsset::CreditAlphanum12(x) => assert_eq!(
                 hex::encode(x.asset_code),
                 hex::encode("12345\0\0\0\0\0\0\0".to_string())
             ),
@@ -548,7 +548,7 @@ mod tests {
 
         let xdr = asset.to_trust_line_xdr_object();
         match xdr {
-            stellar_xdr::curr::TrustLineAsset::CreditAlphanum12(x) => assert_eq!(
+            stellar_xdr::next::TrustLineAsset::CreditAlphanum12(x) => assert_eq!(
                 hex::encode(x.asset_code),
                 hex::encode("12345\0\0\0\0\0\0\0".to_string())
             ),
@@ -563,7 +563,7 @@ mod tests {
         let xdr = asset.to_xdr_object();
 
         match xdr {
-            stellar_xdr::curr::Asset::CreditAlphanum12(x) => assert_eq!(
+            stellar_xdr::next::Asset::CreditAlphanum12(x) => assert_eq!(
                 hex::encode(x.asset_code),
                 hex::encode("123456789012".to_string())
             ),
@@ -572,7 +572,7 @@ mod tests {
 
         let xdr = asset.to_change_trust_xdr_object();
         match xdr {
-            stellar_xdr::curr::ChangeTrustAsset::CreditAlphanum12(x) => assert_eq!(
+            stellar_xdr::next::ChangeTrustAsset::CreditAlphanum12(x) => assert_eq!(
                 hex::encode(x.asset_code),
                 hex::encode("123456789012".to_string())
             ),
@@ -581,7 +581,7 @@ mod tests {
 
         let xdr = asset.to_trust_line_xdr_object();
         match xdr {
-            stellar_xdr::curr::TrustLineAsset::CreditAlphanum12(x) => assert_eq!(
+            stellar_xdr::next::TrustLineAsset::CreditAlphanum12(x) => assert_eq!(
                 hex::encode(x.asset_code),
                 hex::encode("123456789012".to_string())
             ),
@@ -591,7 +591,7 @@ mod tests {
 
     #[test]
     fn test_parse_xdr_asset() {
-        let xdr = stellar_xdr::curr::Asset::Native;
+        let xdr = stellar_xdr::next::Asset::Native;
         let asset = Asset::from_operation(xdr).unwrap();
         assert!(asset.is_native());
 
@@ -607,7 +607,7 @@ mod tests {
         for (i, b) in "KHL".as_bytes().iter().enumerate() {
             asset_code[i] = *b;
         }
-        let xdr = stellar_xdr::curr::Asset::CreditAlphanum4(AlphaNum4 {
+        let xdr = stellar_xdr::next::Asset::CreditAlphanum4(AlphaNum4 {
             asset_code: AssetCode4(asset_code),
             issuer: addr.clone(),
         });
@@ -631,7 +631,7 @@ mod tests {
         for (i, b) in "KHLTOKEN".as_bytes().iter().enumerate() {
             asset_code[i] = *b;
         }
-        let xdr = stellar_xdr::curr::Asset::CreditAlphanum12(AlphaNum12 {
+        let xdr = stellar_xdr::next::Asset::CreditAlphanum12(AlphaNum12 {
             asset_code: AssetCode12(asset_code),
             issuer: addr.clone(),
         });

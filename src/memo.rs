@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
-use stellar_xdr::curr::Hash;
+use stellar_xdr::next::Hash;
 
 const MEMO_NONE: &str = "none";
 const MEMO_ID: &str = "id";
@@ -87,7 +87,7 @@ impl Memo {
             value.as_bytes().len() <= 28,
             "String is longer than 28 bytes"
         );
-        let _ = stellar_xdr::curr::Memo::Text(value.try_into().unwrap());
+        let _ = stellar_xdr::next::Memo::Text(value.try_into().unwrap());
     }
 
     pub fn id(input: &str) -> Self {
@@ -193,46 +193,46 @@ impl Memo {
         }
     }
 
-    pub fn from_xdr_object(object: stellar_xdr::curr::Memo) -> Result<Self, &'static str> {
+    pub fn from_xdr_object(object: stellar_xdr::next::Memo) -> Result<Self, &'static str> {
         unsafe {
             match object {
-                stellar_xdr::curr::Memo::None => Ok(Memo {
+                stellar_xdr::next::Memo::None => Ok(Memo {
                     memo_type: MEMO_NONE.to_owned(),
                     value: None,
                 }),
-                stellar_xdr::curr::Memo::Text(x) => Ok(Memo {
+                stellar_xdr::next::Memo::Text(x) => Ok(Memo {
                     memo_type: MEMO_TEXT.to_owned(),
                     value: Some(String::from_utf8_unchecked(x.to_vec())),
                 }),
-                stellar_xdr::curr::Memo::Id(x) => Ok(Memo {
+                stellar_xdr::next::Memo::Id(x) => Ok(Memo {
                     memo_type: MEMO_ID.to_owned(),
                     value: Some(x.to_string()),
                 }),
-                stellar_xdr::curr::Memo::Hash(x) => Ok(Memo {
+                stellar_xdr::next::Memo::Hash(x) => Ok(Memo {
                     memo_type: MEMO_HASH.to_owned(),
                     value: Some(String::from_utf8_unchecked(x.0.to_vec())),
                 }),
-                stellar_xdr::curr::Memo::Return(x) => Ok(Memo {
+                stellar_xdr::next::Memo::Return(x) => Ok(Memo {
                     memo_type: MEMO_RETURN.to_owned(),
                     value: Some(String::from_utf8_unchecked(x.0.to_vec())),
                 }),
             }
         }
     }
-    pub fn to_xdr_object(&self) -> Option<stellar_xdr::curr::Memo> {
+    pub fn to_xdr_object(&self) -> Option<stellar_xdr::next::Memo> {
         match self.memo_type.as_str() {
-            MEMO_NONE => Some(stellar_xdr::curr::Memo::None),
-            MEMO_ID => Some(stellar_xdr::curr::Memo::Id(
+            MEMO_NONE => Some(stellar_xdr::next::Memo::None),
+            MEMO_ID => Some(stellar_xdr::next::Memo::Id(
                 u64::from_str(self.value.clone().unwrap().as_str()).unwrap(),
             )),
-            MEMO_TEXT => Some(stellar_xdr::curr::Memo::Text(
+            MEMO_TEXT => Some(stellar_xdr::next::Memo::Text(
                 self.value.clone().unwrap().as_str().try_into().unwrap(),
             )),
-            MEMO_HASH => Some(stellar_xdr::curr::Memo::Hash(
+            MEMO_HASH => Some(stellar_xdr::next::Memo::Hash(
                 Hash::from_str(&hex::encode(self.value.clone().unwrap().as_str())).unwrap(),
             )),
             // MemoType::MemoReturn => Some(XDRMemo::memo_return(&self._value)),
-            MEMO_RETURN => Some(stellar_xdr::curr::Memo::Return(
+            MEMO_RETURN => Some(stellar_xdr::next::Memo::Return(
                 Hash::from_str(&hex::encode(self.value.clone().unwrap().as_str())).unwrap(),
             )),
             _ => None,
@@ -262,7 +262,7 @@ fn assert_panic<F: FnOnce(), S: AsRef<str>>(f: F, expected_msg: S) {
 mod tests {
     use core::panic;
 
-    use stellar_xdr::curr::WriteXdr;
+    use stellar_xdr::next::WriteXdr;
 
     use crate::memo::{MEMO_HASH, MEMO_NONE, MEMO_RETURN};
 
@@ -290,7 +290,7 @@ mod tests {
 
         let memo_utf8 = Memo::new(MEMO_TEXT, Some("三代之時")).unwrap();
         let val = match memo_utf8.to_xdr_object().unwrap() {
-            stellar_xdr::curr::Memo::Text(x) => x.to_string(),
+            stellar_xdr::next::Memo::Text(x) => x.to_string(),
 
             _ => panic!("Invalid Type"),
         };
@@ -336,7 +336,7 @@ mod tests {
         let memo = Memo::text("test").to_xdr_object().unwrap();
 
         let val = match memo.clone() {
-            stellar_xdr::curr::Memo::Text(x) => x.to_string(),
+            stellar_xdr::next::Memo::Text(x) => x.to_string(),
             _ => panic!("Invalid Type"),
         };
 
@@ -354,7 +354,7 @@ mod tests {
         let memo = Memo::text_buffer(buf.clone()).to_xdr_object().unwrap();
         // }
         let val = match memo.clone() {
-            stellar_xdr::curr::Memo::Text(x) => x,
+            stellar_xdr::next::Memo::Text(x) => x,
             _ => panic!("Invalid Type"),
         };
 
@@ -401,7 +401,7 @@ mod tests {
         let memo = Memo::id("1000").to_xdr_object().unwrap();
 
         let val = match memo {
-            stellar_xdr::curr::Memo::Id(x) => x,
+            stellar_xdr::next::Memo::Id(x) => x,
             _ => panic!("Invalid Type"),
         };
 
@@ -425,7 +425,7 @@ mod tests {
         let memo = Memo::hash_buffer(buffer.clone()).to_xdr_object().unwrap();
 
         let val = match memo.clone() {
-            stellar_xdr::curr::Memo::Hash(x) => x,
+            stellar_xdr::next::Memo::Hash(x) => x,
             _ => panic!("Invalid"),
         };
         assert_eq!(val.0.len(), 32);
@@ -462,7 +462,7 @@ mod tests {
             .unwrap();
 
         let val = match memo.clone() {
-            stellar_xdr::curr::Memo::Return(x) => x,
+            stellar_xdr::next::Memo::Return(x) => x,
             _ => panic!("Invalid"),
         };
 
