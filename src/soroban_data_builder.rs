@@ -1,6 +1,8 @@
 use stellar_xdr::{next::{ReadXdr, WriteXdr, LedgerFootprint}, curr::VecM};
 
 
+#[derive(Debug, Clone)]
+
 pub struct SorobanDataBuilder {
     data: stellar_xdr::next::SorobanTransactionData,
 }
