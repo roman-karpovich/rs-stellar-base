@@ -27,7 +27,7 @@ use stellar_xdr::next::Uint256;
 use stellar_xdr::next::VecM;
 use stellar_xdr::next::WriteXdr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Transaction {
     pub tx: Option<stellar_xdr::next::Transaction>,
     pub network_passphrase: String,
@@ -104,7 +104,7 @@ impl Transaction {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct TransactionBuilder {
     tx: Option<stellar_xdr::next::Transaction>,
     network_passphrase: Option<String>,
