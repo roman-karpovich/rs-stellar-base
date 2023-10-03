@@ -14,7 +14,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-stellar-baselib = "0.2.2"
+stellar-baselib = "0.2.3"
 ```
 
 And this to your code:
