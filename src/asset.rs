@@ -247,7 +247,7 @@ impl Asset {
         }
     }
 
-    fn native() -> Self {
+    pub fn native() -> Self {
         // The native asset in Stellar is represented by the code 'XLM' with no issuer.
         Self {
             code: "XLM".to_string(),
