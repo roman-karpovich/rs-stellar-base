@@ -597,7 +597,7 @@ mod tests {
 
         let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
         let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
-            stellar_strkey::ed25519::PublicKey::from_string(issuer.clone())
+            stellar_strkey::ed25519::PublicKey::from_string(issuer)
                 .unwrap()
                 .0,
         )));
@@ -622,7 +622,7 @@ mod tests {
     fn test_parse_12_alphanum_xdr_asset() {
         let issuer = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
         let addr = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256(
-            stellar_strkey::ed25519::PublicKey::from_string(issuer.clone())
+            stellar_strkey::ed25519::PublicKey::from_string(issuer)
                 .unwrap()
                 .0,
         )));
