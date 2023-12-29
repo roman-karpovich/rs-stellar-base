@@ -32,12 +32,12 @@ pub fn get_liquidity_pool_id(
     }
     let va_1 = liquidity_pool_parametes_x.clone().asset_a;
 
-    let lp_type_data = stellar_xdr::next::LiquidityPoolType::LiquidityPoolConstantProduct.to_xdr();
+    let lp_type_data = stellar_xdr::next::LiquidityPoolType::LiquidityPoolConstantProduct.to_xdr(stellar_xdr::next::Limits::none());
     let lp_params_data = stellar_xdr::next::LiquidityPoolConstantProductParameters {
         asset_a: liquidity_pool_parametes_x.clone().asset_a,
         asset_b: liquidity_pool_parametes_x.clone().asset_b,
         fee: liquidity_pool_parametes_x.fee,
-    }.to_xdr();
+    }.to_xdr(stellar_xdr::next::Limits::none());
     
     let mut payload = Vec::new();
     payload.extend(lp_type_data.unwrap());

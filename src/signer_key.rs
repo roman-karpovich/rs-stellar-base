@@ -109,8 +109,8 @@ mod tests {
 
             assert_eq!(skey.discriminant(), test_case.r#type);
 
-            let raw_xdr = skey.to_xdr().unwrap();
-            let raw_sk = stellar_xdr::curr::SignerKey::from_xdr(raw_xdr).unwrap();
+            let raw_xdr = skey.to_xdr(stellar_xdr::curr::Limits::none()).unwrap();
+            let raw_sk = stellar_xdr::curr::SignerKey::from_xdr(raw_xdr, stellar_xdr::curr::Limits::none()).unwrap();
             assert_eq!(raw_sk, skey);
 
             let address = SignerKey::encode_signer_key(&skey);

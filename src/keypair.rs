@@ -221,7 +221,7 @@ impl Keypair {
 
     /// part of the decorated signature
     pub fn signature_hint(&self) -> Option<Vec<u8>> {
-        let a = Self::xdr_account_id(self).to_xdr().unwrap();
+        let a = Self::xdr_account_id(self).to_xdr(stellar_xdr::next::Limits::none()).unwrap();
         if a.len() >= 4 {
             let start_index = a.len() - 4;
             Some(a[start_index..].to_vec())

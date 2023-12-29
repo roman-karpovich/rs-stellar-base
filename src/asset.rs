@@ -445,20 +445,20 @@ mod tests {
         let xdr = asset.to_xdr_object();
 
         assert_eq!(
-            String::from_utf8(xdr.to_xdr().unwrap()),
+            String::from_utf8(xdr.to_xdr(stellar_xdr::next::Limits::none()).unwrap()),
             String::from_utf8([0u8, 0u8, 0u8, 0u8].to_vec())
         );
 
         let xdr = asset.to_change_trust_xdr_object();
         assert_eq!(
-            String::from_utf8(xdr.to_xdr().unwrap()),
+            String::from_utf8(xdr.to_xdr(stellar_xdr::next::Limits::none()).unwrap()),
             String::from_utf8([0u8, 0u8, 0u8, 0u8].to_vec())
         );
 
         // // Test toTrustLineXDRObject() for TrustLineAsset
         let xdr = asset.to_trust_line_xdr_object();
         assert_eq!(
-            String::from_utf8(xdr.to_xdr().unwrap()),
+            String::from_utf8(xdr.to_xdr(stellar_xdr::next::Limits::none()).unwrap()),
             String::from_utf8([0u8, 0u8, 0u8, 0u8].to_vec())
         );
     }

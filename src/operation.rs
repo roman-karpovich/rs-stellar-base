@@ -145,7 +145,7 @@ impl Operation {
             },
             stellar_xdr::next::OperationBody::ManageData(x) => {
                 result.insert("type".to_string(), Value::Single("manageData".to_string()));
-                let data_name = x.data_name.to_string().unwrap().trim_end_matches('\0').to_string();
+                let data_name = x.data_name.to_string().trim_end_matches('\0').to_string();
                 result.insert("name".to_string(), Value::Single(data_name));
                 result.insert("value".to_string(), Value::Single(x.data_value.unwrap().0.to_string().unwrap()));
             },
@@ -186,7 +186,7 @@ impl Operation {
             },
             stellar_xdr::next::OperationBody::ClaimClaimableBalance(x) => {
                 result.insert("type".to_string(), Value::Single("claimClaimableBalance".to_string()));
-                result.insert("balanceId".to_string(), Value::Single(String::from_utf8(x.to_xdr().unwrap()).unwrap()));
+                result.insert("balanceId".to_string(), Value::Single(String::from_utf8(x.to_xdr(stellar_xdr::next::Limits::none()).unwrap()).unwrap()));
             },
             stellar_xdr::next::OperationBody::BeginSponsoringFutureReserves(x) => {
                 result.insert("type".to_string(), Value::Single("beginSponsoringFutureReserves".to_string()));
@@ -261,17 +261,16 @@ impl Operation {
                 result.insert("func".to_string(), Value::Single2(x.host_function));
                 result.insert("auths".to_string(), Value::MultipleAuth(x.auth.to_vec()));
             },
-            stellar_xdr::next::OperationBody::BumpFootprintExpiration(x) => {
-                result.insert("type".to_string(), Value::Single("bumpFootprintExpiration".to_string()));
-                result.insert("ledgersToExpire ".to_string(), Value::Single(x.ledgers_to_expire.to_string()));
+            // stellar_xdr::next::OperationBody::BumpFootprintExpiration(x) => {
+            //     result.insert("type".to_string(), Value::Single("bumpFootprintExpiration".to_string()));
+            //     result.insert("ledgersToExpire ".to_string(), Value::Single(x.ledgers_to_expire.to_string()));
 
-            },
+            // },
             stellar_xdr::next::OperationBody::RestoreFootprint(x) => {
                 result.insert("type".to_string(), Value::Single("restoreFootprint".to_string()));
 
             },
-            
-        
+            stellar_xdr::next::OperationBody::ExtendFootprintTtl(_) => todo!(),
         }
         
         Ok(result)
@@ -388,10 +387,10 @@ fn convert_xdr_signer_key_to_object(signer_key: &SignerKeyType) -> Result<Signer
             Ok(SignerKeyAttrs::Ed25519PublicKey(ed25519_public_key))
         },
         SignerKeyType::PreAuthTx => {
-            Ok(SignerKeyAttrs::PreAuthTx(signer_key.to_xdr_base64().unwrap()))
+            Ok(SignerKeyAttrs::PreAuthTx(signer_key.to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap()))
         },
         SignerKeyType::HashX => {
-            Ok(SignerKeyAttrs::Sha256Hash(signer_key.to_xdr_base64().unwrap()))
+            Ok(SignerKeyAttrs::Sha256Hash(signer_key.to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap()))
         },
         _  => panic!("Invalid Type"),
        
@@ -417,8 +416,8 @@ mod tests {
 
         let op = create_account(destination.clone(), starting_balance).unwrap();
 
-        let op = Operation::to_xdr(&op).unwrap();
-        let op_from = Operation::from_xdr(op.as_slice()).unwrap().body;
+        let op = Operation::to_xdr(&op,stellar_xdr::next::Limits::none()).unwrap();
+        let op_from = Operation::from_xdr(op.as_slice(), stellar_xdr::next::Limits::none()).unwrap().body;
 
         if let OperationBody::CreateAccount(op) = &op_from {
             assert_eq!(op.starting_balance, 1000);

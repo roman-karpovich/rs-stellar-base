@@ -290,13 +290,15 @@ mod tests {
 
         let memo_utf8 = Memo::new(MEMO_TEXT, Some("三代之時")).unwrap();
         let val = match memo_utf8.to_xdr_object().unwrap() {
-            stellar_xdr::next::Memo::Text(x) => x.to_string(),
+            stellar_xdr::next::Memo::Text(x) => x.to_utf8_string().unwrap(),
 
             _ => panic!("Invalid Type"),
         };
         let b = String::from("三代之時");
+        print!("xx {}", val);
+
         assert_eq!(
-            val.unwrap(),
+            val,
             b,
             "Memo text value does not match expected value"
         );
@@ -315,7 +317,7 @@ mod tests {
         let memo_text = Memo::text_buffer(vec2.clone())
             .to_xdr_object()
             .unwrap()
-            .to_xdr()
+            .to_xdr(stellar_xdr::next::Limits::none())
             .unwrap();
 
         unsafe {
@@ -324,7 +326,7 @@ mod tests {
                     .unwrap()
                     .to_xdr_object()
                     .unwrap()
-                    .to_xdr()
+                    .to_xdr(stellar_xdr::next::Limits::none())
                     .unwrap();
             assert_eq!(memo_text_2, expected);
         }
@@ -340,7 +342,7 @@ mod tests {
             _ => panic!("Invalid Type"),
         };
 
-        assert_eq!(val.unwrap(), "test");
+        assert_eq!(val, "test");
 
         let base_memo = Memo::from_xdr_object(memo.clone()).unwrap();
         assert_eq!(base_memo.memo_type, MEMO_TEXT);

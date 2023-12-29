@@ -12,7 +12,7 @@ impl SorobanDataBuilder {
     pub fn new(soroban_data: Option<Either<String, stellar_xdr::next::SorobanTransactionData>>) -> Self {
         let data = match soroban_data {
             Some(Either::Left(encoded_data)) => SorobanDataBuilder::from_xdr(Either::Left(encoded_data)),
-            Some(Either::Right(data_instance)) => SorobanDataBuilder::from_xdr(Either::Left(data_instance.to_xdr_base64().unwrap())),
+            Some(Either::Right(data_instance)) => SorobanDataBuilder::from_xdr(Either::Left(data_instance.to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap())),
             None => stellar_xdr::next::SorobanTransactionData {
                 ext: stellar_xdr::next::ExtensionPoint::V0,
                 resources: stellar_xdr::next::SorobanResources{
@@ -22,7 +22,7 @@ impl SorobanDataBuilder {
                     write_bytes: 0,
                     // extended_meta_data_size_bytes: 0,
                 },
-                refundable_fee: 0,
+                resource_fee: 0,
             },
         };
 
@@ -31,8 +31,8 @@ impl SorobanDataBuilder {
 
     fn from_xdr(data: Either<String, Vec<u8>>) -> stellar_xdr::next::SorobanTransactionData {
         match data {
-            Either::Left(encoded) => stellar_xdr::next::SorobanTransactionData::from_xdr_base64(encoded).unwrap(),
-            Either::Right(raw) => stellar_xdr::next::SorobanTransactionData::from_xdr(raw).unwrap(),
+            Either::Left(encoded) => stellar_xdr::next::SorobanTransactionData::from_xdr_base64(encoded,stellar_xdr::next::Limits::none()).unwrap(),
+            Either::Right(raw) => stellar_xdr::next::SorobanTransactionData::from_xdr(raw, stellar_xdr::next::Limits::none()).unwrap(),
         }
     }
 
@@ -49,7 +49,7 @@ impl SorobanDataBuilder {
     }
 
     pub fn set_refundable_fee(&mut self, fee: i64) -> &mut Self  {
-        self.data.refundable_fee = fee;
+        self.data.resource_fee = fee;
         self
         
     }
@@ -74,7 +74,7 @@ impl SorobanDataBuilder {
 
     pub fn build(&self) -> stellar_xdr::next::SorobanTransactionData {
         
-        stellar_xdr::next::SorobanTransactionData::from_xdr(self.data.to_xdr_base64().unwrap()).unwrap()
+        stellar_xdr::next::SorobanTransactionData::from_xdr(self.data.to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap(), stellar_xdr::next::Limits::none()).unwrap()
     }
 
     pub fn get_footprint(&self) -> &stellar_xdr::next::LedgerFootprint {
