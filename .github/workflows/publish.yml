@@ -1,7 +1,9 @@
 on:
   push:
-    branches:
-      - main
+    # Pattern matched against refs/tags
+    tags:        
+      - '*'           # Push events to every tag not containing /
+  workflow_dispatch:
 
 name: Publish
 
@@ -20,15 +22,6 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Check commit message
-        run: |
-          if git log -1 --pretty=%B | grep -q "release"; then
-            echo "trigger_condition_met=true" >> $GITHUB_ENV
-          else
-            echo "trigger_condition_met=false" >> $GITHUB_ENV
-
-      - name: Publish package
-        if: env.trigger_condition_met == 'true'
-        run: cargo publish --token ${CRATES_TOKEN}
+      - run: cargo publish --token ${CRATES_TOKEN}
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
