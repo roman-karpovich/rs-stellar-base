@@ -15,6 +15,7 @@ pub mod operation;
 pub mod signer_key;
 pub mod signing;
 pub mod transaction;
+pub mod transaction_builder;
 pub mod utils;
 pub mod xdr;
 pub mod liquidity_pool_id;
