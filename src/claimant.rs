@@ -1,7 +1,7 @@
 use stellar_strkey::ed25519::PublicKey;
 // use stellar_xdr::{VecM, ClaimPredicate};
 use stellar_xdr::next::{VecM, ClaimPredicate};
-
+use crate::keypair::KeypairBehavior;
 use crate::keypair::Keypair;
 
 

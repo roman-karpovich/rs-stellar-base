@@ -1,9 +1,15 @@
 
 pub struct Soroban;
 
-impl Soroban {
+// Define a trait for Soroban behavior
+pub trait SorobanBehavior {
+    fn format_token_amount(amount: &str, decimals: usize) -> String;
+    fn parse_token_amount(value: &str, decimals: usize) -> String;
+}
+
+impl SorobanBehavior for Soroban {
    
-    pub fn format_token_amount(amount: &str, decimals: usize) -> String {
+    fn format_token_amount(amount: &str, decimals: usize) -> String {
         let mut formatted = amount.to_string();
 
         if amount.contains('.') {
@@ -27,7 +33,7 @@ impl Soroban {
     }
 
     
-    pub fn parse_token_amount(value: &str, decimals: usize) -> String {
+    fn parse_token_amount(value: &str, decimals: usize) -> String {
         let parts: Vec<&str> = value.split('.').collect();
 
         if parts.len() > 2 {

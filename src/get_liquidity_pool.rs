@@ -2,7 +2,7 @@ use std::error::Error;
 
 use stellar_xdr::next::{WriteXdr, LiquidityPoolParameters};
 
-use crate::{asset::Asset, hashing::hash, liquidity_pool_asset};
+use crate::{asset::Asset, liquidity_pool_asset, hashing::hash};
 
 // Note: you'll need to bring in equivalent Rust libraries/types for xdr, Asset, and hashing.
 

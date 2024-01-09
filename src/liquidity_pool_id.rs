@@ -7,8 +7,19 @@ pub struct LiquidityPoolId {
     liquidity_pool_id: String,
 }
 
-impl LiquidityPoolId {
-    pub fn new(liquidity_pool_id: &str) -> Result<Self, Box<dyn Error>> {
+// Define a trait for LiquidityPoolId behavior
+pub trait LiquidityPoolIdBehavior {
+    fn new(liquidity_pool_id: &str) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn from_operation(tl_asset_xdr: TrustLineAsset) -> Result<Self, &'static str> where Self: Sized;
+    fn get_asset_type(&self) -> &'static str;
+    fn to_xdr_object(&self) -> TrustLineAsset;
+    fn get_liquidity_pool_id(&self) -> &str;
+    fn equals(&self, asset: &Self) -> bool;
+    fn to_string(&self) -> String;
+}
+
+impl LiquidityPoolIdBehavior for LiquidityPoolId {
+    fn new(liquidity_pool_id: &str) -> Result<Self, Box<dyn Error>> {
         if liquidity_pool_id.is_empty() {
             return Err("liquidityPoolId cannot be empty".into());
         }
@@ -23,7 +34,7 @@ impl LiquidityPoolId {
         })
     }
 
-    pub fn from_operation(tl_asset_xdr: TrustLineAsset) -> Result<Self, &'static str> {
+    fn from_operation(tl_asset_xdr: TrustLineAsset) -> Result<Self, &'static str> {
         match tl_asset_xdr {
             
             TrustLineAsset::PoolShare(x) => {
@@ -35,24 +46,24 @@ impl LiquidityPoolId {
         }
     }
 
-    pub fn get_asset_type(&self) -> &'static str {
+    fn get_asset_type(&self) -> &'static str {
         "liquidity_pool_shares"
     }
 
-    pub fn to_xdr_object(&self) -> TrustLineAsset {
+    fn to_xdr_object(&self) -> TrustLineAsset {
         let val = Hash::from_str(&self.liquidity_pool_id).unwrap();
         TrustLineAsset::PoolShare(PoolId(val))
     }
     
-    pub fn get_liquidity_pool_id(&self) -> &str {
+    fn get_liquidity_pool_id(&self) -> &str {
         &self.liquidity_pool_id
     }
 
-    pub fn equals(&self, asset: &LiquidityPoolId) -> bool {
+    fn equals(&self, asset: &LiquidityPoolId) -> bool {
         self.liquidity_pool_id == asset.get_liquidity_pool_id()
     }
 
-    pub fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
         format!("liquidity_pool:{}", self.liquidity_pool_id)
     }
 

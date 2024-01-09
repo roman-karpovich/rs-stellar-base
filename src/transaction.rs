@@ -9,6 +9,7 @@ use stellar_xdr::next::DecoratedSignature;
 use crate::account::Account;
 use crate::hashing::hash;
 use crate::keypair::Keypair;
+use crate::keypair::KeypairBehavior;
 use crate::op_list::create_account::create_account;
 use stellar_xdr::next::LedgerBounds;
 use stellar_xdr::next::Memo;

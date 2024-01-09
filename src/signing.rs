@@ -6,6 +6,13 @@ lazy_static! {
     static ref ACTUAL_METHODS: ActualMethods = check_fast_signing();
 }
 
+// Define a trait for signing behavior
+pub trait SigningBehavior {
+    fn generate(secret_key: &[u8]) -> [u8; 32];
+    fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64];
+    fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool;
+}
+
 struct ActualMethods {
     generate: fn(&[u8]) -> [u8; 32],
     sign: fn(&[u8], &[u8]) -> [u8; 64],

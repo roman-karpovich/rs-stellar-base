@@ -13,7 +13,7 @@ use stellar_xdr::next::Type::Int64;
 use stellar_xdr::next::{WriteXdr, AccountId, TrustLineFlags, HostFunction, SignerKeyType};
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
-
+use crate::liquidity_pool_asset::LiquidityPoolAssetBehavior;
 
 use crate::asset::Asset;
 use crate::claimant::Claimant;
@@ -50,8 +50,16 @@ pub struct Opts {
     source: Option<String>,
 }
 
-impl Operation {
-    pub fn set_source_account(op_attributes: &mut OpAttributes, opts: &Opts) {
+pub trait OperationBehavior {
+    fn set_source_account(op_attributes: &mut OpAttributes, opts: &Opts);
+    fn from_xdr_object(operation: stellar_xdr::next::Operation) -> Result<HashMap<String, Value>, &'static str>;
+    fn check_unsigned_int_value<F>(name: &str, value: &Option<String>, is_valid_function: Option<F>) -> Result<Option<u32>, String> 
+    where
+        F: Fn(u32, &str) -> bool;
+}
+
+impl OperationBehavior for Operation {
+    fn set_source_account(op_attributes: &mut OpAttributes, opts: &Opts) {
         if let Some(source) = &opts.source {
             match decode_address_to_muxed_account(source) {
                 muxed_account => op_attributes.source_account = muxed_account,
@@ -60,7 +68,7 @@ impl Operation {
         }
     }
 
-    pub fn from_xdr_object(operation: stellar_xdr::next::Operation) -> Result<HashMap<String, Value>, &'static str> {
+    fn from_xdr_object(operation: stellar_xdr::next::Operation) -> Result<HashMap<String, Value>, &'static str> {
         let mut result: HashMap<String, Value> = HashMap::new();
     
         if let Some(source_account) = operation.source_account {
@@ -401,8 +409,8 @@ fn convert_xdr_signer_key_to_object(signer_key: &SignerKeyType) -> Result<Signer
 mod tests {
 
     use stellar_xdr::next::{Int64, Operation, OperationBody, ReadXdr};
-
-    use crate::{account::Account, keypair::Keypair, op_list::create_account::create_account};
+    use keypair::KeypairBehavior;
+    use crate::{account::Account, keypair::{Keypair, self}, op_list::create_account::create_account};
 
     use super::*;
 

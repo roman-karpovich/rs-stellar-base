@@ -9,8 +9,14 @@ use stellar_xdr::curr::{SignerKey as XDRSignerKey, SignerKeyEd25519SignedPayload
 
 pub struct SignerKey;
 
-impl SignerKey {
-    pub fn decode_address(address: &str) -> XDRSignerKey {
+// Define a trait for SignerKey behavior
+pub trait SignerKeyBehavior {
+    fn decode_address(address: &str) -> XDRSignerKey;
+    fn encode_signer_key(signer_key: &XDRSignerKey) -> String;
+}
+
+impl SignerKeyBehavior for SignerKey {
+    fn decode_address(address: &str) -> XDRSignerKey {
         let val = stellar_strkey::Strkey::from_string(address);
         if val.is_err() {
             panic!("Invalid Type")
@@ -34,7 +40,7 @@ impl SignerKey {
         }
     }
 
-    pub fn encode_signer_key(signer_key: &XDRSignerKey) -> String {
+    fn encode_signer_key(signer_key: &XDRSignerKey) -> String {
         match signer_key {
             XDRSignerKey::Ed25519(x) => {
                 stellar_strkey::Strkey::PublicKeyEd25519(PublicKey::from_payload(&x.0).unwrap())

@@ -27,9 +27,77 @@ pub struct Keypair {
     secret_seed: Option<Vec<u8>>,
 }
 
-impl Keypair {
+pub trait KeypairBehavior {
+    // Creates a new keypair given optional public and secret keys
+    fn new(public_key: Option<[u8; 32]>, secret_key: Option<[u8; 32]>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // Creates a keypair from a secret seed
+    fn new_from_secret_key(secret_seed: Vec<u8>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // Creates a keypair from a public key
+    fn new_from_public_key(public_key: Vec<u8>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // Creates a keypair from a secret string
+    fn from_secret(secret: &str) -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // Creates a keypair from a public key string
+    fn from_public_key(public_key: &str) -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // Creates a keypair from a raw Ed25519 seed
+    fn from_raw_ed25519_seed(seed: &[u8]) -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // Returns the raw secret key
+    fn raw_secret_key(&self) -> Option<Vec<u8>>;
+
+    // Returns the raw public key
+    fn raw_public_key(&self) -> &Vec<u8>;
+
+    // Returns the secret key as a string
+    fn secret_key(&self) -> Result<String, Box<dyn Error>>;
+
+    // Returns the public key as a string
+    fn public_key(&self) -> String;
+
+    // Checks if the keypair can sign
+    fn can_sign(&self) -> bool;
+
+    // Signs the data using the keypair
+    fn sign(&self, data: &[u8]) -> Result<Vec<u8>, Box<dyn Error>>;
+
+    // Verifies if signature for the data is valid
+    fn verify(&self, data: &[u8], signature: &[u8]) -> bool;
+
+    // Creates a random Keypair
+    fn random() -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // Returns keypair object which is the network master key
+    fn master(network_passphrase: Option<&str>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+
+    // XDR representation of the account id
+    fn xdr_account_id(&self) -> AccountId;
+
+    // XDR representation of the public key
+    fn xdr_public_key(&self) -> stellar_xdr::next::PublicKey;
+
+    // XDR representation of the muxed account id
+    fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::next::MuxedAccount;
+
+    // Returns the raw public key array
+    fn raw_pubkey(&self) -> [u8; 32];
+
+    // Part of the decorated signature
+    fn signature_hint(&self) -> Option<Vec<u8>>;
+
+    // Returns the decorated signature (hint+sig) for arbitrary data
+    fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature;
+
+    // Returns the raw decorated signature (hint+sig) for a signed payload signer
+    fn sign_payload_decorated(&self, data: &[u8]) -> DecoratedSignature;
+}
+
+impl KeypairBehavior for Keypair {
     /// Creates new keypair obj
-    pub fn new(
+    fn new(
         public_key: Option<[u8; 32]>,
         secret_key: Option<[u8; 32]>,
     ) -> Result<Self, Box<dyn Error>> {
@@ -95,13 +163,13 @@ impl Keypair {
     }
 
     /// Create Keypair obj from secret key
-    pub fn from_secret(secret: &str) -> Result<Self, Box<dyn Error>> {
+    fn from_secret(secret: &str) -> Result<Self, Box<dyn Error>> {
         let raw_secret = PrivateKey::from_str(secret).unwrap().0;
         Keypair::from_raw_ed25519_seed(&raw_secret)
     }
 
     /// Create Keypair obj from given public key
-    pub fn from_public_key(public_key: &str) -> Result<Self, Box<dyn Error>> {
+    fn from_public_key(public_key: &str) -> Result<Self, Box<dyn Error>> {
         let decoded = PublicKey::from_str(public_key)?;
         if decoded.0.len() != 32 {
             return Err("Invalid Stellar public key".into());
@@ -115,7 +183,7 @@ impl Keypair {
     }
 
     /// Create keypair obj from seed value
-    pub fn from_raw_ed25519_seed(seed: &[u8]) -> Result<Self, Box<dyn Error>> {
+    fn from_raw_ed25519_seed(seed: &[u8]) -> Result<Self, Box<dyn Error>> {
         if seed.len() >= 33 {
             return Err("Invalid seed length".into());
         }
@@ -123,17 +191,17 @@ impl Keypair {
     }
 
     /// Return the raw secret key
-    pub fn raw_secret_key(&self) -> Option<Vec<u8>> {
+    fn raw_secret_key(&self) -> Option<Vec<u8>> {
         self.secret_seed.clone()
     }
 
     /// Return the public key
-    pub fn raw_public_key(&self) -> &Vec<u8> {
+    fn raw_public_key(&self) -> &Vec<u8> {
         &self.public_key
     }
 
     /// Return the secret key string
-    pub fn secret_key(&self) -> Result<String, Box<dyn Error>> {
+    fn secret_key(&self) -> Result<String, Box<dyn Error>> {
         match &self.secret_seed {
             None => Err("no secret_key available".into()),
             Some(s) => Ok(PrivateKey::from_payload(s).unwrap().clone().to_string()),
@@ -141,19 +209,19 @@ impl Keypair {
     }
 
     /// Return the public key string
-    pub fn public_key(&self) -> String {
+    fn public_key(&self) -> String {
         PublicKey::from_payload(&self.public_key)
             .unwrap()
             .to_string()
     }
 
     /// returns `true` if the keypair obj contains secret key and can sign.
-    pub fn can_sign(&self) -> bool {
+    fn can_sign(&self) -> bool {
         self.secret_key.is_some()
     }
 
     /// Able to sign the data using the keypair obj
-    pub fn sign(&self, data: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+    fn sign(&self, data: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
         if !self.can_sign() {
             return Err("cannot sign, no secret_key available".into());
         }
@@ -167,12 +235,12 @@ impl Keypair {
     }
 
     /// verifies if signature for the data is valid
-    pub fn verify(&self, data: &[u8], signature: &[u8]) -> bool {
+    fn verify(&self, data: &[u8], signature: &[u8]) -> bool {
         verify(data, signature, self.public_key.as_slice())
     }
 
     /// Creates a Random Keypair
-    pub fn random() -> Result<Self, Box<dyn Error>> {
+    fn random() -> Result<Self, Box<dyn Error>> {
         let mut secret_seed = [0u8; 32];
         let mut rng = OsRng;
         rng.fill_bytes(&mut secret_seed);
@@ -180,7 +248,7 @@ impl Keypair {
     }
 
     /// Returns keypair obj which is the network master key
-    pub fn master(network_passphrase: Option<&str>) -> Result<Self, Box<dyn Error>> {
+    fn master(network_passphrase: Option<&str>) -> Result<Self, Box<dyn Error>> {
         if let Some(passphrase) = network_passphrase {
             Ok(Self::from_raw_ed25519_seed(&hash(passphrase)).unwrap())
         } else {
@@ -188,28 +256,28 @@ impl Keypair {
         }
     }
     /// xdr representation of the account id
-    pub fn xdr_account_id(&self) -> AccountId {
+    fn xdr_account_id(&self) -> AccountId {
         AccountId(stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(Uint256(
             PublicKey::from_payload(&self.public_key).unwrap().0,
         )))
     }
 
     /// xdr representation of the public key
-    pub fn xdr_public_key(&self) -> stellar_xdr::next::PublicKey {
+    fn xdr_public_key(&self) -> stellar_xdr::next::PublicKey {
         stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(Uint256(
             PublicKey::from_payload(&self.public_key).unwrap().0,
         ))
     }
 
     /// xdr representation of the public key
-    pub fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::next::MuxedAccount {
+    fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::next::MuxedAccount {
         stellar_xdr::next::MuxedAccount::MuxedEd25519(MuxedAccountMed25519 {
             id: Uint64::from_str(id).unwrap(),
             ed25519: Uint256(PublicKey::from_payload(&self.public_key).unwrap().0),
         })
     }
 
-    pub fn raw_pubkey(&self) -> [u8; 32] {
+    fn raw_pubkey(&self) -> [u8; 32] {
         let mut array: [u8; 32] = [0; 32];
 
         for (i, &value) in self.public_key.iter().enumerate() {
@@ -220,7 +288,7 @@ impl Keypair {
     }
 
     /// part of the decorated signature
-    pub fn signature_hint(&self) -> Option<Vec<u8>> {
+    fn signature_hint(&self) -> Option<Vec<u8>> {
         let a = Self::xdr_account_id(self).to_xdr(stellar_xdr::next::Limits::none()).unwrap();
         if a.len() >= 4 {
             let start_index = a.len() - 4;
@@ -231,7 +299,7 @@ impl Keypair {
     }
 
     /// Returns the decorated signature (hint+sig) for arbitrary data.
-    pub fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature {
+    fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature {
         let signature = Self::sign(self, data).unwrap();
         let hint = Self::signature_hint(self).unwrap();
         let mut hint_u8: [u8; 4] = [0; 4];
@@ -245,7 +313,7 @@ impl Keypair {
     }
 
     /// Returns the raw decorated signature (hint+sig) for a signed payload signer.
-    pub fn sign_payload_decorated(&self, data: &[u8]) -> DecoratedSignature {
+    fn sign_payload_decorated(&self, data: &[u8]) -> DecoratedSignature {
         let signature = Self::sign(self, data).unwrap();
         let hint = Self::signature_hint(self).unwrap();
         let mut key_hint_u8: [u8; 4] = [0; 4];

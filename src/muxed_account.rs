@@ -17,7 +17,20 @@ pub struct MuxedAccount {
     id: String,
 }
 
-impl MuxedAccount {
+pub trait MuxedAccountBehavior {
+    fn new(base_account: Rc<RefCell<Account>>, id: &str) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    fn from_address(m_address: &str, sequence_num: &str) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    fn set_id(&mut self, id: &str) -> Result<(), Box<dyn std::error::Error>>;
+    fn base_account(&self) -> Rc<RefCell<Account>>;
+    fn account_id(&self) -> &str;
+    fn id(&self) -> &str;
+    fn sequence_number(&self) -> String;
+    fn increment_sequence_number(&mut self);
+    fn to_xdr_object(&self) -> &stellar_xdr::next::MuxedAccount;
+    fn equals(&self, other_muxed_account: &MuxedAccount) -> bool;
+}
+
+impl MuxedAccountBehavior for MuxedAccount {
     fn new(
         base_account: Rc<RefCell<Account>>,
         id: &str,

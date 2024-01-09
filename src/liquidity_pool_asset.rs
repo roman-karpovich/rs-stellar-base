@@ -10,8 +10,19 @@ pub struct LiquidityPoolAsset {
     fee: i32,
 }
 
-impl LiquidityPoolAsset {
-    pub fn new(asset_a: Asset, asset_b: Asset, fee: i32) -> Result<Self, &'static str> {
+// Define a trait for LiquidityPoolAsset behavior
+pub trait LiquidityPoolAssetBehavior {
+    fn new(asset_a: Asset, asset_b: Asset, fee: i32) -> Result<Self, &'static str> where Self: Sized;
+    fn from_operation(ct_asset_xdr: &ChangeTrustAsset) -> Result<Self, String> where Self: Sized;
+    fn to_xdr_object(&self) -> ChangeTrustAsset;
+    fn get_liquidity_pool_parameters(&self) -> LiquidityPoolParameters;
+    fn equals(&self, other: &Self) -> bool;
+    fn get_asset_type(&self) -> &'static str;
+    fn to_string(&self) -> String;
+}
+
+impl LiquidityPoolAssetBehavior for LiquidityPoolAsset {
+    fn new(asset_a: Asset, asset_b: Asset, fee: i32) -> Result<Self, &'static str> {
         if Asset::compare(&asset_a, &asset_b) != -1 {
             return Err("Assets are not in lexicographic order");
         }
@@ -26,7 +37,7 @@ impl LiquidityPoolAsset {
         })
     }
 
-    pub fn from_operation(ct_asset_xdr: &ChangeTrustAsset) -> Result<LiquidityPoolAsset, String> {
+    fn from_operation(ct_asset_xdr: &ChangeTrustAsset) -> Result<LiquidityPoolAsset, String> {
         match ct_asset_xdr {
            
             ChangeTrustAsset::PoolShare(x) => {
@@ -45,7 +56,7 @@ impl LiquidityPoolAsset {
         }
     }
 
-    pub fn to_xdr_object(&self) -> ChangeTrustAsset {
+    fn to_xdr_object(&self) -> ChangeTrustAsset {
        
         let lp_constant_product_params_xdr = LiquidityPoolConstantProductParameters {
             asset_a: self.asset_a.to_xdr_object(),
@@ -57,7 +68,7 @@ impl LiquidityPoolAsset {
         ChangeTrustAsset::PoolShare(lp_params_xdr)
     }
 
-    pub fn get_liquidity_pool_parameters(&self) -> LiquidityPoolParameters {
+    fn get_liquidity_pool_parameters(&self) -> LiquidityPoolParameters {
         let lp_constant_product_params_xdr = LiquidityPoolConstantProductParameters {
             asset_a: self.asset_a.to_xdr_object(),
             asset_b: self.asset_b.to_xdr_object(),
@@ -70,15 +81,15 @@ impl LiquidityPoolAsset {
         
     }
 
-    pub fn equals(&self, other: &LiquidityPoolAsset) -> bool {
+    fn equals(&self, other: &LiquidityPoolAsset) -> bool {
         self.asset_a == other.asset_a && self.asset_b == other.asset_b && self.fee == other.fee
     }
 
-    pub fn get_asset_type(&self) -> &'static str {
+    fn get_asset_type(&self) -> &'static str {
         "liquidity_pool_shares"
     }
 
-    pub fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
         let pool_id = get_liquidity_pool_id(
             "constant_product",
             self.get_liquidity_pool_parameters().clone()

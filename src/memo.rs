@@ -24,8 +24,25 @@ pub struct Memo {
     value: Option<String>,
 }
 
-impl Memo {
-    pub fn new(memo_type: &str, value: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> {
+// Define a trait for Memo behavior
+pub trait MemoBehavior {
+    fn new(memo_type: &str, value: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    fn id(input: &str) -> Self where Self: Sized;
+    fn text(input: &str) -> Self where Self: Sized;
+    fn text_buffer(input: Vec<u8>) -> Self where Self: Sized;
+    fn hash_buffer(input: Vec<u8>) -> Self where Self: Sized;
+    fn return_hash(input: Vec<u8>) -> Self where Self: Sized;
+    fn none() -> Self where Self: Sized;
+    fn value(&self) -> Result<MemoValue, &'static str>;
+    fn from_xdr_object(object: stellar_xdr::next::Memo) -> Result<Self, &'static str> where Self: Sized;
+    fn to_xdr_object(&self) -> Option<stellar_xdr::next::Memo>;
+    fn _validate_id_value(value: &str) -> Result<(), String>;
+    fn _validate_text_value(value: &str);
+    fn _validate_hash_value(value: &[u8]);
+}
+
+impl MemoBehavior for Memo {
+    fn new(memo_type: &str, value: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> {
         let mut value_buf = None;
         match memo_type {
             MEMO_NONE => {}
@@ -90,7 +107,7 @@ impl Memo {
         let _ = stellar_xdr::next::Memo::Text(value.try_into().unwrap());
     }
 
-    pub fn id(input: &str) -> Self {
+    fn id(input: &str) -> Self {
         unsafe {
             Memo {
                 memo_type: MEMO_ID.to_string(),
@@ -99,7 +116,7 @@ impl Memo {
         }
     }
 
-    pub fn text(input: &str) -> Self {
+    fn text(input: &str) -> Self {
         assert!(
             input.as_bytes().len() <= 28,
             "String is longer than 28 bytes"
@@ -113,7 +130,7 @@ impl Memo {
         }
     }
 
-    pub fn text_buffer(input: Vec<u8>) -> Self {
+    fn text_buffer(input: Vec<u8>) -> Self {
         unsafe {
             Memo {
                 memo_type: MEMO_TEXT.to_string(),
@@ -122,7 +139,7 @@ impl Memo {
         }
     }
 
-    pub fn hash_buffer(input: Vec<u8>) -> Self {
+    fn hash_buffer(input: Vec<u8>) -> Self {
         Self::_validate_hash_value(unsafe {
             String::from_utf8_unchecked(input.clone()).as_bytes()
         });
@@ -135,7 +152,7 @@ impl Memo {
         }
     }
 
-    pub fn return_hash(input: Vec<u8>) -> Self {
+    fn return_hash(input: Vec<u8>) -> Self {
         Self::_validate_hash_value(unsafe {
             String::from_utf8_unchecked(input.clone()).as_bytes()
         });
@@ -172,14 +189,14 @@ impl Memo {
         }
     }
 
-    pub fn none() -> Self {
+    fn none() -> Self {
         Self {
             memo_type: MEMO_NONE.to_owned(),
             value: None,
         }
     }
 
-    pub fn value(&self) -> Result<MemoValue, &'static str> {
+    fn value(&self) -> Result<MemoValue, &'static str> {
         match self.memo_type.as_str() {
             MEMO_NONE => Ok(MemoValue::NoneValue),
             MEMO_ID => Ok(MemoValue::IdValue(self.value.clone().unwrap())),
@@ -193,7 +210,7 @@ impl Memo {
         }
     }
 
-    pub fn from_xdr_object(object: stellar_xdr::next::Memo) -> Result<Self, &'static str> {
+    fn from_xdr_object(object: stellar_xdr::next::Memo) -> Result<Self, &'static str> {
         unsafe {
             match object {
                 stellar_xdr::next::Memo::None => Ok(Memo {
@@ -219,7 +236,8 @@ impl Memo {
             }
         }
     }
-    pub fn to_xdr_object(&self) -> Option<stellar_xdr::next::Memo> {
+    
+    fn to_xdr_object(&self) -> Option<stellar_xdr::next::Memo> {
         match self.memo_type.as_str() {
             MEMO_NONE => Some(stellar_xdr::next::Memo::None),
             MEMO_ID => Some(stellar_xdr::next::Memo::Id(
@@ -261,7 +279,7 @@ fn assert_panic<F: FnOnce(), S: AsRef<str>>(f: F, expected_msg: S) {
 #[cfg(test)]
 mod tests {
     use core::panic;
-
+    use crate::memo::MemoBehavior;
     use stellar_xdr::next::WriteXdr;
 
     use crate::memo::{MEMO_HASH, MEMO_NONE, MEMO_RETURN};

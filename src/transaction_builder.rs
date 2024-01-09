@@ -139,11 +139,12 @@ impl TransactionBuilderBehavior for TransactionBuilder {
 mod tests {
 
     use core::panic;
+    use keypair::KeypairBehavior;
 
     use sha2::digest::crypto_common::Key;
 
     use super::*;
-    use crate::{account::Account, keypair::Keypair, network::Networks, transaction::TransactionBehavior};
+    use crate::{account::Account, keypair::{Keypair, self}, network::{Networks, NetworkPassphrase}, transaction::TransactionBehavior};
 
     #[test]
     fn test_creates_and_signs() {
@@ -153,8 +154,8 @@ mod tests {
         )
         .unwrap();
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
-        let signer = Keypair::master(Some(Networks::TESTNET)).unwrap();
-        let mut tx = TransactionBuilder::new(source, Networks::TESTNET)
+        let signer = Keypair::master(Some(Networks::testnet())).unwrap();
+        let mut tx = TransactionBuilder::new(source, Networks::testnet())
             .fee(100_u32)
             .add_operation(create_account(destination, "10".to_string()).unwrap())
             .build();
