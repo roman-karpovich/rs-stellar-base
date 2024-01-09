@@ -8,7 +8,7 @@ use stellar_xdr::next::DecoratedSignature;
 
 use crate::account::Account;
 use crate::account::AccountBehavior;
-use crate::hashing::hash;
+use crate::hashing::Sha256Hasher;
 use crate::keypair::Keypair;
 use crate::op_list::create_account::create_account;
 use crate::transaction::Transaction;

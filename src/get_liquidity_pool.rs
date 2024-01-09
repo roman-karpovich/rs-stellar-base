@@ -1,8 +1,10 @@
+use crate::hashing::HashingBehavior;
 use std::error::Error;
 
 use stellar_xdr::next::{WriteXdr, LiquidityPoolParameters};
 
-use crate::{asset::Asset, liquidity_pool_asset, hashing::hash};
+use crate::hashing::Sha256Hasher;
+use crate::{asset::Asset};
 
 // Note: you'll need to bring in equivalent Rust libraries/types for xdr, Asset, and hashing.
 use crate::asset::AssetBehavior;
@@ -57,6 +59,6 @@ impl LiquidityPoolBehavior for LiquidityPool {
         payload.extend(lp_type_data.unwrap());
         payload.extend(lp_params_data.unwrap());
         
-        Ok(hash(payload).to_vec())
+        Ok(Sha256Hasher::hash(payload).to_vec())
     }
 }

@@ -2,7 +2,8 @@
 //!
 //! Currently `Keypair` only supports ed25519 but in the future, this class can be an abstraction layer for other
 //! public-key signature systems.
-use crate::hashing::hash;
+use crate::hashing::HashingBehavior;
+use crate::hashing::Sha256Hasher;
 use nacl::sign::{generate_keypair, signature};
 use rand_core::{OsRng, RngCore};
 use sha2::Sha512;
@@ -250,7 +251,7 @@ impl KeypairBehavior for Keypair {
     /// Returns keypair obj which is the network master key
     fn master(network_passphrase: Option<&str>) -> Result<Self, Box<dyn Error>> {
         if let Some(passphrase) = network_passphrase {
-            Ok(Self::from_raw_ed25519_seed(&hash(passphrase)).unwrap())
+            Ok(Self::from_raw_ed25519_seed(&Sha256Hasher::hash(passphrase)).unwrap())
         } else {
             Err("No network selected. Please pass a network argument, e.g. `Keypair::master(Some(Networks::PUBLIC))`.".into())
         }

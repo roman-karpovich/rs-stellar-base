@@ -1,3 +1,4 @@
+use crate::hashing::HashingBehavior;
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
 use std::str::FromStr;
@@ -7,7 +8,7 @@ use num_bigint::BigUint;
 use stellar_xdr::next::DecoratedSignature;
 
 use crate::account::Account;
-use crate::hashing::hash;
+use crate::hashing::Sha256Hasher;
 use crate::keypair::Keypair;
 use crate::keypair::KeypairBehavior;
 use crate::op_list::create_account::create_account;
@@ -61,14 +62,14 @@ impl TransactionBehavior for Transaction {
         let mut tx = self.tx.clone().unwrap();
         let tagged_tx = stellar_xdr::next::TransactionSignaturePayloadTaggedTransaction::Tx(tx);
         let tx_sig = stellar_xdr::next::TransactionSignaturePayload {
-            network_id: stellar_xdr::next::Hash(hash(self.network_passphrase.as_str())),
+            network_id: stellar_xdr::next::Hash(Sha256Hasher::hash(self.network_passphrase.as_str())),
             tagged_transaction: tagged_tx,
         };
         tx_sig.to_xdr(stellar_xdr::next::Limits::none()).unwrap()
     }
 
     fn hash(&self) -> [u8; 32] {
-        hash(self.signature_base())
+        Sha256Hasher::hash(self.signature_base())
     }
 
     fn sign(&mut self, keypairs: &[Keypair]) {
