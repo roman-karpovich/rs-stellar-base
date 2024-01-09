@@ -41,7 +41,7 @@ impl ClaimantBehavior for Claimant {
         let key = PublicKey::from_string(destination.unwrap());
 
         if key.is_err() {
-            return Err("accountId is invalid".into());
+            return Err("accountId is invalid");
         }
 
         let actual_predicate = match predicate {
@@ -105,7 +105,7 @@ impl ClaimantBehavior for Claimant {
 
     fn to_xdr_object(&self) -> stellar_xdr::next::Claimant {
         let claimant = stellar_xdr::next::ClaimantV0 {
-            destination: Keypair::from_public_key(&self.destination.clone().unwrap().as_str())
+            destination: Keypair::from_public_key(self.destination.clone().unwrap().as_str())
                 .unwrap()
                 .xdr_account_id(),
             predicate: self.predicate.clone(),
@@ -115,8 +115,8 @@ impl ClaimantBehavior for Claimant {
     }
 
     fn destination(&self) -> Option<String> {
-        let val = self.destination.clone();
-        val
+        
+        self.destination.clone()
     }
 
     fn set_destination(&mut self, _value: String) {

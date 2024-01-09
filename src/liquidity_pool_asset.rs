@@ -48,11 +48,7 @@ impl LiquidityPoolAssetBehavior for LiquidityPoolAsset {
     fn from_operation(ct_asset_xdr: &ChangeTrustAsset) -> Result<LiquidityPoolAsset, String> {
         match ct_asset_xdr {
             ChangeTrustAsset::PoolShare(x) => {
-                let val = match x {
-                    stellar_xdr::next::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => {
-                        x
-                    }
-                };
+                let stellar_xdr::next::LiquidityPoolParameters::LiquidityPoolConstantProduct(val) = x;
 
                 let asset_a = Asset::from_operation(val.asset_a.clone()).unwrap();
                 let asset_b = Asset::from_operation(val.asset_b.clone()).unwrap();
@@ -60,7 +56,7 @@ impl LiquidityPoolAssetBehavior for LiquidityPoolAsset {
                 Ok(LiquidityPoolAsset::new(asset_a, asset_b, fee)?)
             }
 
-            _ => Err(format!("Invalid asset type")),
+            _ => Err("Invalid asset type".to_string()),
         }
     }
 

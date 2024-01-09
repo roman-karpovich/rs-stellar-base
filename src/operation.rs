@@ -623,9 +623,7 @@ fn from_xdr_price(price: stellar_xdr::next::Price) -> String {
 }
 
 fn account_id_to_address(account_id: &AccountId) -> String {
-    let val = match account_id.0.clone() {
-        stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(x) => x,
-    };
+    let stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(val) = account_id.0.clone();
     let key: Result<PublicKey, stellar_strkey::DecodeError> =
         PublicKey::from_string(val.to_string().as_str());
 
