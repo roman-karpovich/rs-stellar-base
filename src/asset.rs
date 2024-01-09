@@ -268,8 +268,6 @@ impl AssetBehavior for Asset {
     }
 
     fn ascii_compare(a: &str, b: &str) -> i32 {
-        let a = a;
-        let b = b;
         let result = a.as_bytes().cmp(b.as_bytes());
         match result {
             Ordering::Less => -1,

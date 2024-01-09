@@ -630,7 +630,7 @@ fn account_id_to_address(account_id: &AccountId) -> String {
         PublicKey::from_string(val.to_string().as_str());
 
     if key.is_ok() {
-        return val.to_string();
+        val.to_string()
     } else {
         panic!("Invalid account");
     }
