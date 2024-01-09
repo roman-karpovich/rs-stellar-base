@@ -7,6 +7,7 @@ use num_bigint::BigUint;
 use stellar_xdr::next::DecoratedSignature;
 
 use crate::account::Account;
+use crate::account::AccountBehavior;
 use crate::hashing::hash;
 use crate::keypair::Keypair;
 use crate::op_list::create_account::create_account;

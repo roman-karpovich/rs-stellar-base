@@ -7,6 +7,7 @@ use stellar_strkey::Strkey::{self, PublicKeyEd25519};
 use stellar_xdr::next::Asset::CreditAlphanum4;
 use stellar_xdr::next::WriteXdr;
 use stellar_xdr::next::*;
+use crate::claimant::ClaimantBehavior;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Asset {
@@ -14,8 +15,30 @@ pub struct Asset {
     pub issuer: Option<String>,
 }
 
-impl Asset {
-    pub fn new(code: &str, issuer: Option<&str>) -> Result<Self, String> {
+// Define a trait for Asset behavior
+pub trait AssetBehavior {
+    fn new(code: &str, issuer: Option<&str>) -> Result<Self, String> where Self: Sized;
+    fn from_operation(asset_xdr: stellar_xdr::next::Asset) -> Result<Self, String> where Self: Sized;
+    fn to_xdr_object(&self) -> stellar_xdr::next::Asset;
+    fn to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset;
+    fn to_trust_line_xdr_object(&self) -> stellar_xdr::next::TrustLineAsset;
+    fn _to_trustline_xdr_object(&self) -> stellar_xdr::next::TrustLineAsset;
+    fn _to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset;
+    fn _to_xdr_object(&self) -> stellar_xdr::next::Asset;
+    fn ascii_compare(a: &str, b: &str) -> i32;
+    fn native() -> Self where Self: Sized;
+    fn is_native(&self) -> bool;
+    fn compare(asset_a: &Self, asset_b: &Self) -> i32 where Self: Sized;
+    fn get_asset_type(&self) -> String;
+    fn get_raw_asset_type(&self) -> Result<stellar_xdr::next::AssetType, String>;
+    fn equals(&self, asset: &Self) -> bool;
+    fn get_code(&self) -> Option<String>;
+    fn get_issuer(&self) -> Option<String>;
+    fn to_string_asset(&self) -> String;
+}
+
+impl AssetBehavior for Asset {
+    fn new(code: &str, issuer: Option<&str>) -> Result<Self, String> {
         if !Regex::new(r"^[a-zA-Z0-9]{1,12}$").unwrap().is_match(code) {
             // println!("{}", code);
             return Err(
@@ -45,7 +68,7 @@ impl Asset {
         })
     }
 
-    pub fn from_operation(asset_xdr: stellar_xdr::next::Asset) -> Result<Asset, String> {
+    fn from_operation(asset_xdr: stellar_xdr::next::Asset) -> Result<Asset, String> {
         match asset_xdr {
             stellar_xdr::next::Asset::Native => Ok(Asset::native()),
             stellar_xdr::next::Asset::CreditAlphanum4(alpha_num_4) => {
@@ -81,15 +104,15 @@ impl Asset {
         }
     }
 
-    pub fn to_xdr_object(&self) -> stellar_xdr::next::Asset {
+    fn to_xdr_object(&self) -> stellar_xdr::next::Asset {
         self._to_xdr_object()
     }
 
-    pub fn to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset {
+    fn to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset {
         self._to_change_trust_xdr_object()
     }
 
-    pub fn to_trust_line_xdr_object(&self) -> stellar_xdr::next::TrustLineAsset {
+    fn to_trust_line_xdr_object(&self) -> stellar_xdr::next::TrustLineAsset {
         self._to_trustline_xdr_object()
     }
 
@@ -247,7 +270,7 @@ impl Asset {
         }
     }
 
-    pub fn native() -> Self {
+    fn native() -> Self {
         // The native asset in Stellar is represented by the code 'XLM' with no issuer.
         Self {
             code: "XLM".to_string(),
@@ -259,7 +282,7 @@ impl Asset {
         self.issuer.is_none()
     }
 
-    pub fn compare(asset_a: &Asset, asset_b: &Asset) -> i32 {
+    fn compare(asset_a: &Asset, asset_b: &Asset) -> i32 {
         if asset_a.equals(asset_b) {
             return 0;
         }
@@ -349,6 +372,7 @@ impl ToString for Asset {
 
 #[cfg(test)]
 mod tests {
+    use crate::asset::AssetBehavior;
     use super::Asset;
     use stellar_xdr::next::{
         AccountId, AlphaNum12, AlphaNum4, AssetCode12, AssetCode4, PublicKey, Uint256, WriteXdr,

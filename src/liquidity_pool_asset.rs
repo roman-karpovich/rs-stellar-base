@@ -1,7 +1,9 @@
+use crate::get_liquidity_pool::LiquidityPoolBehavior;
 use stellar_xdr::next::{ChangeTrustAsset, LiquidityPoolConstantProductParameters, LiquidityPoolParameters};
 
-use crate::{asset::Asset, get_liquidity_pool::get_liquidity_pool_id};
-
+use crate::get_liquidity_pool::LiquidityPool;
+use crate::asset::Asset;
+use crate::asset::AssetBehavior;
 const LIQUIDITY_POOL_FEE_V18: i32 = 30;
 #[derive(Debug)]
 pub struct LiquidityPoolAsset {
@@ -90,7 +92,7 @@ impl LiquidityPoolAssetBehavior for LiquidityPoolAsset {
     }
 
     fn to_string(&self) -> String {
-        let pool_id = get_liquidity_pool_id(
+        let pool_id = LiquidityPool::get_liquidity_pool_id(
             "constant_product",
             self.get_liquidity_pool_parameters().clone()
         ).unwrap();

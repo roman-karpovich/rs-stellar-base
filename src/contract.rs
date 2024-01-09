@@ -14,6 +14,7 @@ pub trait ContractBehavior {
     fn call(&self, method: &str) -> stellar_xdr::next::Operation;
 }
 
+
 // Implement the trait for the Contracts struct
 impl ContractBehavior for Contracts {
     fn new(contract_id: &str) -> Self {

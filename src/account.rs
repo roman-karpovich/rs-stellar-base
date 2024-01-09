@@ -3,20 +3,12 @@
 //! `Account` represents a single account in the Stellar network and its sequence
 //! number. `Account` tracks the sequence number as it is used by `TransactionBuilder`.
 //!
-//! # Examples
-//!
-//! ```
-//! use stellar_baselib::account::Account;
-//!
-//! let account = Account::new(
-//!     "GB3KJPLFUYN5VL6R3GU3EGCGVCKFDSD7BEDX42HWG5BWFKB3KQGJJRMA",
-//!     "123456789",
-//! );
-//! ```
 use num_bigint::BigUint;
-use std::ops::AddAssign;
+use std::{ops::AddAssign, error::Error};
 use std::str::FromStr;
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
+use crate::asset::AssetBehavior;
+
 
 #[derive(Debug, Clone)]
 pub struct Account {
@@ -24,9 +16,17 @@ pub struct Account {
     sequence: BigUint,
 }
 
-impl Account {
+// Define a trait for Account behavior
+pub trait AccountBehavior {
+    fn new(account_id: &str, sequence: &str) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn account_id(&self) -> &str;
+    fn sequence_number(&self) -> String;
+    fn increment_sequence_number(&mut self);
+}
+
+impl AccountBehavior for Account {
     /// Creates a new Account
-    pub fn new(account_id: &str, sequence: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    fn new(account_id: &str, sequence: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let muxed_key = MuxedAccount::from_string(account_id);
 
         if muxed_key.is_ok() {
@@ -47,17 +47,17 @@ impl Account {
     }
 
     /// Returns the account identifier
-    pub fn account_id(&self) -> &str {
+    fn account_id(&self) -> &str {
         &self.account_id
     }
 
     /// Returns the sequence number
-    pub fn sequence_number(&self) -> String {
+    fn sequence_number(&self) -> String {
         self.sequence.to_string()
     }
 
     /// Increments the sequence number
-    pub fn increment_sequence_number(&mut self) {
+    fn increment_sequence_number(&mut self) {
         self.sequence.add_assign(BigUint::from(1_u32));
     }
 }

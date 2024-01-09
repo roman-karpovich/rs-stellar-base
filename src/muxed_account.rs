@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    account::Account,
+    account::{Account, AccountBehavior},
     utils::decode_encode_muxed_account::{
         decode_address_to_muxed_account, encode_muxed_account, encode_muxed_account_to_address,
         extract_base_address,

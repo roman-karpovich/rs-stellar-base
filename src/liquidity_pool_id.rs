@@ -1,6 +1,7 @@
 use regex::Regex;
 use stellar_xdr::next::{TrustLineAsset, PoolId, ReadXdr, Hash};
 use std::{error::Error, str::FromStr};
+use crate::asset::AssetBehavior;
 
 #[derive(Debug, PartialEq)]
 pub struct LiquidityPoolId {

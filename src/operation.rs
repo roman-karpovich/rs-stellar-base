@@ -19,6 +19,8 @@ use crate::asset::Asset;
 use crate::claimant::Claimant;
 use crate::liquidity_pool_asset::LiquidityPoolAsset;
 use crate::utils::decode_encode_muxed_account::{decode_address_to_muxed_account, encode_muxed_account_to_address};
+use crate::asset::AssetBehavior;
+use crate::claimant::ClaimantBehavior;
 
 const ONE: i32 = 10_000_000;
 const MAX_INT64: &str = "9223372036854775807";
