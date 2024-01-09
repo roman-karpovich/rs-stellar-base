@@ -3,12 +3,11 @@
 //! `Account` represents a single account in the Stellar network and its sequence
 //! number. `Account` tracks the sequence number as it is used by `TransactionBuilder`.
 //!
-use num_bigint::BigUint;
-use std::{ops::AddAssign, error::Error};
-use std::str::FromStr;
-use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 use crate::asset::AssetBehavior;
-
+use num_bigint::BigUint;
+use std::str::FromStr;
+use std::{error::Error, ops::AddAssign};
+use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 
 #[derive(Debug, Clone)]
 pub struct Account {
@@ -18,7 +17,9 @@ pub struct Account {
 
 // Define a trait for Account behavior
 pub trait AccountBehavior {
-    fn new(account_id: &str, sequence: &str) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn new(account_id: &str, sequence: &str) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
     fn account_id(&self) -> &str;
     fn sequence_number(&self) -> String;
     fn increment_sequence_number(&mut self);

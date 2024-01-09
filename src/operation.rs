@@ -1,26 +1,28 @@
 //! Operations are individual commands that modify the ledger.
+use crate::liquidity_pool_asset::LiquidityPoolAssetBehavior;
 use hex_literal::hex;
 use num_bigint::BigInt;
+use num_bigint::BigUint;
 use num_rational::Rational32;
 use num_traits::identities::One;
+use num_traits::ToPrimitive;
 use num_traits::{FromPrimitive, Num, Signed, Zero};
-use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
-use stellar_xdr::curr::ClaimableBalanceFlags;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::str::FromStr;
+use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
+use stellar_xdr::curr::ClaimableBalanceFlags;
 use stellar_xdr::next::Type::Int64;
-use stellar_xdr::next::{WriteXdr, AccountId, TrustLineFlags, HostFunction, SignerKeyType};
-use num_bigint::BigUint;
-use num_traits::ToPrimitive;
-use crate::liquidity_pool_asset::LiquidityPoolAssetBehavior;
+use stellar_xdr::next::{AccountId, HostFunction, SignerKeyType, TrustLineFlags, WriteXdr};
 
 use crate::asset::Asset;
-use crate::claimant::Claimant;
-use crate::liquidity_pool_asset::LiquidityPoolAsset;
-use crate::utils::decode_encode_muxed_account::{decode_address_to_muxed_account, encode_muxed_account_to_address};
 use crate::asset::AssetBehavior;
+use crate::claimant::Claimant;
 use crate::claimant::ClaimantBehavior;
+use crate::liquidity_pool_asset::LiquidityPoolAsset;
+use crate::utils::decode_encode_muxed_account::{
+    decode_address_to_muxed_account, encode_muxed_account_to_address,
+};
 
 const ONE: i32 = 10_000_000;
 const MAX_INT64: &str = "9223372036854775807";
@@ -45,7 +47,7 @@ pub enum Value {
     Multiple(Vec<String>),
     MultipleClaimant(Vec<Claimant>),
     MultipleFlag(HashMap<String, Option<bool>>),
-    MultipleAuth(Vec<stellar_xdr::next::SorobanAuthorizationEntry>)
+    MultipleAuth(Vec<stellar_xdr::next::SorobanAuthorizationEntry>),
 }
 
 pub struct Opts {
@@ -54,8 +56,14 @@ pub struct Opts {
 
 pub trait OperationBehavior {
     fn set_source_account(op_attributes: &mut OpAttributes, opts: &Opts);
-    fn from_xdr_object(operation: stellar_xdr::next::Operation) -> Result<HashMap<String, Value>, &'static str>;
-    fn check_unsigned_int_value<F>(name: &str, value: &Option<String>, is_valid_function: Option<F>) -> Result<Option<u32>, String> 
+    fn from_xdr_object(
+        operation: stellar_xdr::next::Operation,
+    ) -> Result<HashMap<String, Value>, &'static str>;
+    fn check_unsigned_int_value<F>(
+        name: &str,
+        value: &Option<String>,
+        is_valid_function: Option<F>,
+    ) -> Result<Option<u32>, String>
     where
         F: Fn(u32, &str) -> bool;
 }
@@ -70,165 +78,360 @@ impl OperationBehavior for Operation {
         }
     }
 
-    fn from_xdr_object(operation: stellar_xdr::next::Operation) -> Result<HashMap<String, Value>, &'static str> {
+    fn from_xdr_object(
+        operation: stellar_xdr::next::Operation,
+    ) -> Result<HashMap<String, Value>, &'static str> {
         let mut result: HashMap<String, Value> = HashMap::new();
-    
-        if let Some(source_account) = operation.source_account {
-            result.insert("source".to_string(), Value::Single(encode_muxed_account_to_address(&source_account)));
-        }
 
+        if let Some(source_account) = operation.source_account {
+            result.insert(
+                "source".to_string(),
+                Value::Single(encode_muxed_account_to_address(&source_account)),
+            );
+        }
 
         match operation.body {
             stellar_xdr::next::OperationBody::CreateAccount(x) => {
-                result.insert("type".to_string(), Value::Single("createAccount".to_string()));
-                result.insert("destination".to_string(), Value::Single(account_id_to_address(&x.destination)));
-                result.insert("startingBalance".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.starting_balance as u64)).to_string()));
-            },
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("createAccount".to_string()),
+                );
+                result.insert(
+                    "destination".to_string(),
+                    Value::Single(account_id_to_address(&x.destination)),
+                );
+                result.insert(
+                    "startingBalance".to_string(),
+                    Value::Single(
+                        from_xdr_amount(BigUint::from(x.starting_balance as u64)).to_string(),
+                    ),
+                );
+            }
             stellar_xdr::next::OperationBody::Payment(x) => {
                 result.insert("type".to_string(), Value::Single("payment".to_string()));
-                result.insert("destination".to_string(), Value::Single(encode_muxed_account_to_address(&x.destination)));
-                result.insert("asset".to_string(), Value::Single(Asset::from_operation(x.asset).unwrap().to_string()));
-                result.insert("amount".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.amount as u64)).to_string()));
-            },
+                result.insert(
+                    "destination".to_string(),
+                    Value::Single(encode_muxed_account_to_address(&x.destination)),
+                );
+                result.insert(
+                    "asset".to_string(),
+                    Value::Single(Asset::from_operation(x.asset).unwrap().to_string()),
+                );
+                result.insert(
+                    "amount".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.amount as u64)).to_string()),
+                );
+            }
             stellar_xdr::next::OperationBody::PathPaymentStrictReceive(x) => {
-                result.insert("type".to_string() ,Value::Single("pathPaymentStrictReceive".to_string()));
-                result.insert("sendAsset".to_string(), Value::Single(Asset::from_operation(x.send_asset).unwrap().to_string()));
-                result.insert("sendMax".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.send_max as u64)).to_string()));
-                result.insert("destination".to_string(), Value::Single(encode_muxed_account_to_address(&x.destination)));
-                result.insert("destAsset".to_string(), Value::Single(Asset::from_operation(x.dest_asset).unwrap().to_string()));
-                result.insert("destAmount".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.dest_amount as u64)).to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("pathPaymentStrictReceive".to_string()),
+                );
+                result.insert(
+                    "sendAsset".to_string(),
+                    Value::Single(Asset::from_operation(x.send_asset).unwrap().to_string()),
+                );
+                result.insert(
+                    "sendMax".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.send_max as u64)).to_string()),
+                );
+                result.insert(
+                    "destination".to_string(),
+                    Value::Single(encode_muxed_account_to_address(&x.destination)),
+                );
+                result.insert(
+                    "destAsset".to_string(),
+                    Value::Single(Asset::from_operation(x.dest_asset).unwrap().to_string()),
+                );
+                result.insert(
+                    "destAmount".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.dest_amount as u64)).to_string()),
+                );
                 let mut path_vec = Vec::new();
                 for path_key in x.path.iter() {
                     path_vec.push(Asset::from_operation(path_key.clone()).unwrap().to_string());
                 }
                 result.insert("path".to_string(), Value::Multiple(path_vec));
-            },
+            }
             stellar_xdr::next::OperationBody::ManageSellOffer(x) => {
-                result.insert("type".to_string(), Value::Single("manageSellOffer".to_string()));
-                result.insert("selling".to_string(), Value::Single(Asset::from_operation(x.selling).unwrap().to_string()));
-                result.insert("buying".to_string(), Value::Single(Asset::from_operation(x.buying).unwrap().to_string()));
-                result.insert("amount".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.amount as u64)).to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("manageSellOffer".to_string()),
+                );
+                result.insert(
+                    "selling".to_string(),
+                    Value::Single(Asset::from_operation(x.selling).unwrap().to_string()),
+                );
+                result.insert(
+                    "buying".to_string(),
+                    Value::Single(Asset::from_operation(x.buying).unwrap().to_string()),
+                );
+                result.insert(
+                    "amount".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.amount as u64)).to_string()),
+                );
                 result.insert("price".to_string(), Value::Single(from_xdr_price(x.price)));
                 result.insert("offerId".to_string(), Value::Single(x.offer_id.to_string()));
-            },
+            }
             stellar_xdr::next::OperationBody::CreatePassiveSellOffer(x) => {
-                result.insert("type".to_string(), Value::Single("createPassiveSellOffer".to_string()));
-                result.insert("selling".to_string(), Value::Single(Asset::from_operation(x.selling).unwrap().to_string()));
-                result.insert("buying".to_string(), Value::Single(Asset::from_operation(x.buying).unwrap().to_string()));
-                result.insert("amount".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.amount as u64)).to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("createPassiveSellOffer".to_string()),
+                );
+                result.insert(
+                    "selling".to_string(),
+                    Value::Single(Asset::from_operation(x.selling).unwrap().to_string()),
+                );
+                result.insert(
+                    "buying".to_string(),
+                    Value::Single(Asset::from_operation(x.buying).unwrap().to_string()),
+                );
+                result.insert(
+                    "amount".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.amount as u64)).to_string()),
+                );
                 result.insert("price".to_string(), Value::Single(from_xdr_price(x.price)));
-
-            },
+            }
             stellar_xdr::next::OperationBody::SetOptions(_) => todo!(),
-            stellar_xdr::next::OperationBody::ChangeTrust(x) =>{
+            stellar_xdr::next::OperationBody::ChangeTrust(x) => {
                 result.insert("type".to_string(), Value::Single("changeTrust".to_string()));
                 match x.line {
                     stellar_xdr::next::ChangeTrustAsset::Native => {
-                        result.insert("line".to_string(), Value::Single(Asset::native().to_string()));
-                    },
+                        result.insert(
+                            "line".to_string(),
+                            Value::Single(Asset::native().to_string()),
+                        );
+                    }
                     stellar_xdr::next::ChangeTrustAsset::CreditAlphanum4(x) => {
-                        result.insert("line".to_string(), Value::Single(LiquidityPoolAsset::from_operation( &stellar_xdr::next::ChangeTrustAsset::CreditAlphanum4(x)).unwrap().to_string()));
-                    },
+                        result.insert(
+                            "line".to_string(),
+                            Value::Single(
+                                LiquidityPoolAsset::from_operation(
+                                    &stellar_xdr::next::ChangeTrustAsset::CreditAlphanum4(x),
+                                )
+                                .unwrap()
+                                .to_string(),
+                            ),
+                        );
+                    }
                     stellar_xdr::next::ChangeTrustAsset::CreditAlphanum12(x) => {
-                        result.insert("line".to_string(), Value::Single(LiquidityPoolAsset::from_operation( &stellar_xdr::next::ChangeTrustAsset::CreditAlphanum12(x)).unwrap().to_string()));
-                    },
+                        result.insert(
+                            "line".to_string(),
+                            Value::Single(
+                                LiquidityPoolAsset::from_operation(
+                                    &stellar_xdr::next::ChangeTrustAsset::CreditAlphanum12(x),
+                                )
+                                .unwrap()
+                                .to_string(),
+                            ),
+                        );
+                    }
                     stellar_xdr::next::ChangeTrustAsset::PoolShare(x) => {
-                        result.insert("line".to_string(), Value::Single(LiquidityPoolAsset::from_operation(&stellar_xdr::next::ChangeTrustAsset::PoolShare(x) ).unwrap().to_string()));
-                    },
-                
+                        result.insert(
+                            "line".to_string(),
+                            Value::Single(
+                                LiquidityPoolAsset::from_operation(
+                                    &stellar_xdr::next::ChangeTrustAsset::PoolShare(x),
+                                )
+                                .unwrap()
+                                .to_string(),
+                            ),
+                        );
+                    }
                 }
-                result.insert("limit".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.limit as u64)).to_string()));
-            },
+                result.insert(
+                    "limit".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.limit as u64)).to_string()),
+                );
+            }
             stellar_xdr::next::OperationBody::AllowTrust(x) => {
                 result.insert("type".to_string(), Value::Single("allowTrust".to_string()));
-                result.insert("trustor".to_string(), Value::Single(account_id_to_address(&x.trustor)));
+                result.insert(
+                    "trustor".to_string(),
+                    Value::Single(account_id_to_address(&x.trustor)),
+                );
                 let asset_code = match x.asset {
-                    stellar_xdr::next::AssetCode::CreditAlphanum4(x) => x.to_string().trim_end_matches('\0').to_string(),
-                    stellar_xdr::next::AssetCode::CreditAlphanum12(x) => x.to_string().trim_end_matches('\0').to_string(),
+                    stellar_xdr::next::AssetCode::CreditAlphanum4(x) => {
+                        x.to_string().trim_end_matches('\0').to_string()
+                    }
+                    stellar_xdr::next::AssetCode::CreditAlphanum12(x) => {
+                        x.to_string().trim_end_matches('\0').to_string()
+                    }
                 };
                 result.insert("assetCode".to_string(), Value::Single(asset_code));
-                result.insert("authorize".to_string(), Value::Single(x.authorize.to_string()));
-            },
+                result.insert(
+                    "authorize".to_string(),
+                    Value::Single(x.authorize.to_string()),
+                );
+            }
             stellar_xdr::next::OperationBody::AccountMerge(_) => todo!(),
             stellar_xdr::next::OperationBody::Inflation => {
                 result.insert("type".to_string(), Value::Single("inflation".to_string()));
-            },
+            }
             stellar_xdr::next::OperationBody::ManageData(x) => {
                 result.insert("type".to_string(), Value::Single("manageData".to_string()));
                 let data_name = x.data_name.to_string().trim_end_matches('\0').to_string();
                 result.insert("name".to_string(), Value::Single(data_name));
-                result.insert("value".to_string(), Value::Single(x.data_value.unwrap().0.to_string().unwrap()));
-            },
+                result.insert(
+                    "value".to_string(),
+                    Value::Single(x.data_value.unwrap().0.to_string().unwrap()),
+                );
+            }
             stellar_xdr::next::OperationBody::BumpSequence(x) => {
-                result.insert("type".to_string(), Value::Single("bumpSequence".to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("bumpSequence".to_string()),
+                );
                 result.insert("bumpTo".to_string(), Value::Single(x.bump_to.0.to_string()));
-            },
+            }
             stellar_xdr::next::OperationBody::ManageBuyOffer(x) => {
-                result.insert("type".to_string(), Value::Single("manageBuyOffer".to_string()));
-                result.insert("selling".to_string(), Value::Single(Asset::from_operation(x.buying).unwrap().to_string()));
-                result.insert("buying".to_string(), Value::Single(Asset::from_operation(x.selling).unwrap().to_string()));
-                result.insert("amount".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.buy_amount as u64)).to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("manageBuyOffer".to_string()),
+                );
+                result.insert(
+                    "selling".to_string(),
+                    Value::Single(Asset::from_operation(x.buying).unwrap().to_string()),
+                );
+                result.insert(
+                    "buying".to_string(),
+                    Value::Single(Asset::from_operation(x.selling).unwrap().to_string()),
+                );
+                result.insert(
+                    "amount".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.buy_amount as u64)).to_string()),
+                );
                 result.insert("price".to_string(), Value::Single(from_xdr_price(x.price)));
                 result.insert("offerId".to_string(), Value::Single(x.offer_id.to_string()));
-            },
+            }
             stellar_xdr::next::OperationBody::PathPaymentStrictSend(x) => {
-                result.insert("type".to_string(), Value::Single("pathPaymentStrictSend".to_string()));
-                result.insert("sendAsset".to_string(), Value::Single(Asset::from_operation(x.send_asset).unwrap().to_string()));
-                result.insert("sendAmount".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.send_amount as u64)).to_string()));
-                result.insert("destination".to_string(), Value::Single(encode_muxed_account_to_address(&x.destination)));
-                result.insert("destAsset".to_string(), Value::Single(Asset::from_operation(x.dest_asset).unwrap().to_string()));
-                result.insert("destMin".to_string(), Value::Single(from_xdr_amount(BigUint::from(x.dest_min as u64)).to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("pathPaymentStrictSend".to_string()),
+                );
+                result.insert(
+                    "sendAsset".to_string(),
+                    Value::Single(Asset::from_operation(x.send_asset).unwrap().to_string()),
+                );
+                result.insert(
+                    "sendAmount".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.send_amount as u64)).to_string()),
+                );
+                result.insert(
+                    "destination".to_string(),
+                    Value::Single(encode_muxed_account_to_address(&x.destination)),
+                );
+                result.insert(
+                    "destAsset".to_string(),
+                    Value::Single(Asset::from_operation(x.dest_asset).unwrap().to_string()),
+                );
+                result.insert(
+                    "destMin".to_string(),
+                    Value::Single(from_xdr_amount(BigUint::from(x.dest_min as u64)).to_string()),
+                );
                 let mut path_vec = Vec::new();
                 for path_key in x.path.iter() {
                     path_vec.push(Asset::from_operation(path_key.clone()).unwrap().to_string());
                 }
                 result.insert("path".to_string(), Value::Multiple(path_vec));
-            },
+            }
             stellar_xdr::next::OperationBody::CreateClaimableBalance(x) => {
-                result.insert("type".to_string(), Value::Single("createClaimableBalance".to_string()));
-                result.insert("asset".to_string(), Value::Single(Asset::from_operation(x.asset).unwrap().to_string()));
-                result.insert("amount".to_string(), Value::Single(from_xdr_amount((x.amount as u64).into()).to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("createClaimableBalance".to_string()),
+                );
+                result.insert(
+                    "asset".to_string(),
+                    Value::Single(Asset::from_operation(x.asset).unwrap().to_string()),
+                );
+                result.insert(
+                    "amount".to_string(),
+                    Value::Single(from_xdr_amount((x.amount as u64).into()).to_string()),
+                );
                 let mut claimants = Vec::new();
                 for val in x.claimants.iter() {
                     claimants.push(Claimant::from_xdr(val.clone()).unwrap());
                 }
                 result.insert("claimants".to_string(), Value::MultipleClaimant(claimants));
-            },
+            }
             stellar_xdr::next::OperationBody::ClaimClaimableBalance(x) => {
-                result.insert("type".to_string(), Value::Single("claimClaimableBalance".to_string()));
-                result.insert("balanceId".to_string(), Value::Single(String::from_utf8(x.to_xdr(stellar_xdr::next::Limits::none()).unwrap()).unwrap()));
-            },
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("claimClaimableBalance".to_string()),
+                );
+                result.insert(
+                    "balanceId".to_string(),
+                    Value::Single(
+                        String::from_utf8(x.to_xdr(stellar_xdr::next::Limits::none()).unwrap())
+                            .unwrap(),
+                    ),
+                );
+            }
             stellar_xdr::next::OperationBody::BeginSponsoringFutureReserves(x) => {
-                result.insert("type".to_string(), Value::Single("beginSponsoringFutureReserves".to_string()));
-                result.insert("sponsoredId".to_string(), Value::Single(account_id_to_address(&x.sponsored_id)));
-            },
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("beginSponsoringFutureReserves".to_string()),
+                );
+                result.insert(
+                    "sponsoredId".to_string(),
+                    Value::Single(account_id_to_address(&x.sponsored_id)),
+                );
+            }
             stellar_xdr::next::OperationBody::EndSponsoringFutureReserves => {
-                result.insert("type".to_string(), Value::Single("endSponsoringFutureReserves".to_string()));
-            },
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("endSponsoringFutureReserves".to_string()),
+                );
+            }
             stellar_xdr::next::OperationBody::RevokeSponsorship(x) => {
-                result.insert("type".to_string(), Value::Single("revokeSponsorship".to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("revokeSponsorship".to_string()),
+                );
                 // result.insert("account".to_string(), Value::Single(x..to_string()));
-            },
+            }
             stellar_xdr::next::OperationBody::Clawback(_) => todo!(),
             stellar_xdr::next::OperationBody::ClawbackClaimableBalance(_) => todo!(),
             stellar_xdr::next::OperationBody::SetTrustLineFlags(x) => {
-                result.insert("type".to_string(), Value::Single("setTrustlineFlags".to_string()));
-                result.insert("trustor".to_string(), Value::Single(account_id_to_address(&x.trustor)));
-                result.insert("asset".to_string(), Value::Single(Asset::from_operation(x.asset).unwrap().to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("setTrustlineFlags".to_string()),
+                );
+                result.insert(
+                    "trustor".to_string(),
+                    Value::Single(account_id_to_address(&x.trustor)),
+                );
+                result.insert(
+                    "asset".to_string(),
+                    Value::Single(Asset::from_operation(x.asset).unwrap().to_string()),
+                );
                 // result.insert("flags".to_string(), Value::Single(attrs.flags().to_string()));
                 let clear = x.clear_flags;
                 let set = x.set_flags;
 
                 let mut mapping = HashMap::new();
-                mapping.insert("authorized", stellar_xdr::next::TrustLineFlags::AuthorizedFlag);
-                mapping.insert("authorizedToMaintainLiabilities", stellar_xdr::next::TrustLineFlags::AuthorizedToMaintainLiabilitiesFlag);
-                mapping.insert("clawbackEnabled", stellar_xdr::next::TrustLineFlags::TrustlineClawbackEnabledFlag);
+                mapping.insert(
+                    "authorized",
+                    stellar_xdr::next::TrustLineFlags::AuthorizedFlag,
+                );
+                mapping.insert(
+                    "authorizedToMaintainLiabilities",
+                    stellar_xdr::next::TrustLineFlags::AuthorizedToMaintainLiabilitiesFlag,
+                );
+                mapping.insert(
+                    "clawbackEnabled",
+                    stellar_xdr::next::TrustLineFlags::TrustlineClawbackEnabledFlag,
+                );
 
-                let get_flag_value = |key: &str, sets: u32, clears: u32, mapping: &std::collections::HashMap<&str, TrustLineFlags>| -> Option<bool> {
+                let get_flag_value = |key: &str,
+                                      sets: u32,
+                                      clears: u32,
+                                      mapping: &std::collections::HashMap<&str, TrustLineFlags>|
+                 -> Option<bool> {
                     if let Some(flag) = mapping.get(key) {
-                     let bit = match flag {
+                        let bit = match flag {
                             TrustLineFlags::AuthorizedFlag => 1,
-                            TrustLineFlags::AuthorizedToMaintainLiabilitiesFlag =>2 ,
+                            TrustLineFlags::AuthorizedToMaintainLiabilitiesFlag => 2,
                             TrustLineFlags::TrustlineClawbackEnabledFlag => 4,
                         };
 
@@ -243,57 +446,103 @@ impl OperationBehavior for Operation {
                         None
                     }
                 };
-                
+
                 let mut flags: HashMap<String, Option<bool>> = HashMap::new();
                 for flag_name in mapping.keys() {
-                    flags.insert(flag_name.to_string(), get_flag_value(flag_name, set, clear, &mapping));
+                    flags.insert(
+                        flag_name.to_string(),
+                        get_flag_value(flag_name, set, clear, &mapping),
+                    );
                 }
                 result.insert("flags".to_string(), Value::MultipleFlag(flags));
-
-            },
+            }
             stellar_xdr::next::OperationBody::LiquidityPoolDeposit(x) => {
-                result.insert("type".to_string(), Value::Single("liquidityPoolDeposit".to_string()));
-                result.insert("liquidityPoolId".to_string(), Value::Single(x.liquidity_pool_id.0.to_string()));
-                result.insert("maxAmountA".to_string(), Value::Single(from_xdr_amount((x.max_amount_a as u64).into()).to_string()));
-                result.insert("maxAmountB".to_string(), Value::Single(from_xdr_amount((x.max_amount_b as u64).into()).to_string()));
-                result.insert("minPrice".to_string(), Value::Single(from_xdr_price(x.min_price)));
-                result.insert("maxPrice".to_string(), Value::Single(from_xdr_price(x.max_price)));
-            },
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("liquidityPoolDeposit".to_string()),
+                );
+                result.insert(
+                    "liquidityPoolId".to_string(),
+                    Value::Single(x.liquidity_pool_id.0.to_string()),
+                );
+                result.insert(
+                    "maxAmountA".to_string(),
+                    Value::Single(from_xdr_amount((x.max_amount_a as u64).into()).to_string()),
+                );
+                result.insert(
+                    "maxAmountB".to_string(),
+                    Value::Single(from_xdr_amount((x.max_amount_b as u64).into()).to_string()),
+                );
+                result.insert(
+                    "minPrice".to_string(),
+                    Value::Single(from_xdr_price(x.min_price)),
+                );
+                result.insert(
+                    "maxPrice".to_string(),
+                    Value::Single(from_xdr_price(x.max_price)),
+                );
+            }
             stellar_xdr::next::OperationBody::LiquidityPoolWithdraw(x) => {
-                result.insert("type".to_string(), Value::Single("liquidityPoolWithdraw".to_string()));
-                result.insert("liquidityPoolId".to_string(), Value::Single(x.liquidity_pool_id.0.to_string()));
-                result.insert("amount".to_string(), Value::Single(from_xdr_amount((x.amount as u64).into()).to_string()));
-                result.insert("minAmountA".to_string(), Value::Single(from_xdr_amount((x.min_amount_a as u64).into()).to_string()));
-                result.insert("minAmountB".to_string(), Value::Single(from_xdr_amount((x.min_amount_b as u64).into()).to_string()));
-            },
-            stellar_xdr::next::OperationBody::InvokeHostFunction(x) =>{
-                result.insert("type".to_string(), Value::Single("invokeHostFunction".to_string()));
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("liquidityPoolWithdraw".to_string()),
+                );
+                result.insert(
+                    "liquidityPoolId".to_string(),
+                    Value::Single(x.liquidity_pool_id.0.to_string()),
+                );
+                result.insert(
+                    "amount".to_string(),
+                    Value::Single(from_xdr_amount((x.amount as u64).into()).to_string()),
+                );
+                result.insert(
+                    "minAmountA".to_string(),
+                    Value::Single(from_xdr_amount((x.min_amount_a as u64).into()).to_string()),
+                );
+                result.insert(
+                    "minAmountB".to_string(),
+                    Value::Single(from_xdr_amount((x.min_amount_b as u64).into()).to_string()),
+                );
+            }
+            stellar_xdr::next::OperationBody::InvokeHostFunction(x) => {
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("invokeHostFunction".to_string()),
+                );
                 result.insert("func".to_string(), Value::Single2(x.host_function));
                 result.insert("auths".to_string(), Value::MultipleAuth(x.auth.to_vec()));
-            },
+            }
             // stellar_xdr::next::OperationBody::BumpFootprintExpiration(x) => {
             //     result.insert("type".to_string(), Value::Single("bumpFootprintExpiration".to_string()));
             //     result.insert("ledgersToExpire ".to_string(), Value::Single(x.ledgers_to_expire.to_string()));
 
             // },
             stellar_xdr::next::OperationBody::RestoreFootprint(x) => {
-                result.insert("type".to_string(), Value::Single("restoreFootprint".to_string()));
-
-            },
+                result.insert(
+                    "type".to_string(),
+                    Value::Single("restoreFootprint".to_string()),
+                );
+            }
             stellar_xdr::next::OperationBody::ExtendFootprintTtl(_) => todo!(),
         }
-        
+
         Ok(result)
     }
 
-    fn check_unsigned_int_value<F>(name: &str, value: &Option<String>, is_valid_function: Option<F>) -> Result<Option<u32>, String> 
+    fn check_unsigned_int_value<F>(
+        name: &str,
+        value: &Option<String>,
+        is_valid_function: Option<F>,
+    ) -> Result<Option<u32>, String>
     where
-        F: Fn(u32, &str) -> bool
+        F: Fn(u32, &str) -> bool,
     {
         match value {
             Some(v) => {
-                let parsed_value: f64 = v.parse().map_err(|_| format!("{} value is invalid", name))?;
-                
+                let parsed_value: f64 = v
+                    .parse()
+                    .map_err(|_| format!("{} value is invalid", name))?;
+
                 match parsed_value {
                     value if value.is_finite() && value.fract() == 0.0 && value >= 0.0 => {
                         let as_u32: u32 = value as u32;
@@ -306,10 +555,10 @@ impl OperationBehavior for Operation {
                         } else {
                             Ok(Some(as_u32))
                         }
-                    },
+                    }
                     _ => Err(format!("{} value is invalid", name)),
                 }
-            },
+            }
             None => Ok(None),
         }
     }
@@ -357,13 +606,10 @@ pub fn to_xdr_amount(value: &str) -> Result<stellar_xdr::next::Int64, Box<dyn st
     Ok(xdr_int64)
 }
 
-
-
 pub fn from_xdr_amount(value: BigUint) -> f64 {
     // Convert the value to f64, divide by ONE, and keep up to 7 decimal places
     round_to((value.to_f64().unwrap() / ONE as f64), 7)
 }
-
 
 // Utility function to round an f64 to a specific number of decimal places
 pub fn round_to(value: f64, decimal_places: u32) -> f64 {
@@ -377,11 +623,11 @@ fn from_xdr_price(price: stellar_xdr::next::Price) -> String {
 }
 
 fn account_id_to_address(account_id: &AccountId) -> String {
-
     let val = match account_id.0.clone() {
         stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(x) => x,
     };
-    let key: Result<PublicKey, stellar_strkey::DecodeError> = PublicKey::from_string(val.to_string().as_str());
+    let key: Result<PublicKey, stellar_strkey::DecodeError> =
+        PublicKey::from_string(val.to_string().as_str());
 
     if key.is_ok() {
         return val.to_string();
@@ -393,26 +639,35 @@ fn account_id_to_address(account_id: &AccountId) -> String {
 fn convert_xdr_signer_key_to_object(signer_key: &SignerKeyType) -> Result<SignerKeyAttrs, String> {
     match signer_key {
         SignerKeyType::Ed25519 => {
-            let ed25519_public_key = PublicKey::from_string(signer_key.to_string().as_str()).unwrap().to_string();
+            let ed25519_public_key = PublicKey::from_string(signer_key.to_string().as_str())
+                .unwrap()
+                .to_string();
             Ok(SignerKeyAttrs::Ed25519PublicKey(ed25519_public_key))
-        },
-        SignerKeyType::PreAuthTx => {
-            Ok(SignerKeyAttrs::PreAuthTx(signer_key.to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap()))
-        },
-        SignerKeyType::HashX => {
-            Ok(SignerKeyAttrs::Sha256Hash(signer_key.to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap()))
-        },
-        _  => panic!("Invalid Type"),
-       
+        }
+        SignerKeyType::PreAuthTx => Ok(SignerKeyAttrs::PreAuthTx(
+            signer_key
+                .to_xdr_base64(stellar_xdr::next::Limits::none())
+                .unwrap(),
+        )),
+        SignerKeyType::HashX => Ok(SignerKeyAttrs::Sha256Hash(
+            signer_key
+                .to_xdr_base64(stellar_xdr::next::Limits::none())
+                .unwrap(),
+        )),
+        _ => panic!("Invalid Type"),
     }
 }
 
 #[cfg(test)]
 mod tests {
 
-    use stellar_xdr::next::{Int64, Operation, OperationBody, ReadXdr};
+    use crate::{
+        account::Account,
+        keypair::{self, Keypair},
+        op_list::create_account::create_account,
+    };
     use keypair::KeypairBehavior;
-    use crate::{account::Account, keypair::{Keypair, self}, op_list::create_account::create_account};
+    use stellar_xdr::next::{Int64, Operation, OperationBody, ReadXdr};
 
     use super::*;
 
@@ -426,8 +681,10 @@ mod tests {
 
         let op = create_account(destination.clone(), starting_balance).unwrap();
 
-        let op = Operation::to_xdr(&op,stellar_xdr::next::Limits::none()).unwrap();
-        let op_from = Operation::from_xdr(op.as_slice(), stellar_xdr::next::Limits::none()).unwrap().body;
+        let op = Operation::to_xdr(&op, stellar_xdr::next::Limits::none()).unwrap();
+        let op_from = Operation::from_xdr(op.as_slice(), stellar_xdr::next::Limits::none())
+            .unwrap()
+            .body;
 
         if let OperationBody::CreateAccount(op) = &op_from {
             assert_eq!(op.starting_balance, 1000);

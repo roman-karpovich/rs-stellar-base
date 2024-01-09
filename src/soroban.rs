@@ -1,4 +1,3 @@
-
 pub struct Soroban;
 
 // Define a trait for Soroban behavior
@@ -8,7 +7,6 @@ pub trait SorobanBehavior {
 }
 
 impl SorobanBehavior for Soroban {
-   
     fn format_token_amount(amount: &str, decimals: usize) -> String {
         let mut formatted = amount.to_string();
 
@@ -18,7 +16,21 @@ impl SorobanBehavior for Soroban {
 
         if decimals > 0 {
             if decimals > formatted.len() {
-                formatted = format!("0.{}", formatted.chars().collect::<String>().chars().rev().collect::<String>().chars().take(decimals).collect::<String>().chars().rev().collect::<String>());
+                formatted = format!(
+                    "0.{}",
+                    formatted
+                        .chars()
+                        .collect::<String>()
+                        .chars()
+                        .rev()
+                        .collect::<String>()
+                        .chars()
+                        .take(decimals)
+                        .collect::<String>()
+                        .chars()
+                        .rev()
+                        .collect::<String>()
+                );
             } else {
                 formatted = format!(
                     "{}.{}",
@@ -32,7 +44,6 @@ impl SorobanBehavior for Soroban {
         formatted.trim_end_matches('0').to_string()
     }
 
-    
     fn parse_token_amount(value: &str, decimals: usize) -> String {
         let parts: Vec<&str> = value.split('.').collect();
 
@@ -46,7 +57,11 @@ impl SorobanBehavior for Soroban {
         let shifted = format!(
             "{}{}",
             whole,
-            fraction.chars().chain(std::iter::repeat('0')).take(decimals).collect::<String>()
+            fraction
+                .chars()
+                .chain(std::iter::repeat('0'))
+                .take(decimals)
+                .collect::<String>()
         );
 
         shifted

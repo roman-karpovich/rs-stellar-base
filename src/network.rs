@@ -8,7 +8,6 @@ pub trait NetworkPassphrase {
     fn testnet() -> &'static str;
 }
 
-
 #[derive(Debug)]
 pub struct Networks;
 

@@ -1,10 +1,8 @@
 use stellar_strkey::ed25519::PublicKey;
 // use stellar_xdr::{VecM, ClaimPredicate};
-use stellar_xdr::next::{VecM, ClaimPredicate};
-use crate::keypair::KeypairBehavior;
 use crate::keypair::Keypair;
-
-
+use crate::keypair::KeypairBehavior;
+use stellar_xdr::next::{ClaimPredicate, VecM};
 
 pub struct Claimant {
     destination: Option<String>,
@@ -13,14 +11,21 @@ pub struct Claimant {
 
 // Define a trait for Claimant behavior
 pub trait ClaimantBehavior {
-    fn new(destination: Option<&str>, predicate: Option<ClaimPredicate>) -> Result<Self, &'static str> where Self: Sized;
+    fn new(
+        destination: Option<&str>,
+        predicate: Option<ClaimPredicate>,
+    ) -> Result<Self, &'static str>
+    where
+        Self: Sized;
     fn predicate_unconditional() -> ClaimPredicate;
     fn predicate_and(left: ClaimPredicate, right: ClaimPredicate) -> ClaimPredicate;
     fn predicate_or(left: ClaimPredicate, right: ClaimPredicate) -> ClaimPredicate;
     fn predicate_not(predicate: ClaimPredicate) -> ClaimPredicate;
     fn predicate_before_absolute_time(abs_before: i64) -> ClaimPredicate;
     fn predicate_before_relative_time(seconds_str: &str) -> ClaimPredicate;
-    fn from_xdr(claimant_xdr: stellar_xdr::next::Claimant) -> Result<Self, &'static str> where Self: Sized;
+    fn from_xdr(claimant_xdr: stellar_xdr::next::Claimant) -> Result<Self, &'static str>
+    where
+        Self: Sized;
     fn to_xdr_object(&self) -> stellar_xdr::next::Claimant;
     fn destination(&self) -> Option<String>;
     fn set_destination(&mut self, value: String);
@@ -29,7 +34,10 @@ pub trait ClaimantBehavior {
 }
 
 impl ClaimantBehavior for Claimant {
-    fn new(destination: Option<&str>, predicate: Option<ClaimPredicate>) -> Result<Self, &'static str> {
+    fn new(
+        destination: Option<&str>,
+        predicate: Option<ClaimPredicate>,
+    ) -> Result<Self, &'static str> {
         let key = PublicKey::from_string(destination.unwrap());
 
         if key.is_err() {
@@ -53,13 +61,13 @@ impl ClaimantBehavior for Claimant {
 
     fn predicate_and(left: ClaimPredicate, right: ClaimPredicate) -> ClaimPredicate {
         let cc = vec![left, right];
-        
+
         ClaimPredicate::And(VecM::<ClaimPredicate, 2>::try_from(cc).unwrap())
     }
 
     fn predicate_or(left: ClaimPredicate, right: ClaimPredicate) -> ClaimPredicate {
         let cc = vec![left, right];
-        
+
         ClaimPredicate::Or(VecM::<ClaimPredicate, 2>::try_from(cc).unwrap())
     }
 
@@ -72,7 +80,9 @@ impl ClaimantBehavior for Claimant {
     }
 
     fn predicate_before_relative_time(seconds_str: &str) -> ClaimPredicate {
-        let seconds = seconds_str.parse::<i64>().expect("Failed to parse seconds string to i64");
+        let seconds = seconds_str
+            .parse::<i64>()
+            .expect("Failed to parse seconds string to i64");
         ClaimPredicate::BeforeRelativeTime(seconds)
     }
 
@@ -83,7 +93,6 @@ impl ClaimantBehavior for Claimant {
                 let val = match destination_key {
                     stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(x) => x.to_string(),
                 };
-
 
                 Ok(Claimant {
                     destination: Some(val),
@@ -96,7 +105,9 @@ impl ClaimantBehavior for Claimant {
 
     fn to_xdr_object(&self) -> stellar_xdr::next::Claimant {
         let claimant = stellar_xdr::next::ClaimantV0 {
-            destination: Keypair::from_public_key(&self.destination.clone().unwrap().as_str()).unwrap().xdr_account_id(),
+            destination: Keypair::from_public_key(&self.destination.clone().unwrap().as_str())
+                .unwrap()
+                .xdr_account_id(),
             predicate: self.predicate.clone(),
         };
 
@@ -119,5 +130,4 @@ impl ClaimantBehavior for Claimant {
     fn set_predicate(&mut self, _value: ClaimPredicate) {
         self.predicate = _value;
     }
-    
 }

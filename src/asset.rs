@@ -1,5 +1,6 @@
 use std::{cmp::Ordering, str::FromStr};
 
+use crate::claimant::ClaimantBehavior;
 use crate::keypair::Keypair;
 use crate::utils::util::trim_end;
 use regex::Regex;
@@ -7,7 +8,6 @@ use stellar_strkey::Strkey::{self, PublicKeyEd25519};
 use stellar_xdr::next::Asset::CreditAlphanum4;
 use stellar_xdr::next::WriteXdr;
 use stellar_xdr::next::*;
-use crate::claimant::ClaimantBehavior;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Asset {
@@ -17,8 +17,12 @@ pub struct Asset {
 
 // Define a trait for Asset behavior
 pub trait AssetBehavior {
-    fn new(code: &str, issuer: Option<&str>) -> Result<Self, String> where Self: Sized;
-    fn from_operation(asset_xdr: stellar_xdr::next::Asset) -> Result<Self, String> where Self: Sized;
+    fn new(code: &str, issuer: Option<&str>) -> Result<Self, String>
+    where
+        Self: Sized;
+    fn from_operation(asset_xdr: stellar_xdr::next::Asset) -> Result<Self, String>
+    where
+        Self: Sized;
     fn to_xdr_object(&self) -> stellar_xdr::next::Asset;
     fn to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset;
     fn to_trust_line_xdr_object(&self) -> stellar_xdr::next::TrustLineAsset;
@@ -26,9 +30,13 @@ pub trait AssetBehavior {
     fn _to_change_trust_xdr_object(&self) -> stellar_xdr::next::ChangeTrustAsset;
     fn _to_xdr_object(&self) -> stellar_xdr::next::Asset;
     fn ascii_compare(a: &str, b: &str) -> i32;
-    fn native() -> Self where Self: Sized;
+    fn native() -> Self
+    where
+        Self: Sized;
     fn is_native(&self) -> bool;
-    fn compare(asset_a: &Self, asset_b: &Self) -> i32 where Self: Sized;
+    fn compare(asset_a: &Self, asset_b: &Self) -> i32
+    where
+        Self: Sized;
     fn get_asset_type(&self) -> String;
     fn get_raw_asset_type(&self) -> Result<stellar_xdr::next::AssetType, String>;
     fn equals(&self, asset: &Self) -> bool;
@@ -372,8 +380,8 @@ impl ToString for Asset {
 
 #[cfg(test)]
 mod tests {
-    use crate::asset::AssetBehavior;
     use super::Asset;
+    use crate::asset::AssetBehavior;
     use stellar_xdr::next::{
         AccountId, AlphaNum12, AlphaNum4, AssetCode12, AssetCode4, PublicKey, Uint256, WriteXdr,
     };

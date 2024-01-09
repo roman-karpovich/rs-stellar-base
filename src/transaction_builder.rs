@@ -82,7 +82,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         self
     }
 
-   fn add_operation(&mut self, operation: Operation) -> &mut Self {
+    fn add_operation(&mut self, operation: Operation) -> &mut Self {
         if let Some(ref mut vec) = self.operations {
             vec.push(operation);
         }
@@ -132,8 +132,6 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             hash: None,
         }
     }
-
-    
 }
 
 #[cfg(test)]
@@ -145,7 +143,12 @@ mod tests {
     use sha2::digest::crypto_common::Key;
 
     use super::*;
-    use crate::{account::Account, keypair::{Keypair, self}, network::{Networks, NetworkPassphrase}, transaction::TransactionBehavior};
+    use crate::{
+        account::Account,
+        keypair::{self, Keypair},
+        network::{NetworkPassphrase, Networks},
+        transaction::TransactionBehavior,
+    };
 
     #[test]
     fn test_creates_and_signs() {

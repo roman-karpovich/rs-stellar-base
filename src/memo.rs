@@ -26,15 +26,31 @@ pub struct Memo {
 
 // Define a trait for Memo behavior
 pub trait MemoBehavior {
-    fn new(memo_type: &str, value: Option<&str>) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
-    fn id(input: &str) -> Self where Self: Sized;
-    fn text(input: &str) -> Self where Self: Sized;
-    fn text_buffer(input: Vec<u8>) -> Self where Self: Sized;
-    fn hash_buffer(input: Vec<u8>) -> Self where Self: Sized;
-    fn return_hash(input: Vec<u8>) -> Self where Self: Sized;
-    fn none() -> Self where Self: Sized;
+    fn new(memo_type: &str, value: Option<&str>) -> Result<Self, Box<dyn std::error::Error>>
+    where
+        Self: Sized;
+    fn id(input: &str) -> Self
+    where
+        Self: Sized;
+    fn text(input: &str) -> Self
+    where
+        Self: Sized;
+    fn text_buffer(input: Vec<u8>) -> Self
+    where
+        Self: Sized;
+    fn hash_buffer(input: Vec<u8>) -> Self
+    where
+        Self: Sized;
+    fn return_hash(input: Vec<u8>) -> Self
+    where
+        Self: Sized;
+    fn none() -> Self
+    where
+        Self: Sized;
     fn value(&self) -> Result<MemoValue, &'static str>;
-    fn from_xdr_object(object: stellar_xdr::next::Memo) -> Result<Self, &'static str> where Self: Sized;
+    fn from_xdr_object(object: stellar_xdr::next::Memo) -> Result<Self, &'static str>
+    where
+        Self: Sized;
     fn to_xdr_object(&self) -> Option<stellar_xdr::next::Memo>;
     fn _validate_id_value(value: &str) -> Result<(), String>;
     fn _validate_text_value(value: &str);
@@ -236,7 +252,7 @@ impl MemoBehavior for Memo {
             }
         }
     }
-    
+
     fn to_xdr_object(&self) -> Option<stellar_xdr::next::Memo> {
         match self.memo_type.as_str() {
             MEMO_NONE => Some(stellar_xdr::next::Memo::None),
@@ -278,8 +294,8 @@ fn assert_panic<F: FnOnce(), S: AsRef<str>>(f: F, expected_msg: S) {
 
 #[cfg(test)]
 mod tests {
-    use core::panic;
     use crate::memo::MemoBehavior;
+    use core::panic;
     use stellar_xdr::next::WriteXdr;
 
     use crate::memo::{MEMO_HASH, MEMO_NONE, MEMO_RETURN};
@@ -315,11 +331,7 @@ mod tests {
         let b = String::from("三代之時");
         print!("xx {}", val);
 
-        assert_eq!(
-            val,
-            b,
-            "Memo text value does not match expected value"
-        );
+        assert_eq!(val, b, "Memo text value does not match expected value");
     }
 
     #[test]

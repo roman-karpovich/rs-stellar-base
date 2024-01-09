@@ -30,22 +30,37 @@ pub struct Keypair {
 
 pub trait KeypairBehavior {
     // Creates a new keypair given optional public and secret keys
-    fn new(public_key: Option<[u8; 32]>, secret_key: Option<[u8; 32]>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn new(
+        public_key: Option<[u8; 32]>,
+        secret_key: Option<[u8; 32]>,
+    ) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // Creates a keypair from a secret seed
-    fn new_from_secret_key(secret_seed: Vec<u8>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn new_from_secret_key(secret_seed: Vec<u8>) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // Creates a keypair from a public key
-    fn new_from_public_key(public_key: Vec<u8>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn new_from_public_key(public_key: Vec<u8>) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // Creates a keypair from a secret string
-    fn from_secret(secret: &str) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn from_secret(secret: &str) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // Creates a keypair from a public key string
-    fn from_public_key(public_key: &str) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn from_public_key(public_key: &str) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // Creates a keypair from a raw Ed25519 seed
-    fn from_raw_ed25519_seed(seed: &[u8]) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn from_raw_ed25519_seed(seed: &[u8]) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // Returns the raw secret key
     fn raw_secret_key(&self) -> Option<Vec<u8>>;
@@ -69,10 +84,14 @@ pub trait KeypairBehavior {
     fn verify(&self, data: &[u8], signature: &[u8]) -> bool;
 
     // Creates a random Keypair
-    fn random() -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn random() -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // Returns keypair object which is the network master key
-    fn master(network_passphrase: Option<&str>) -> Result<Self, Box<dyn Error>> where Self: Sized;
+    fn master(network_passphrase: Option<&str>) -> Result<Self, Box<dyn Error>>
+    where
+        Self: Sized;
 
     // XDR representation of the account id
     fn xdr_account_id(&self) -> AccountId;
@@ -290,7 +309,9 @@ impl KeypairBehavior for Keypair {
 
     /// part of the decorated signature
     fn signature_hint(&self) -> Option<Vec<u8>> {
-        let a = Self::xdr_account_id(self).to_xdr(stellar_xdr::next::Limits::none()).unwrap();
+        let a = Self::xdr_account_id(self)
+            .to_xdr(stellar_xdr::next::Limits::none())
+            .unwrap();
         if a.len() >= 4 {
             let start_index = a.len() - 4;
             Some(a[start_index..].to_vec())

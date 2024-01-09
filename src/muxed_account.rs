@@ -18,8 +18,18 @@ pub struct MuxedAccount {
 }
 
 pub trait MuxedAccountBehavior {
-    fn new(base_account: Rc<RefCell<Account>>, id: &str) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
-    fn from_address(m_address: &str, sequence_num: &str) -> Result<Self, Box<dyn std::error::Error>> where Self: Sized;
+    fn new(
+        base_account: Rc<RefCell<Account>>,
+        id: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>>
+    where
+        Self: Sized;
+    fn from_address(
+        m_address: &str,
+        sequence_num: &str,
+    ) -> Result<Self, Box<dyn std::error::Error>>
+    where
+        Self: Sized;
     fn set_id(&mut self, id: &str) -> Result<(), Box<dyn std::error::Error>>;
     fn base_account(&self) -> Rc<RefCell<Account>>;
     fn account_id(&self) -> &str;
@@ -84,11 +94,12 @@ impl MuxedAccountBehavior for MuxedAccount {
             _ => return Err("Bad XDR".into()),
         };
 
-        let muxed_xdr =
-            stellar_xdr::next::MuxedAccount::MuxedEd25519(stellar_xdr::next::MuxedAccountMed25519 {
+        let muxed_xdr = stellar_xdr::next::MuxedAccount::MuxedEd25519(
+            stellar_xdr::next::MuxedAccountMed25519 {
                 id: id.parse::<u64>().unwrap(),
                 ed25519: val.ed25519.clone(),
-            });
+            },
+        );
         self.muxed_xdr = muxed_xdr;
 
         self.m_address = encode_muxed_account_to_address(&self.muxed_xdr); // Replace with your actual encoding function

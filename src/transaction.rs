@@ -62,7 +62,9 @@ impl TransactionBehavior for Transaction {
         let mut tx = self.tx.clone().unwrap();
         let tagged_tx = stellar_xdr::next::TransactionSignaturePayloadTaggedTransaction::Tx(tx);
         let tx_sig = stellar_xdr::next::TransactionSignaturePayload {
-            network_id: stellar_xdr::next::Hash(Sha256Hasher::hash(self.network_passphrase.as_str())),
+            network_id: stellar_xdr::next::Hash(Sha256Hasher::hash(
+                self.network_passphrase.as_str(),
+            )),
             tagged_transaction: tagged_tx,
         };
         tx_sig.to_xdr(stellar_xdr::next::Limits::none()).unwrap()
@@ -89,14 +91,22 @@ impl TransactionBehavior for Transaction {
         let envelope = match self.envelope_type {
             stellar_xdr::next::EnvelopeType::TxV0 => {
                 let transaction_v0 = stellar_xdr::next::TransactionV0Envelope {
-                    tx: stellar_xdr::next::TransactionV0::from_xdr(&raw_tx, stellar_xdr::next::Limits::none()).unwrap(), // Make a copy of tx
+                    tx: stellar_xdr::next::TransactionV0::from_xdr(
+                        &raw_tx,
+                        stellar_xdr::next::Limits::none(),
+                    )
+                    .unwrap(), // Make a copy of tx
                     signatures,
                 };
                 stellar_xdr::next::TransactionEnvelope::TxV0(transaction_v0)
             }
             stellar_xdr::next::EnvelopeType::Tx => {
                 let transaction_v1 = stellar_xdr::next::TransactionV1Envelope {
-                    tx: stellar_xdr::next::Transaction::from_xdr(&raw_tx,stellar_xdr::next::Limits::none()).unwrap(), // Make a copy of tx
+                    tx: stellar_xdr::next::Transaction::from_xdr(
+                        &raw_tx,
+                        stellar_xdr::next::Limits::none(),
+                    )
+                    .unwrap(), // Make a copy of tx
                     signatures,
                 };
                 stellar_xdr::next::TransactionEnvelope::Tx(transaction_v1)

@@ -54,7 +54,9 @@ pub fn decode_address_fully_to_muxed_account(address: &str) -> stellar_xdr::next
     })
 }
 
-pub fn _encode_muxed_account_fully_to_address(muxed_account: &stellar_xdr::next::MuxedAccount) -> String {
+pub fn _encode_muxed_account_fully_to_address(
+    muxed_account: &stellar_xdr::next::MuxedAccount,
+) -> String {
     if muxed_account.discriminant() == stellar_xdr::next::CryptoKeyType::Ed25519 {
         return encode_muxed_account_to_address(muxed_account);
     }
