@@ -25,3 +25,4 @@ pub mod transaction;
 pub mod transaction_builder;
 pub mod utils;
 pub mod xdr;
+pub mod address;
