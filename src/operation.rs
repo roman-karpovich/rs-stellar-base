@@ -36,10 +36,13 @@ pub const AUTH_REQUIRED_FLAG: u32 = 1 << 0;
 pub const AUTH_REVOCABLE_FLAG: u32 = 1 << 1;
 pub const AUTH_IMMUTABLE_FLAG: u32 = 1 << 2;
 
-pub struct Operation;
+pub struct Operation {
+    pub op_attrs: Option<MuxedAccount>,
+    pub opts: Option<String>,
+}
 
 pub struct OpAttributes {
-    source_account: MuxedAccount,
+    pub source_account: Option<MuxedAccount>,
 }
 pub enum Value {
     Single(String),
@@ -50,12 +53,8 @@ pub enum Value {
     MultipleAuth(Vec<stellar_xdr::next::SorobanAuthorizationEntry>),
 }
 
-pub struct Opts {
-    source: Option<String>,
-}
-
 pub trait OperationBehavior {
-    fn set_source_account(op_attributes: &mut OpAttributes, opts: &Opts);
+    fn set_source_account(&mut self, source: Option<&str>);
     fn from_xdr_object(
         operation: stellar_xdr::next::Operation,
     ) -> Result<HashMap<String, Value>, &'static str>;
@@ -69,10 +68,10 @@ pub trait OperationBehavior {
 }
 
 impl OperationBehavior for Operation {
-    fn set_source_account(op_attributes: &mut OpAttributes, opts: &Opts) {
-        if let Some(source) = &opts.source {
+    fn set_source_account(&mut self, source: Option<&str>) {
+        if let Some(source) = &self.opts {
             match decode_address_to_muxed_account(source) {
-                muxed_account => op_attributes.source_account = muxed_account,
+                muxed_account => self.op_attrs = Some(muxed_account),
                 _ => panic!("Source address is invalid"),
             }
         }
