@@ -70,5 +70,14 @@ mod tests {
             func, None, None
         ).unwrap();
         
+        let xdr = op.to_xdr(Limits::none()).unwrap();
+        let obj = Operation::from_xdr_object(op).unwrap();
+        
+        match obj.get("type").unwrap() {
+            operation::Value::Single(x) => assert_eq!(x, "invokeHostFunction"),
+            _ => panic!("Invalid operation")
+        };
+
+    
     }
 }
