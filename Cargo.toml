@@ -1,6 +1,6 @@
 [package]
 name = "stellar-baselib"
-version = "0.2.9"
+version = "0.3.0"
 edition = "2021"
 description = "A low level Rust library that offers a comprehensive set of functions for reading, writing, hashing, and signing primitive XDR constructs utilized in the Stellar network"
 license = "Apache-2.0"
@@ -22,7 +22,7 @@ rand_core = {version = "0.6.4", default-features = true, features = ["getrandom"
 getrandom = { version = "0.2.10", features = ["js"] }
 sha2 = "0.10.7"
 stellar-strkey = "0.0.8"
-stellar-xdr =  { version = "20.0.2", default-features = true, features = ["base64", "std", "next", "serde", "alloc"] }
+stellar-xdr =  { version = "20.0.0", default-features = true, features = ["base64", "std", "next", "serde", "alloc"] }
 hex-literal = "0.4.1"
 num-traits = "0.2.15"
 hyper = "0.14.27"
