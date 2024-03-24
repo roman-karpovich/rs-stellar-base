@@ -55,7 +55,7 @@ mod tests {
     fn test_invoke_host_function() {
         let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
         // let contract = Contracts::new(contract_id).expect("Failed to create contract");
-        let binding = hex::encode(contract_id.to_string());
+        let binding = hex::encode(contract_id);
         let hex_id = binding.as_bytes();
         let mut array = [0u8; 32];
         array.copy_from_slice(&hex_id[0..32]);
