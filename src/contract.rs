@@ -26,7 +26,7 @@ pub trait ContractBehavior {
     fn address(&self) -> Address; // Address type needs to be defined.
 
     /// Invokes a contract call with the specified method and parameters.
-    fn call(&self, method: &str, params: Vec<ScVal>) -> Operation; // Operation and ScVal types need to be defined.
+    fn call(&self, method: &str, params: Option<Vec<ScVal>>) -> Operation; // Operation and ScVal types need to be defined.
 
     /// Returns the read-only footprint entries necessary for invocations to this contract.
     fn get_footprint(&self) -> LedgerKey; // LedgerKey type needs to be defined.
@@ -41,7 +41,9 @@ impl ContractBehavior for Contracts {
         })
     }
 
-    fn call(&self, method: &str, params: Vec<ScVal>) -> stellar_xdr::next::Operation {
+    fn call(&self, method: &str, params: Option<Vec<stellar_xdr::next::ScVal>>) -> stellar_xdr::next::Operation {
+
+
         stellar_xdr::next::Operation {
             source_account: None,
             body: stellar_xdr::next::OperationBody::InvokeHostFunction(InvokeHostFunctionOp {
@@ -52,7 +54,7 @@ impl ContractBehavior for Contracts {
                                 .unwrap(),
                         ),
                         function_name: ScSymbol::from(StringM::from_str(method).unwrap()),
-                        args: VecM::<ScVal>::try_from(Vec::new()).unwrap(),
+                        args: VecM::<ScVal>::try_from(params.unwrap_or(Vec::new())).unwrap(),
                     },
                 ),
                 auth: VecM::<SorobanAuthorizationEntry>::try_from(Vec::new()).unwrap(),
