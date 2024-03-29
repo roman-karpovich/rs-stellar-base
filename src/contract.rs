@@ -50,8 +50,7 @@ impl ContractBehavior for Contracts {
                 host_function: stellar_xdr::next::HostFunction::InvokeContract(
                     InvokeContractArgs {
                         contract_address: stellar_xdr::next::ScAddress::Contract(
-                            Hash::from_str(String::from_utf8(self.id.clone()).unwrap().as_str())
-                                .unwrap(),
+                            Hash(contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0),
                         ),
                         function_name: ScSymbol::from(StringM::from_str(method).unwrap()),
                         args: VecM::<ScVal>::try_from(params.unwrap_or(Vec::new())).unwrap(),
@@ -77,4 +76,11 @@ impl ContractBehavior for Contracts {
     fn get_footprint(&self) -> LedgerKey {
         todo!()
     }
+
+    
+    
+}
+
+pub fn contract_id_strkey(contract_id: &str) -> stellar_strkey::Contract {
+    stellar_strkey::Contract::from_string(contract_id).unwrap()
 }
