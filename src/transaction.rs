@@ -2,7 +2,7 @@ use crate::hashing::HashingBehavior;
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
 use std::str::FromStr;
-
+use crate::operation::PaymentOpts;
 use hex_literal::hex;
 use num_bigint::BigUint;
 use stellar_xdr::next::DecoratedSignature;
@@ -130,53 +130,60 @@ impl TransactionBehavior for Transaction {
 }
 
 
-// #[cfg(test)]
-// mod tests {
+#[cfg(test)]
+mod tests {
 
-//     use core::panic;
-//     use keypair::KeypairBehavior;
+    use core::panic;
+    use keypair::KeypairBehavior;
 
-//     use sha2::digest::crypto_common::Key;
+    use sha2::digest::crypto_common::Key;
     
-//     use super::*;
-//     use crate::{
-//         account::{Account, AccountBehavior},
-//         keypair::{self, Keypair},
-//         network::{NetworkPassphrase, Networks},
-//         transaction::TransactionBehavior,
-//         transaction_builder::{TransactionBuilder, TransactionBuilderBehavior}
-//     };
+    use super::*;
+    use crate::{
+        account::{Account, AccountBehavior}, asset::{Asset,AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::{Operation, OperationBehavior}, transaction::TransactionBehavior, transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE}
+    };
 
-//     #[test]
-//     fn constructs_transaction_object_from_transaction_envelope() {
-//         let source = Account::new(
-//             "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
-//             "20",
-//         )
-//         .unwrap();
+    #[test]
+    fn constructs_transaction_object_from_transaction_envelope() {
+        let source = Account::new(
+            "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
+            "20",
+        )
+        .unwrap();
 
-//         // let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
-//         // let asset = Asset::native();
-//         // let amount = "2000.0000000";
+        let destination = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ";
+        let asset = Asset::native();
+        let amount = "2000";
+
+        // let operation = Operation::payment(PaymentOpts {
+        //         destination: destination.to_owned(),
+        //         asset,
+        //         amount: amount.to_owned(),
+        //         source: None,
+        //     }).unwrap();
+
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet())
+        .fee(100_u32)
+        .add_operation(Operation::payment(PaymentOpts {
+            destination: destination.to_owned(),
+            asset,
+            amount: amount.to_owned(),
+            source: None,
+        }).unwrap())
+        .add_memo("Happy birthday!")
+        .set_timeout(TIMEOUT_INFINITE);
 
 
-//         // let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet())
-//         // .fee(100)
-//         // .add_operation(Operation::payment(destination, asset, amount))
-//         // .add_memo(Memo::text("Happy birthday!"))
-//         // .set_timeout_infinite();
+        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let signer = Keypair::master(Some(Networks::testnet())).unwrap();
+        let mut tx = TransactionBuilder::new(source, Networks::testnet())
+            .fee(100_u32)
+            .add_operation(create_account(destination, "10".to_string()).unwrap())
+            .build();
 
-
-//         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
-//         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
-//         let mut tx = TransactionBuilder::new(source, Networks::testnet())
-//             .fee(100_u32)
-//             .add_operation(create_account(destination, "10".to_string()).unwrap())
-//             .build();
-
-//         tx.sign(&[signer.clone()]);
-//         let sig = &tx.signatures[0].signature.0;
-//         let verified = signer.verify(&tx.hash(), sig);
-//         assert_eq!(verified, true);
-//     }
-// }
+        tx.sign(&[signer.clone()]);
+        let sig = &tx.signatures[0].signature.0;
+        let verified = signer.verify(&tx.hash(), sig);
+        assert_eq!(verified, true);
+    }
+}

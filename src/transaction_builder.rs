@@ -1,10 +1,14 @@
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
 use std::str::FromStr;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
 
 use hex_literal::hex;
 use num_bigint::BigUint;
+use serde_json::from_str;
 use stellar_xdr::next::DecoratedSignature;
+use stellar_xdr::next::StringM;
 
 use crate::account::Account;
 use crate::account::AccountBehavior;
@@ -54,7 +58,11 @@ pub trait TransactionBuilderBehavior {
     fn fee(&mut self, fee: impl Into<u32>) -> &mut Self;
     fn add_operation(&mut self, operation: Operation) -> &mut Self;
     fn build(&mut self) -> Transaction;
+    fn add_memo(&mut self, memo_text: &str) -> &mut Self;
+    fn set_timeout(&mut self, timeout_seconds: i64) -> Result<&mut Self, String>;
 }
+
+pub const TIMEOUT_INFINITE: i64 = 0;
 
 impl TransactionBuilderBehavior for TransactionBuilder {
     fn new(source_account: Account, network: &str) -> Self {
@@ -87,6 +95,43 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             vec.push(operation);
         }
         self
+    }
+
+    fn add_memo(&mut self, memo_text: &str) -> &mut Self {
+        self.memo = Some(stellar_xdr::next::Memo::Text(StringM::<28>::from_str(memo_text).unwrap()));
+        self
+    }
+
+    fn set_timeout(&mut self, timeout_seconds: i64) -> Result<&mut Self, String> {
+        if let Some(timebounds) = &self.time_bounds {
+            if timebounds.max_time > stellar_xdr::next::TimePoint(0) {
+                return Err("TimeBounds.max_time has been already set - setting timeout would overwrite it.".to_string());
+            }
+        }
+
+        if timeout_seconds < 0 {
+            return Err("timeout cannot be negative".to_string());
+        }
+
+        let current_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| format!("Error getting current time: {}", e))?
+            .as_secs();
+
+        if timeout_seconds > 0 {
+            let timeout_timestamp = current_time + timeout_seconds as u64;
+            self.time_bounds = Some(TimeBounds {
+                min_time: self.time_bounds.as_ref().map_or(stellar_xdr::next::TimePoint(0), |tb| tb.min_time.clone()),
+                max_time: stellar_xdr::next::TimePoint(timeout_timestamp),
+            });
+        } else {
+            self.time_bounds = Some(TimeBounds {
+                min_time: stellar_xdr::next::TimePoint(0),
+                max_time: stellar_xdr::next::TimePoint(0),
+            });
+        }
+
+        Ok(self)
     }
 
     fn build(&mut self) -> Transaction {

@@ -7,6 +7,7 @@ use num_rational::Rational32;
 use num_traits::identities::One;
 use num_traits::ToPrimitive;
 use num_traits::{FromPrimitive, Num, Signed, Zero};
+use stellar_xdr::next::Uint256;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::str::FromStr;
@@ -53,6 +54,13 @@ pub enum Value {
     MultipleAuth(Vec<stellar_xdr::next::SorobanAuthorizationEntry>),
 }
 
+pub struct PaymentOpts {
+    pub destination: String,
+    pub asset: Asset,
+    pub amount: String,
+    pub source: Option<String>,
+}
+
 pub trait OperationBehavior {
     fn set_source_account(&mut self, source: Option<&str>);
     fn from_xdr_object(
@@ -67,6 +75,44 @@ pub trait OperationBehavior {
         F: Fn(u32, &str) -> bool;
 }
 
+
+impl Operation {
+    pub fn payment(opts: PaymentOpts) -> Result<stellar_xdr::next::Operation, String> {
+       
+        let destination = match decode_address_to_muxed_account(&opts.destination) {
+            account => account,
+            _ => return Err("destination is invalid".to_string()),
+        };
+
+        let asset: stellar_xdr::next::Asset = opts.asset.to_xdr_object();
+        let amount = match to_xdr_amount(&opts.amount) {
+            Ok(amount) => amount,
+            Err(e) => return Err(format!("Invalid amount: {}", e)),
+        };
+
+        let payment_op = stellar_xdr::next::PaymentOp {
+            asset,
+            amount,
+            destination: stellar_xdr::next::MuxedAccount::Ed25519(Uint256::from(destination.ed25519)),
+        };
+        
+        let body = stellar_xdr::next::OperationBody::Payment(payment_op);
+
+
+        //TODO: Add Source Account
+        // if let Some(source) = opts.source {
+        //     match decode_address_to_muxed_account(&source).unwrap() {
+        //         Ok(account) => op_attributes.source_account = Some(account),
+        //         Err(_) => return Err("Source account is invalid".to_string()),
+        //     }
+        // }
+
+        Ok(stellar_xdr::next::Operation {
+            source_account: None,
+            body,
+        })
+    }
+}
 impl OperationBehavior for Operation {
     fn set_source_account(&mut self, source: Option<&str>) {
         if let Some(source) = &self.opts {
