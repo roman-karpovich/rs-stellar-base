@@ -85,9 +85,13 @@ impl TransactionBehavior for Transaction {
     }
 
     fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
+        
         let raw_tx = self.tx.to_xdr(stellar_xdr::next::Limits::none()).unwrap();
+        println!("Raw {:?}", self.tx);
+
         let mut signatures =
             VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
+        
         let envelope = match self.envelope_type {
             stellar_xdr::next::EnvelopeType::TxV0 => {
                 let transaction_v0 = stellar_xdr::next::TransactionV0Envelope {
@@ -100,6 +104,7 @@ impl TransactionBehavior for Transaction {
                 };
                 stellar_xdr::next::TransactionEnvelope::TxV0(transaction_v0)
             }
+
             stellar_xdr::next::EnvelopeType::Tx => {
                 let transaction_v1 = stellar_xdr::next::TransactionV1Envelope {
                     tx: stellar_xdr::next::Transaction::from_xdr(
@@ -123,3 +128,55 @@ impl TransactionBehavior for Transaction {
         Ok(envelope)
     }
 }
+
+
+// #[cfg(test)]
+// mod tests {
+
+//     use core::panic;
+//     use keypair::KeypairBehavior;
+
+//     use sha2::digest::crypto_common::Key;
+    
+//     use super::*;
+//     use crate::{
+//         account::{Account, AccountBehavior},
+//         keypair::{self, Keypair},
+//         network::{NetworkPassphrase, Networks},
+//         transaction::TransactionBehavior,
+//         transaction_builder::{TransactionBuilder, TransactionBuilderBehavior}
+//     };
+
+//     #[test]
+//     fn constructs_transaction_object_from_transaction_envelope() {
+//         let source = Account::new(
+//             "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
+//             "20",
+//         )
+//         .unwrap();
+
+//         // let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
+//         // let asset = Asset::native();
+//         // let amount = "2000.0000000";
+
+
+//         // let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet())
+//         // .fee(100)
+//         // .add_operation(Operation::payment(destination, asset, amount))
+//         // .add_memo(Memo::text("Happy birthday!"))
+//         // .set_timeout_infinite();
+
+
+//         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+//         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
+//         let mut tx = TransactionBuilder::new(source, Networks::testnet())
+//             .fee(100_u32)
+//             .add_operation(create_account(destination, "10".to_string()).unwrap())
+//             .build();
+
+//         tx.sign(&[signer.clone()]);
+//         let sig = &tx.signatures[0].signature.0;
+//         let verified = signer.verify(&tx.hash(), sig);
+//         assert_eq!(verified, true);
+//     }
+// }
