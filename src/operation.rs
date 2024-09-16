@@ -1,5 +1,6 @@
 //! Operations are individual commands that modify the ledger.
 use crate::liquidity_pool_asset::LiquidityPoolAssetBehavior;
+use crate::utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address;
 use hex_literal::hex;
 use num_bigint::BigInt;
 use num_bigint::BigUint;
@@ -79,7 +80,7 @@ pub trait OperationBehavior {
 impl Operation {
     pub fn payment(opts: PaymentOpts) -> Result<stellar_xdr::next::Operation, String> {
        
-        let destination = match decode_address_to_muxed_account(&opts.destination) {
+        let destination = match decode_address_to_muxed_account_fix_for_g_address(&opts.destination) {
             account => account,
             _ => return Err("destination is invalid".to_string()),
         };
@@ -93,7 +94,7 @@ impl Operation {
         let payment_op = stellar_xdr::next::PaymentOp {
             asset,
             amount,
-            destination: stellar_xdr::next::MuxedAccount::Ed25519(Uint256::from(destination.ed25519)),
+            destination: destination,
         };
         
         let body = stellar_xdr::next::OperationBody::Payment(payment_op);

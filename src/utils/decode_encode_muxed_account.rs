@@ -1,9 +1,8 @@
 use arrayref::array_ref;
+use stellar_xdr::next::{Uint256, Uint64};
 use std::str::FromStr;
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 use stellar_strkey::Strkey::MuxedAccountEd25519;
-use stellar_xdr::next::*;
-
 use crate::muxed_account;
 
 pub fn decode_address_to_muxed_account(address: &str) -> MuxedAccount {
@@ -12,6 +11,16 @@ pub fn decode_address_to_muxed_account(address: &str) -> MuxedAccount {
     }
 
     MuxedAccount::from_string(address).unwrap()
+}
+
+// TODO: 'G..' address was not working for payment Op, need to make different function, with better name
+pub fn decode_address_to_muxed_account_fix_for_g_address(address: &str) -> stellar_xdr::next::MuxedAccount {
+    if MuxedAccount::from_str(address).is_ok() {
+        let val = decode_address_fully_to_muxed_account(address);
+        return val
+    }
+
+    stellar_xdr::next::MuxedAccount::from_str(address).unwrap()
 }
 
 pub fn encode_muxed_account(address: &str, id: &str) -> stellar_xdr::next::MuxedAccount {
@@ -91,7 +100,7 @@ pub fn extract_base_address(address: &str) -> Result<String, Box<dyn std::error:
     if key.is_err() {
         return Err(format!("expected muxed account (M...), got {}", address).into());
     }
-    let muxed_account = decode_address_to_muxed_account(address); // Replace with your actual decoding function
+    let muxed_account = decode_address_to_muxed_account(address);
     let ed25519_key = muxed_account.ed25519;
     let encoded_ed25519 = PublicKey::from_payload(&ed25519_key).unwrap();
     Ok(encoded_ed25519.to_string())

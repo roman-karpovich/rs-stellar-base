@@ -151,7 +151,7 @@ mod tests {
         )
         .unwrap();
 
-        let destination = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAACJUQ";
+        let destination = "GAAOFCNYV2OQUMVONXH2DOOQNNLJO7WRQ7E4INEZ7VH7JNG7IKBQAK5D";
         let asset = Asset::native();
         let amount = "2000";
 
