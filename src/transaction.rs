@@ -134,6 +134,7 @@ impl TransactionBehavior for Transaction {
 mod tests {
 
     use core::panic;
+    use std::{cell::RefCell, rc::Rc};
     use keypair::KeypairBehavior;
 
     use sha2::digest::crypto_common::Key;
@@ -146,11 +147,13 @@ mod tests {
 
     #[test]
     fn constructs_transaction_object_from_transaction_envelope() {
-        let source = Account::new(
+
+        let source = Rc::new(RefCell::new(Account::new(
             "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
             "20",
-        )
-        .unwrap();
+        ).unwrap()));
+        
+        
 
         let destination = "GAAOFCNYV2OQUMVONXH2DOOQNNLJO7WRQ7E4INEZ7VH7JNG7IKBQAK5D";
         let asset = Asset::native();
@@ -172,9 +175,10 @@ mod tests {
             source: None,
         }).unwrap())
         .add_memo("Happy birthday!")
-        .set_timeout(TIMEOUT_INFINITE).unwrap().build().to_envelope().unwrap().to_xdr(Limits::none());
+        .set_timeout(TIMEOUT_INFINITE).unwrap().build();
 
-
+        //TODO: Tests still coming in for Envelope
+        
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
         let mut tx = TransactionBuilder::new(source, Networks::testnet())
