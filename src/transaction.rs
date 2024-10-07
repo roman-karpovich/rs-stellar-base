@@ -137,6 +137,7 @@ mod tests {
     use keypair::KeypairBehavior;
 
     use sha2::digest::crypto_common::Key;
+    use stellar_xdr::next::Limits;
     
     use super::*;
     use crate::{
@@ -171,7 +172,7 @@ mod tests {
             source: None,
         }).unwrap())
         .add_memo("Happy birthday!")
-        .set_timeout(TIMEOUT_INFINITE);
+        .set_timeout(TIMEOUT_INFINITE).unwrap().build().to_envelope().unwrap().to_xdr(Limits::none());
 
 
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();

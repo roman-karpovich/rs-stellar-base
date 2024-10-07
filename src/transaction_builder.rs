@@ -165,7 +165,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             fee: fee.unwrap(),
             envelope_type: stellar_xdr::next::EnvelopeType::Tx,
             memo: None,
-            sequence: "0".to_string(),
+            sequence: "1".to_string(),
             source: self.source.clone().unwrap().account_id().to_string(),
             time_bounds: None,
             ledger_bounds: None,
@@ -188,12 +188,14 @@ mod tests {
     use sha2::digest::crypto_common::Key;
 
     use super::*;
+    // use crate::{
+    //     account::Account, asset::{Asset, AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::PaymentOpts, transaction::TransactionBehavior
+    // };
     use crate::{
-        account::Account,
-        keypair::{self, Keypair},
-        network::{NetworkPassphrase, Networks},
-        transaction::TransactionBehavior,
+        account::{Account, AccountBehavior}, asset::{Asset,AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::{Operation, OperationBehavior, PaymentOpts}, transaction::TransactionBehavior, transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE}
     };
+
+    
 
     #[test]
     fn test_creates_and_signs() {
@@ -214,4 +216,40 @@ mod tests {
         let verified = signer.verify(&tx.hash(), sig);
         assert_eq!(verified, true);
     }
+
+    #[test]
+    fn test_constructs_native_payment_transaction() {
+        let source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "1",
+        )
+        .unwrap();
+
+        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let amount = "1000".to_string();
+        let asset = Asset::native(); 
+        let memo = Memo::Id(100);
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet());
+
+        builder
+            .fee(100_u32)
+            .add_operation(Operation::payment(PaymentOpts {
+                destination: destination.to_owned(),
+                asset,
+                amount: amount.to_owned(),
+                source: None,
+            }).unwrap())
+            .add_memo("100")
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap();
+
+        let transaction = builder.build();
+
+        assert_eq!(transaction.source, source.account_id().to_string());
+        assert_eq!(transaction.sequence, "1");
+        assert_eq!(source.sequence_number(), "1");
+        assert_eq!(transaction.operations.unwrap().len(), 1);
+        assert_eq!(transaction.fee, 100);
+    }
+
 }
