@@ -326,4 +326,43 @@ fn test_constructs_native_payment_transaction_with_two_operations() {
     // Should have 200 stroops fee (100 per operation)
     assert_eq!(transaction.fee, 200);
 }
+
+#[test]
+    fn constructs_native_payment_transaction_with_custom_base_fee() {
+        // Set up test data
+        let source = Rc::new(RefCell::new(Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        ).unwrap()));
+        
+        let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let amount1 = "1000".to_string();
+        let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2".to_string();
+        let amount2 = "2000".to_string();
+        let asset = Asset::native();
+
+        // Create transaction
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet());
+        let transaction = builder
+            .fee(1000_u32)  // Set custom base fee
+            .add_operation(Operation::payment(PaymentOpts {
+                destination: destination1,
+                asset: asset.clone(),
+                amount: amount1,
+                source: None,
+            }).unwrap())
+            .add_operation(Operation::payment(PaymentOpts {
+                destination: destination2,
+                asset,
+                amount: amount2,
+                source: None,
+            }).unwrap())
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap()
+            .build();
+
+        // Assert that the total fee is 2000 stroops (1000 per operation, 2 operations)
+        assert_eq!(transaction.fee, 2000);
+
+    }
 }
