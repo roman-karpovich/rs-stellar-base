@@ -56,18 +56,19 @@ pub struct TransactionBuilder {
 
 // Define a trait for TransactionBuilder behavior
 pub trait TransactionBuilderBehavior {
-    fn new(source_account: Rc<RefCell<Account>>, network: &str) -> Self;
+    fn new(source_account: Rc<RefCell<Account>>, network: &str, time_bounds: Option<TimeBounds>) -> Self;
     fn fee(&mut self, fee: impl Into<u32>) -> &mut Self;
     fn add_operation(&mut self, operation: Operation) -> &mut Self;
     fn build(&mut self) -> Transaction;
     fn add_memo(&mut self, memo_text: &str) -> &mut Self;
     fn set_timeout(&mut self, timeout_seconds: i64) -> Result<&mut Self, String>;
+    fn set_time_bounds(&mut self, time_bounds: TimeBounds) -> &mut Self;
 }
 
 pub const TIMEOUT_INFINITE: i64 = 0;
 
 impl TransactionBuilderBehavior for TransactionBuilder {
-    fn new(source_account: Rc<RefCell<Account>>, network: &str) -> Self {
+    fn new(source_account: Rc<RefCell<Account>>, network: &str, time_bounds: Option<TimeBounds>) -> Self {
         Self {
             tx: None,
             network_passphrase: Some(network.to_string()),
@@ -77,7 +78,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             memo: None,
             sequence: None,
             source: Some(source_account),
-            time_bounds: None,
+            time_bounds,
             ledger_bounds: None,
             min_account_sequence: None,
             min_account_sequence_age: None,
@@ -136,6 +137,11 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         Ok(self)
     }
 
+    fn set_time_bounds(&mut self, time_bounds: TimeBounds) -> &mut Self {
+        self.time_bounds = Some(time_bounds);
+        self
+    }
+
     fn build(&mut self) -> Transaction {
 
         let source = self.source.as_ref().expect("Source account not set");
@@ -175,7 +181,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             memo: None,
             sequence: incremented_seq_num.to_string(),
             source: source_ref.account_id().to_string(),
-            time_bounds: None,
+            time_bounds: self.time_bounds.clone(),
             ledger_bounds: None,
             min_account_sequence: Some("0".to_string()),
             min_account_sequence_age: 0,
@@ -216,7 +222,7 @@ mod tests {
         
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
-        let mut tx = TransactionBuilder::new(source, Networks::testnet())
+        let mut tx = TransactionBuilder::new(source, Networks::testnet(), None)
             .fee(100_u32)
             .add_operation(create_account(destination, "10".to_string()).unwrap())
             .build();
@@ -238,7 +244,7 @@ mod tests {
         let amount = "1000".to_string();
         let asset = Asset::native(); 
         let memo = Memo::Id(100);
-        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet());
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
     
         builder
             .fee(100_u32)
@@ -279,7 +285,7 @@ fn test_constructs_native_payment_transaction_with_two_operations() {
     let asset = Asset::native();
 
     // Create transaction builder
-    let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet());
+    let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
 
     // Add payment operations
     builder
@@ -342,7 +348,7 @@ fn test_constructs_native_payment_transaction_with_two_operations() {
         let asset = Asset::native();
 
         // Create transaction
-        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet());
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = builder
             .fee(1000_u32)  // Set custom base fee
             .add_operation(Operation::payment(PaymentOpts {
@@ -364,5 +370,37 @@ fn test_constructs_native_payment_transaction_with_two_operations() {
         // Assert that the total fee is 2000 stroops (1000 per operation, 2 operations)
         assert_eq!(transaction.fee, 2000);
 
+    }
+
+
+    #[test]
+    fn constructs_native_payment_transaction_with_integer_timebounds() {
+        let source = Rc::new(RefCell::new(Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        ).unwrap()));
+
+        let timebounds = TimeBounds {
+            min_time: stellar_xdr::next::TimePoint(1455287522),
+            max_time: stellar_xdr::next::TimePoint(1455297545),
+        };
+
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), Some(timebounds.clone()));
+        builder
+            .fee(100_u32)
+            .add_operation(Operation::payment(PaymentOpts {
+                destination: "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string(),
+                asset: Asset::native(),
+                amount: "1000".to_string(),
+                source: None,
+            }).unwrap());
+
+        // Set the timebounds
+        builder.time_bounds = Some(timebounds.clone());
+
+        let transaction = builder.build();
+    
+        assert_eq!(transaction.time_bounds.as_ref().unwrap().min_time, timebounds.min_time);
+        assert_eq!(transaction.time_bounds.as_ref().unwrap().max_time, timebounds.max_time);
     }
 }

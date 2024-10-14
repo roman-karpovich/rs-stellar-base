@@ -166,7 +166,7 @@ mod tests {
         //         source: None,
         //     }).unwrap();
 
-        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet())
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None)
         .fee(100_u32)
         .add_operation(Operation::payment(PaymentOpts {
             destination: destination.to_owned(),
@@ -181,7 +181,7 @@ mod tests {
         
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
-        let mut tx = TransactionBuilder::new(source, Networks::testnet())
+        let mut tx = TransactionBuilder::new(source, Networks::testnet(), None)
             .fee(100_u32)
             .add_operation(create_account(destination, "10".to_string()).unwrap())
             .build();
