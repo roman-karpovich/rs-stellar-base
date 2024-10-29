@@ -1,9 +1,9 @@
+use core::str;
 use std::str::FromStr;
 
 use stellar_strkey::{Contract, Strkey};
 use stellar_xdr::next::{
-    Hash, InvokeContractArgs, InvokeHostFunctionOp, ScSymbol, ScVal, SorobanAuthorizationEntry,
-    StringM, VecM, LedgerKey, Operation,
+    ContractDataDurability, Hash, InvokeContractArgs, InvokeHostFunctionOp, LedgerKey, LedgerKeyContractData, Operation, ScAddress, ScSymbol, ScVal, SorobanAuthorizationEntry, StringM, VecM
 };
 use crate::address::Address;
 
@@ -62,7 +62,9 @@ impl ContractBehavior for Contracts {
     }
 
     fn contract_id(&self) -> String {
-        todo!()
+        str::from_utf8(&self.id)
+            .map(|s| s.to_string())
+            .unwrap_or_else(|_| String::from(""))
     }
 
     fn to_string(&self) -> String {
@@ -74,7 +76,11 @@ impl ContractBehavior for Contracts {
     }
 
     fn get_footprint(&self) -> LedgerKey {
-        todo!()
+        LedgerKey::ContractData(LedgerKeyContractData {
+            contract: ScAddress::Contract(Hash(contract_id_strkey(&self.contract_id()).0)),
+            key: ScVal::LedgerKeyContractInstance,
+            durability: ContractDataDurability::Persistent,
+        })
     }
 
     

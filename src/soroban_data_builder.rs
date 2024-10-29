@@ -17,6 +17,8 @@ pub enum Either<L, R> {
 }
 // Define a trait for SorobanDataBuilder behavior
 pub trait SorobanDataBuilderBehavior {
+    fn append_footprint(&mut self, read_only: Vec<stellar_xdr::next::LedgerKey>, read_write: Vec<stellar_xdr::next::LedgerKey>) -> &mut Self;
+    fn set_resources(&mut self, instructions: u32, read_bytes: u32, write_bytes: u32) -> &mut Self;
     fn new(soroban_data: Option<Either<String, stellar_xdr::next::SorobanTransactionData>>)
         -> Self;
     fn from_xdr(data: Either<String, Vec<u8>>) -> stellar_xdr::next::SorobanTransactionData;
@@ -99,7 +101,26 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
         }
     }
 
-    // TODO: Append Footprint
+
+    fn append_footprint(
+        &mut self,
+        read_only: Vec<stellar_xdr::next::LedgerKey>,
+        read_write: Vec<stellar_xdr::next::LedgerKey>,
+    ) -> &mut Self {
+        // Get current footprints
+        let mut current_read_only = self.get_read_only().clone();
+        let mut current_read_write = self.get_read_write();
+
+        // Append new keys
+        current_read_only.extend(read_only);
+        current_read_write.extend(read_write);
+
+        // Set the combined footprints
+        self.set_footprint(
+            Some(current_read_only),
+            Some(current_read_write)
+        )
+    }
 
     fn set_footprint(
         &mut self,
@@ -151,12 +172,22 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
     fn get_footprint(&self) -> &stellar_xdr::next::LedgerFootprint {
         &self.data.resources.footprint
     }
+
+    fn set_resources(&mut self, instructions: u32, read_bytes: u32, write_bytes: u32) -> &mut Self {
+        self.data.resources.instructions = instructions;
+        self.data.resources.read_bytes = read_bytes;
+        self.data.resources.write_bytes = write_bytes;
+        self
+    }
 }
 #[cfg(test)]
 mod tests {
+    use crate::contract::{ContractBehavior, Contracts};
+
     use super::*;
     use stellar_xdr::next::{
-        ExtensionPoint, LedgerFootprint, SorobanResources, SorobanTransactionData, Limits,
+        ExtensionPoint, LedgerFootprint, LedgerKey, SorobanResources, SorobanTransactionData,
+        Limits,
     };
 
     #[test]
@@ -202,5 +233,130 @@ mod tests {
 
     }
 
+
+    #[test]
+    fn test_sets_properties_as_expected() {
+        // Create sentinel data
+        let sentinel = SorobanTransactionData {
+            ext: ExtensionPoint::V0,
+            resources: SorobanResources {
+                footprint: LedgerFootprint {
+                    read_only: Vec::new().try_into().unwrap(),
+                    read_write: Vec::new().try_into().unwrap(),
+                },
+                instructions: 1,
+                read_bytes: 2,
+                write_bytes: 3,
+            },
+            resource_fee: 5,
+        };
+
+        // Test setting resources and resource fee
+        let mut binding = SorobanDataBuilder::new(None);
+        let builder = binding
+            .set_resources(1, 2, 3)
+            .set_refundable_fee(5);
+        assert_eq!(builder.build(), sentinel);
+
+        let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+        let c = Contracts::new(contract_id).unwrap();
+        let key = c.get_footprint();
+
+        let with_footprint = SorobanDataBuilder::new(None)
+            .set_footprint(Some(vec![key.clone()]), Some(vec![key.clone()]))
+            .build();
+        assert_eq!(with_footprint.resources.footprint.read_only[0], key);
+        assert_eq!(with_footprint.resources.footprint.read_write[0], key);
+    }
+
+    #[test]
+fn test_leaves_untouched_footprints_untouched() {
+    use crate::contract::{ContractBehavior, Contracts};
+    
+    // Create a contract key for testing
+    let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+    let c = Contracts::new(contract_id).unwrap();
+    let key = c.get_footprint();
+    
+    // First builder - set both read_only and read_write footprints
+    let mut builder = SorobanDataBuilder::new(None);
+    let data = builder
+        .set_footprint(Some(vec![key.clone()]), Some(vec![key.clone()]))
+        .build();
+    
+    // Second builder - constructed from first data, only modify read_write
+    let data2 = SorobanDataBuilder::new(Some(Either::Right(data.clone())))
+        .set_footprint(None, Some(vec![]))
+        .build();
+    
+    // Verify first data has both footprints set
+    assert_eq!(data.resources.footprint.read_only.len(), 1);
+    assert_eq!(data.resources.footprint.read_write.len(), 1);
+    assert_eq!(data.resources.footprint.read_only[0], key);
+    assert_eq!(data.resources.footprint.read_write[0], key);
+    
+    // Verify second data preserved read_only but cleared read_write
+    assert_eq!(data2.resources.footprint.read_only.len(), 1);
+    assert_eq!(data2.resources.footprint.read_write.len(), 0);
+    assert_eq!(data2.resources.footprint.read_only[0], key);
+}
     //TODO: Remaining Tests
+
+    #[test]
+    fn test_appends_footprints() {
+        // Create a contract key for testing
+        let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+        let c = Contracts::new(contract_id).unwrap();
+        let key = c.get_footprint();
+
+        // Create builder and chain operations
+        let mut builder = SorobanDataBuilder::new(None);
+        builder
+            .set_footprint(Some(vec![key.clone()]), Some(vec![key.clone()]))
+            .append_footprint(vec![key.clone(), key.clone()], vec![]);
+
+        // Test the builder's current state
+        assert_eq!(builder.get_read_only().len(), 3);
+        assert_eq!(builder.get_read_write().len(), 1);
+        
+        // Verify read_only contains three copies of the key
+        assert_eq!(builder.get_read_only()[0], key);
+        assert_eq!(builder.get_read_only()[1], key);
+        assert_eq!(builder.get_read_only()[2], key);
+        
+        // Verify read_write contains one copy of the key
+        assert_eq!(builder.get_read_write()[0], key);
+
+        // Build and verify the final state
+        let built = builder.build();
+        
+        // Verify the built data has the same footprint structure
+        assert_eq!(built.resources.footprint.read_only.len(), 3);
+        assert_eq!(built.resources.footprint.read_write.len(), 1);
+        
+        assert_eq!(built.resources.footprint.read_only[0], key);
+        assert_eq!(built.resources.footprint.read_only[1], key);
+        assert_eq!(built.resources.footprint.read_only[2], key);
+        assert_eq!(built.resources.footprint.read_write[0], key);
+    }
+
+    #[test]
+    fn test_makes_copies_on_build() {
+        // Create a builder
+        let mut builder = SorobanDataBuilder::new(None);
+        
+        // Get first build
+        let first = builder.build();
+        
+        // Modify builder and get second build
+        let second = builder.set_refundable_fee(100).build();
+        
+        // Verify that the first build wasn't affected by later modifications
+        assert_ne!(first.resource_fee, second.resource_fee);
+        
+        // Additional verification of exact values
+        assert_eq!(first.resource_fee, 0); // Default value
+        assert_eq!(second.resource_fee, 100); // Modified value
+    }
+    
 }
