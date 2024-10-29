@@ -56,7 +56,11 @@ pub struct TransactionBuilder {
 
 // Define a trait for TransactionBuilder behavior
 pub trait TransactionBuilderBehavior {
-    fn new(source_account: Rc<RefCell<Account>>, network: &str, time_bounds: Option<TimeBounds>) -> Self;
+    fn new(
+        source_account: Rc<RefCell<Account>>,
+        network: &str,
+        time_bounds: Option<TimeBounds>,
+    ) -> Self;
     fn fee(&mut self, fee: impl Into<u32>) -> &mut Self;
     fn add_operation(&mut self, operation: Operation) -> &mut Self;
     fn build(&mut self) -> Transaction;
@@ -68,7 +72,11 @@ pub trait TransactionBuilderBehavior {
 pub const TIMEOUT_INFINITE: i64 = 0;
 
 impl TransactionBuilderBehavior for TransactionBuilder {
-    fn new(source_account: Rc<RefCell<Account>>, network: &str, time_bounds: Option<TimeBounds>) -> Self {
+    fn new(
+        source_account: Rc<RefCell<Account>>,
+        network: &str,
+        time_bounds: Option<TimeBounds>,
+    ) -> Self {
         Self {
             tx: None,
             network_passphrase: Some(network.to_string()),
@@ -101,7 +109,9 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     }
 
     fn add_memo(&mut self, memo_text: &str) -> &mut Self {
-        self.memo = Some(stellar_xdr::next::Memo::Text(StringM::<28>::from_str(memo_text).unwrap()));
+        self.memo = Some(stellar_xdr::next::Memo::Text(
+            StringM::<28>::from_str(memo_text).unwrap(),
+        ));
         self
     }
 
@@ -124,7 +134,10 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         if timeout_seconds > 0 {
             let timeout_timestamp = current_time + timeout_seconds as u64;
             self.time_bounds = Some(TimeBounds {
-                min_time: self.time_bounds.as_ref().map_or(stellar_xdr::next::TimePoint(0), |tb| tb.min_time.clone()),
+                min_time: self
+                    .time_bounds
+                    .as_ref()
+                    .map_or(stellar_xdr::next::TimePoint(0), |tb| tb.min_time.clone()),
                 max_time: stellar_xdr::next::TimePoint(timeout_timestamp),
             });
         } else {
@@ -143,13 +156,11 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     }
 
     fn build(&mut self) -> Transaction {
-
         let source = self.source.as_ref().expect("Source account not set");
         let mut source_ref = source.borrow_mut();
         let current_seq_num = BigUint::from_str(source_ref.sequence_number().as_str()).unwrap();
         let incremented_seq_num = current_seq_num.clone() + BigUint::from(1u32);
         source_ref.increment_sequence_number();
-
 
         // let seq_num =
         //     BigUint::from_str(self.source.clone().unwrap().sequence_number().as_str()).unwrap();
@@ -206,20 +217,25 @@ mod tests {
     //     account::Account, asset::{Asset, AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::PaymentOpts, transaction::TransactionBehavior
     // };
     use crate::{
-        account::{Account, AccountBehavior}, asset::{Asset,AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::{Operation, OperationBehavior, PaymentOpts}, transaction::{self, TransactionBehavior}, transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE}
+        account::{Account, AccountBehavior},
+        asset::{Asset, AssetBehavior},
+        keypair::{self, Keypair},
+        network::{NetworkPassphrase, Networks},
+        operation::{Operation, OperationBehavior, PaymentOpts},
+        transaction::{self, TransactionBehavior},
+        transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
     };
-
-    
 
     #[test]
     fn test_creates_and_signs() {
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
+                "20",
+            )
+            .unwrap(),
+        ));
 
-        let source = Rc::new(RefCell::new(Account::new(
-            "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
-            "20",
-        ).unwrap()));
-
-        
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
         let mut tx = TransactionBuilder::new(source, Networks::testnet(), None)
@@ -235,31 +251,37 @@ mod tests {
 
     #[test]
     fn test_constructs_native_payment_transaction() {
-        let source = Rc::new(RefCell::new(Account::new(
-            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-            "0",
-        ).unwrap()));
-    
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+                "0",
+            )
+            .unwrap(),
+        ));
+
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let amount = "1000".to_string();
-        let asset = Asset::native(); 
+        let asset = Asset::native();
         let memo = Memo::Id(100);
         let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
-    
+
         builder
             .fee(100_u32)
-            .add_operation(Operation::payment(PaymentOpts {
-                destination: destination.to_owned(),
-                asset,
-                amount: amount.to_owned(),
-                source: None,
-            }).unwrap())
+            .add_operation(
+                Operation::payment(PaymentOpts {
+                    destination: destination.to_owned(),
+                    asset,
+                    amount: amount.to_owned(),
+                    source: None,
+                })
+                .unwrap(),
+            )
             .add_memo("100")
             .set_timeout(TIMEOUT_INFINITE)
             .unwrap();
-    
+
         let transaction = builder.build();
-    
+
         assert_eq!(transaction.source, source.borrow().account_id().to_string());
         assert_eq!(transaction.sequence, "1");
         assert_eq!(source.borrow().sequence_number(), "1");
@@ -268,79 +290,85 @@ mod tests {
     }
 
     #[test]
-fn test_constructs_native_payment_transaction_with_two_operations() {
-    // Source account
-    let source = Rc::new(RefCell::new(Account::new(
-        "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-        "0",
-    ).unwrap()));
-
-    // Destination accounts and amounts
-    let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
-    let amount1 = "1000".to_string();
-    let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2".to_string();
-    let amount2 = "2000".to_string();
-
-    // Asset is native (like Lumens)
-    let asset = Asset::native();
-
-    // Create transaction builder
-    let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
-
-    // Add payment operations
-    builder
-        .fee(100_u32)
-        .add_operation(
-            Operation::payment(PaymentOpts {
-                destination: destination1.to_owned(),
-                asset: asset.clone(),
-                amount: amount1.to_owned(),
-                source: None,
-            })
+    fn test_constructs_native_payment_transaction_with_two_operations() {
+        // Source account
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+                "0",
+            )
             .unwrap(),
-        )
-        .add_operation(
-            Operation::payment(PaymentOpts {
-                destination: destination2.to_owned(),
-                asset: asset,
-                amount: amount2.to_owned(),
-                source: None,
-            })
-            .unwrap(),
-        )
-        .set_timeout(TIMEOUT_INFINITE)
-        .unwrap();
+        ));
 
-    // Build transaction
-    let transaction = builder.build();
+        // Destination accounts and amounts
+        let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let amount1 = "1000".to_string();
+        let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2".to_string();
+        let amount2 = "2000".to_string();
 
-    // Assertions
-    // Should have the same source account
-    assert_eq!(transaction.source, source.borrow().account_id().to_string());
+        // Asset is native (like Lumens)
+        let asset = Asset::native();
 
-    // Should have the incremented sequence number
-    assert_eq!(transaction.sequence, "1");
+        // Create transaction builder
+        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
 
-    // Should increment the account's sequence number
-    assert_eq!(source.borrow().sequence_number(), "1");
+        // Add payment operations
+        builder
+            .fee(100_u32)
+            .add_operation(
+                Operation::payment(PaymentOpts {
+                    destination: destination1.to_owned(),
+                    asset: asset.clone(),
+                    amount: amount1.to_owned(),
+                    source: None,
+                })
+                .unwrap(),
+            )
+            .add_operation(
+                Operation::payment(PaymentOpts {
+                    destination: destination2.to_owned(),
+                    asset: asset,
+                    amount: amount2.to_owned(),
+                    source: None,
+                })
+                .unwrap(),
+            )
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap();
 
-    // Should have two payment operations
-    assert_eq!(transaction.operations.unwrap().len(), 2);
-    // assert_eq!(transaction.operations.unwrap()[0].operation_type(), "payment");
-    // assert_eq!(transaction.operations.unwrap()[1].operation_type(), "payment");
+        // Build transaction
+        let transaction = builder.build();
 
-    // Should have 200 stroops fee (100 per operation)
-    assert_eq!(transaction.fee, 200);
-}
+        // Assertions
+        // Should have the same source account
+        assert_eq!(transaction.source, source.borrow().account_id().to_string());
 
-#[test]
+        // Should have the incremented sequence number
+        assert_eq!(transaction.sequence, "1");
+
+        // Should increment the account's sequence number
+        assert_eq!(source.borrow().sequence_number(), "1");
+
+        // Should have two payment operations
+        assert_eq!(transaction.operations.unwrap().len(), 2);
+        // assert_eq!(transaction.operations.unwrap()[0].operation_type(), "payment");
+        // assert_eq!(transaction.operations.unwrap()[1].operation_type(), "payment");
+
+        // Should have 200 stroops fee (100 per operation)
+        assert_eq!(transaction.fee, 200);
+    }
+
+    #[test]
     fn constructs_native_payment_transaction_with_custom_base_fee() {
         // Set up test data
-        let source = Rc::new(RefCell::new(Account::new(
-            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-            "0",
-        ).unwrap()));
-        
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+                "0",
+            )
+            .unwrap(),
+        ));
+
         let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let amount1 = "1000".to_string();
         let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2".to_string();
@@ -350,62 +378,78 @@ fn test_constructs_native_payment_transaction_with_two_operations() {
         // Create transaction
         let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = builder
-            .fee(1000_u32)  // Set custom base fee
-            .add_operation(Operation::payment(PaymentOpts {
-                destination: destination1,
-                asset: asset.clone(),
-                amount: amount1,
-                source: None,
-            }).unwrap())
-            .add_operation(Operation::payment(PaymentOpts {
-                destination: destination2,
-                asset,
-                amount: amount2,
-                source: None,
-            }).unwrap())
+            .fee(1000_u32) // Set custom base fee
+            .add_operation(
+                Operation::payment(PaymentOpts {
+                    destination: destination1,
+                    asset: asset.clone(),
+                    amount: amount1,
+                    source: None,
+                })
+                .unwrap(),
+            )
+            .add_operation(
+                Operation::payment(PaymentOpts {
+                    destination: destination2,
+                    asset,
+                    amount: amount2,
+                    source: None,
+                })
+                .unwrap(),
+            )
             .set_timeout(TIMEOUT_INFINITE)
             .unwrap()
             .build();
 
         // Assert that the total fee is 2000 stroops (1000 per operation, 2 operations)
         assert_eq!(transaction.fee, 2000);
-
     }
-
 
     #[test]
     fn constructs_native_payment_transaction_with_integer_timebounds() {
-        let source = Rc::new(RefCell::new(Account::new(
-            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-            "0",
-        ).unwrap()));
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+                "0",
+            )
+            .unwrap(),
+        ));
 
         let timebounds = TimeBounds {
             min_time: stellar_xdr::next::TimePoint(1455287522),
             max_time: stellar_xdr::next::TimePoint(1455297545),
         };
 
-        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), Some(timebounds.clone()));
-        builder
-            .fee(100_u32)
-            .add_operation(Operation::payment(PaymentOpts {
+        let mut builder = TransactionBuilder::new(
+            source.clone(),
+            Networks::testnet(),
+            Some(timebounds.clone()),
+        );
+        builder.fee(100_u32).add_operation(
+            Operation::payment(PaymentOpts {
                 destination: "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string(),
                 asset: Asset::native(),
                 amount: "1000".to_string(),
                 source: None,
-            }).unwrap());
+            })
+            .unwrap(),
+        );
 
         // Set the timebounds
         builder.time_bounds = Some(timebounds.clone());
 
         let transaction = builder.build();
-    
-        assert_eq!(transaction.time_bounds.as_ref().unwrap().min_time, timebounds.min_time);
-        assert_eq!(transaction.time_bounds.as_ref().unwrap().max_time, timebounds.max_time);
+
+        assert_eq!(
+            transaction.time_bounds.as_ref().unwrap().min_time,
+            timebounds.min_time
+        );
+        assert_eq!(
+            transaction.time_bounds.as_ref().unwrap().max_time,
+            timebounds.max_time
+        );
     }
 
     //TODO: Compatibilty of TimeBounds with chrono date
     //TODO: Soroban Data Builder
-    
-
 }

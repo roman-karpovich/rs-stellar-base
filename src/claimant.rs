@@ -115,7 +115,6 @@ impl ClaimantBehavior for Claimant {
     }
 
     fn destination(&self) -> Option<String> {
-        
         self.destination.clone()
     }
 

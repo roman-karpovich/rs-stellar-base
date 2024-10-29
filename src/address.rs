@@ -1,5 +1,5 @@
-use stellar_xdr::next::*;
 use stellar_strkey::Strkey;
+use stellar_xdr::next::*;
 
 pub enum AddressType {
     Account,
@@ -13,22 +13,34 @@ pub struct Address {
 
 pub trait AddressTrait {
     /// Creates a new Address instance from a string representation.
-    fn new(address: &str) -> Result<Self, &'static str> where Self: Sized;
+    fn new(address: &str) -> Result<Self, &'static str>
+    where
+        Self: Sized;
 
     /// Parses a string and returns an Address object.
-    fn from_string(address: &str) -> Result<Self, &'static str> where Self: Sized;
+    fn from_string(address: &str) -> Result<Self, &'static str>
+    where
+        Self: Sized;
 
     /// Creates a new account Address object from a buffer of raw bytes.
-    fn account(buffer: &[u8]) -> Self where Self: Sized;
+    fn account(buffer: &[u8]) -> Self
+    where
+        Self: Sized;
 
     /// Creates a new contract Address object from a buffer of raw bytes.
-    fn contract(buffer: &[u8]) -> Self where Self: Sized;
+    fn contract(buffer: &[u8]) -> Self
+    where
+        Self: Sized;
 
     /// Convert from an xdr.ScVal type.
-    fn from_sc_val(sc_val: &ScVal) -> Result<Self, &'static str> where Self: Sized;
+    fn from_sc_val(sc_val: &ScVal) -> Result<Self, &'static str>
+    where
+        Self: Sized;
 
     /// Convert from an xdr.ScAddress type.
-    fn from_sc_address(sc_address: &ScAddress) -> Result<Self, &'static str> where Self: Sized;
+    fn from_sc_address(sc_address: &ScAddress) -> Result<Self, &'static str>
+    where
+        Self: Sized;
 
     /// Serialize an address to string.
     fn to_string(&self) -> String;
@@ -44,27 +56,45 @@ pub trait AddressTrait {
 }
 
 impl AddressTrait for Address {
-    fn new(address: &str) -> Result<Self, &'static str> where Self: Sized {
+    fn new(address: &str) -> Result<Self, &'static str>
+    where
+        Self: Sized,
+    {
         todo!()
     }
 
-    fn from_string(address: &str) -> Result<Self, &'static str> where Self: Sized {
+    fn from_string(address: &str) -> Result<Self, &'static str>
+    where
+        Self: Sized,
+    {
         todo!()
     }
 
-    fn account(buffer: &[u8]) -> Self where Self: Sized {
+    fn account(buffer: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
         todo!()
     }
 
-    fn contract(buffer: &[u8]) -> Self where Self: Sized {
+    fn contract(buffer: &[u8]) -> Self
+    where
+        Self: Sized,
+    {
         todo!()
     }
 
-    fn from_sc_val(sc_val: &ScVal) -> Result<Self, &'static str> where Self: Sized {
+    fn from_sc_val(sc_val: &ScVal) -> Result<Self, &'static str>
+    where
+        Self: Sized,
+    {
         todo!()
     }
 
-    fn from_sc_address(sc_address: &ScAddress) -> Result<Self, &'static str> where Self: Sized {
+    fn from_sc_address(sc_address: &ScAddress) -> Result<Self, &'static str>
+    where
+        Self: Sized,
+    {
         todo!()
     }
 

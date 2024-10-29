@@ -8,13 +8,13 @@ use num_rational::Rational32;
 use num_traits::identities::One;
 use num_traits::ToPrimitive;
 use num_traits::{FromPrimitive, Num, Signed, Zero};
-use stellar_xdr::next::Uint256;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::str::FromStr;
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 use stellar_xdr::curr::ClaimableBalanceFlags;
 use stellar_xdr::next::Type::Int64;
+use stellar_xdr::next::Uint256;
 use stellar_xdr::next::{AccountId, HostFunction, SignerKeyType, TrustLineFlags, WriteXdr};
 
 use crate::asset::Asset;
@@ -76,11 +76,10 @@ pub trait OperationBehavior {
         F: Fn(u32, &str) -> bool;
 }
 
-
 impl Operation {
     pub fn payment(opts: PaymentOpts) -> Result<stellar_xdr::next::Operation, String> {
-       
-        let destination = match decode_address_to_muxed_account_fix_for_g_address(&opts.destination) {
+        let destination = match decode_address_to_muxed_account_fix_for_g_address(&opts.destination)
+        {
             account => account,
             _ => return Err("destination is invalid".to_string()),
         };
@@ -96,9 +95,8 @@ impl Operation {
             amount,
             destination: destination,
         };
-        
-        let body = stellar_xdr::next::OperationBody::Payment(payment_op);
 
+        let body = stellar_xdr::next::OperationBody::Payment(payment_op);
 
         //TODO: Add Source Account
         // if let Some(source) = opts.source {

@@ -1,10 +1,10 @@
 use crate::hashing::HashingBehavior;
-use std::collections::hash_map::ValuesMut;
-use std::error::Error;
-use std::str::FromStr;
 use crate::operation::PaymentOpts;
 use hex_literal::hex;
 use num_bigint::BigUint;
+use std::collections::hash_map::ValuesMut;
+use std::error::Error;
+use std::str::FromStr;
 use stellar_xdr::next::DecoratedSignature;
 
 use crate::account::Account;
@@ -85,13 +85,12 @@ impl TransactionBehavior for Transaction {
     }
 
     fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
-        
         let raw_tx = self.tx.to_xdr(stellar_xdr::next::Limits::none()).unwrap();
         println!("Raw {:?}", self.tx);
 
         let mut signatures =
             VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
-        
+
         let envelope = match self.envelope_type {
             stellar_xdr::next::EnvelopeType::TxV0 => {
                 let transaction_v0 = stellar_xdr::next::TransactionV0Envelope {
@@ -129,31 +128,36 @@ impl TransactionBehavior for Transaction {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 
     use core::panic;
-    use std::{cell::RefCell, rc::Rc};
     use keypair::KeypairBehavior;
+    use std::{cell::RefCell, rc::Rc};
 
     use sha2::digest::crypto_common::Key;
     use stellar_xdr::next::Limits;
-    
+
     use super::*;
     use crate::{
-        account::{Account, AccountBehavior}, asset::{Asset,AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::{Operation, OperationBehavior}, transaction::TransactionBehavior, transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE}
+        account::{Account, AccountBehavior},
+        asset::{Asset, AssetBehavior},
+        keypair::{self, Keypair},
+        network::{NetworkPassphrase, Networks},
+        operation::{Operation, OperationBehavior},
+        transaction::TransactionBehavior,
+        transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
     };
 
     #[test]
     fn constructs_transaction_object_from_transaction_envelope() {
-
-        let source = Rc::new(RefCell::new(Account::new(
-            "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
-            "20",
-        ).unwrap()));
-        
-        
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
+                "20",
+            )
+            .unwrap(),
+        ));
 
         let destination = "GAAOFCNYV2OQUMVONXH2DOOQNNLJO7WRQ7E4INEZ7VH7JNG7IKBQAK5D";
         let asset = Asset::native();
@@ -167,18 +171,23 @@ mod tests {
         //     }).unwrap();
 
         let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None)
-        .fee(100_u32)
-        .add_operation(Operation::payment(PaymentOpts {
-            destination: destination.to_owned(),
-            asset,
-            amount: amount.to_owned(),
-            source: None,
-        }).unwrap())
-        .add_memo("Happy birthday!")
-        .set_timeout(TIMEOUT_INFINITE).unwrap().build();
+            .fee(100_u32)
+            .add_operation(
+                Operation::payment(PaymentOpts {
+                    destination: destination.to_owned(),
+                    asset,
+                    amount: amount.to_owned(),
+                    source: None,
+                })
+                .unwrap(),
+            )
+            .add_memo("Happy birthday!")
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap()
+            .build();
 
         //TODO: Tests still coming in for Envelope
-        
+
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
         let mut tx = TransactionBuilder::new(source, Networks::testnet(), None)

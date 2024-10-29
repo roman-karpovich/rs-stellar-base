@@ -17,7 +17,11 @@ pub enum Either<L, R> {
 }
 // Define a trait for SorobanDataBuilder behavior
 pub trait SorobanDataBuilderBehavior {
-    fn append_footprint(&mut self, read_only: Vec<stellar_xdr::next::LedgerKey>, read_write: Vec<stellar_xdr::next::LedgerKey>) -> &mut Self;
+    fn append_footprint(
+        &mut self,
+        read_only: Vec<stellar_xdr::next::LedgerKey>,
+        read_write: Vec<stellar_xdr::next::LedgerKey>,
+    ) -> &mut Self;
     fn set_resources(&mut self, instructions: u32, read_bytes: u32, write_bytes: u32) -> &mut Self;
     fn new(soroban_data: Option<Either<String, stellar_xdr::next::SorobanTransactionData>>)
         -> Self;
@@ -62,7 +66,6 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
                 }
             }
             Some(Either::Right(data_instance)) => SorobanDataBuilder::from_xdr(Either::Left(
-                
                 data_instance
                     .to_xdr_base64(stellar_xdr::next::Limits::none())
                     .unwrap(),
@@ -101,7 +104,6 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
         }
     }
 
-
     fn append_footprint(
         &mut self,
         read_only: Vec<stellar_xdr::next::LedgerKey>,
@@ -116,10 +118,7 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
         current_read_write.extend(read_write);
 
         // Set the combined footprints
-        self.set_footprint(
-            Some(current_read_only),
-            Some(current_read_write)
-        )
+        self.set_footprint(Some(current_read_only), Some(current_read_write))
     }
 
     fn set_footprint(
@@ -186,8 +185,8 @@ mod tests {
 
     use super::*;
     use stellar_xdr::next::{
-        ExtensionPoint, LedgerFootprint, LedgerKey, SorobanResources, SorobanTransactionData,
-        Limits,
+        ExtensionPoint, LedgerFootprint, LedgerKey, Limits, SorobanResources,
+        SorobanTransactionData,
     };
 
     #[test]
@@ -225,14 +224,12 @@ mod tests {
         // Test with falsy values
         let empty_string = SorobanDataBuilder::new(Some(Either::Left(String::new()))).build();
         assert_eq!(empty_string, baseline);
-        
+
         // Note: null and 0 don't need separate tests in Rust due to the type system
         // In Rust, we handle this through the Option type in the constructor
         let none_value = SorobanDataBuilder::new(None).build();
         assert_eq!(none_value, baseline);
-
     }
-
 
     #[test]
     fn test_sets_properties_as_expected() {
@@ -253,9 +250,7 @@ mod tests {
 
         // Test setting resources and resource fee
         let mut binding = SorobanDataBuilder::new(None);
-        let builder = binding
-            .set_resources(1, 2, 3)
-            .set_refundable_fee(5);
+        let builder = binding.set_resources(1, 2, 3).set_refundable_fee(5);
         assert_eq!(builder.build(), sentinel);
 
         let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
@@ -270,36 +265,36 @@ mod tests {
     }
 
     #[test]
-fn test_leaves_untouched_footprints_untouched() {
-    use crate::contract::{ContractBehavior, Contracts};
-    
-    // Create a contract key for testing
-    let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
-    let c = Contracts::new(contract_id).unwrap();
-    let key = c.get_footprint();
-    
-    // First builder - set both read_only and read_write footprints
-    let mut builder = SorobanDataBuilder::new(None);
-    let data = builder
-        .set_footprint(Some(vec![key.clone()]), Some(vec![key.clone()]))
-        .build();
-    
-    // Second builder - constructed from first data, only modify read_write
-    let data2 = SorobanDataBuilder::new(Some(Either::Right(data.clone())))
-        .set_footprint(None, Some(vec![]))
-        .build();
-    
-    // Verify first data has both footprints set
-    assert_eq!(data.resources.footprint.read_only.len(), 1);
-    assert_eq!(data.resources.footprint.read_write.len(), 1);
-    assert_eq!(data.resources.footprint.read_only[0], key);
-    assert_eq!(data.resources.footprint.read_write[0], key);
-    
-    // Verify second data preserved read_only but cleared read_write
-    assert_eq!(data2.resources.footprint.read_only.len(), 1);
-    assert_eq!(data2.resources.footprint.read_write.len(), 0);
-    assert_eq!(data2.resources.footprint.read_only[0], key);
-}
+    fn test_leaves_untouched_footprints_untouched() {
+        use crate::contract::{ContractBehavior, Contracts};
+
+        // Create a contract key for testing
+        let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+        let c = Contracts::new(contract_id).unwrap();
+        let key = c.get_footprint();
+
+        // First builder - set both read_only and read_write footprints
+        let mut builder = SorobanDataBuilder::new(None);
+        let data = builder
+            .set_footprint(Some(vec![key.clone()]), Some(vec![key.clone()]))
+            .build();
+
+        // Second builder - constructed from first data, only modify read_write
+        let data2 = SorobanDataBuilder::new(Some(Either::Right(data.clone())))
+            .set_footprint(None, Some(vec![]))
+            .build();
+
+        // Verify first data has both footprints set
+        assert_eq!(data.resources.footprint.read_only.len(), 1);
+        assert_eq!(data.resources.footprint.read_write.len(), 1);
+        assert_eq!(data.resources.footprint.read_only[0], key);
+        assert_eq!(data.resources.footprint.read_write[0], key);
+
+        // Verify second data preserved read_only but cleared read_write
+        assert_eq!(data2.resources.footprint.read_only.len(), 1);
+        assert_eq!(data2.resources.footprint.read_write.len(), 0);
+        assert_eq!(data2.resources.footprint.read_only[0], key);
+    }
     //TODO: Remaining Tests
 
     #[test]
@@ -318,22 +313,22 @@ fn test_leaves_untouched_footprints_untouched() {
         // Test the builder's current state
         assert_eq!(builder.get_read_only().len(), 3);
         assert_eq!(builder.get_read_write().len(), 1);
-        
+
         // Verify read_only contains three copies of the key
         assert_eq!(builder.get_read_only()[0], key);
         assert_eq!(builder.get_read_only()[1], key);
         assert_eq!(builder.get_read_only()[2], key);
-        
+
         // Verify read_write contains one copy of the key
         assert_eq!(builder.get_read_write()[0], key);
 
         // Build and verify the final state
         let built = builder.build();
-        
+
         // Verify the built data has the same footprint structure
         assert_eq!(built.resources.footprint.read_only.len(), 3);
         assert_eq!(built.resources.footprint.read_write.len(), 1);
-        
+
         assert_eq!(built.resources.footprint.read_only[0], key);
         assert_eq!(built.resources.footprint.read_only[1], key);
         assert_eq!(built.resources.footprint.read_only[2], key);
@@ -344,19 +339,18 @@ fn test_leaves_untouched_footprints_untouched() {
     fn test_makes_copies_on_build() {
         // Create a builder
         let mut builder = SorobanDataBuilder::new(None);
-        
+
         // Get first build
         let first = builder.build();
-        
+
         // Modify builder and get second build
         let second = builder.set_refundable_fee(100).build();
-        
+
         // Verify that the first build wasn't affected by later modifications
         assert_ne!(first.resource_fee, second.resource_fee);
-        
+
         // Additional verification of exact values
         assert_eq!(first.resource_fee, 0); // Default value
         assert_eq!(second.resource_fee, 100); // Modified value
     }
-    
 }

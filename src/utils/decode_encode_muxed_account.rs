@@ -1,9 +1,9 @@
+use crate::muxed_account;
 use arrayref::array_ref;
-use stellar_xdr::next::{Uint256, Uint64};
 use std::str::FromStr;
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 use stellar_strkey::Strkey::MuxedAccountEd25519;
-use crate::muxed_account;
+use stellar_xdr::next::{Uint256, Uint64};
 
 pub fn decode_address_to_muxed_account(address: &str) -> MuxedAccount {
     if MuxedAccount::from_str(address).is_ok() {
@@ -14,10 +14,12 @@ pub fn decode_address_to_muxed_account(address: &str) -> MuxedAccount {
 }
 
 // TODO: 'G..' address was not working for payment Op, need to make different function, with better name
-pub fn decode_address_to_muxed_account_fix_for_g_address(address: &str) -> stellar_xdr::next::MuxedAccount {
+pub fn decode_address_to_muxed_account_fix_for_g_address(
+    address: &str,
+) -> stellar_xdr::next::MuxedAccount {
     if MuxedAccount::from_str(address).is_ok() {
         let val = decode_address_fully_to_muxed_account(address);
-        return val
+        return val;
     }
 
     stellar_xdr::next::MuxedAccount::from_str(address).unwrap()

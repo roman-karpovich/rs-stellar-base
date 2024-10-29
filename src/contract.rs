@@ -1,11 +1,13 @@
 use core::str;
 use std::str::FromStr;
 
+use crate::address::Address;
 use stellar_strkey::{Contract, Strkey};
 use stellar_xdr::next::{
-    ContractDataDurability, Hash, InvokeContractArgs, InvokeHostFunctionOp, LedgerKey, LedgerKeyContractData, Operation, ScAddress, ScSymbol, ScVal, SorobanAuthorizationEntry, StringM, VecM
+    ContractDataDurability, Hash, InvokeContractArgs, InvokeHostFunctionOp, LedgerKey,
+    LedgerKeyContractData, Operation, ScAddress, ScSymbol, ScVal, SorobanAuthorizationEntry,
+    StringM, VecM,
 };
-use crate::address::Address;
 
 #[derive(Clone)]
 pub struct Contracts {
@@ -14,7 +16,9 @@ pub struct Contracts {
 
 pub trait ContractBehavior {
     /// Creates a new Contract instance from a string representation of the contract ID.
-    fn new(contract_id: &str) -> Result<Self, &'static str> where Self: Sized;
+    fn new(contract_id: &str) -> Result<Self, &'static str>
+    where
+        Self: Sized;
 
     /// Returns the Stellar contract ID as a string.
     fn contract_id(&self) -> String;
@@ -41,17 +45,22 @@ impl ContractBehavior for Contracts {
         })
     }
 
-    fn call(&self, method: &str, params: Option<Vec<stellar_xdr::next::ScVal>>) -> stellar_xdr::next::Operation {
-
-
+    fn call(
+        &self,
+        method: &str,
+        params: Option<Vec<stellar_xdr::next::ScVal>>,
+    ) -> stellar_xdr::next::Operation {
         stellar_xdr::next::Operation {
             source_account: None,
             body: stellar_xdr::next::OperationBody::InvokeHostFunction(InvokeHostFunctionOp {
                 host_function: stellar_xdr::next::HostFunction::InvokeContract(
                     InvokeContractArgs {
-                        contract_address: stellar_xdr::next::ScAddress::Contract(
-                            Hash(contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0),
-                        ),
+                        contract_address: stellar_xdr::next::ScAddress::Contract(Hash(
+                            contract_id_strkey(
+                                String::from_utf8(self.id.clone()).unwrap().as_str(),
+                            )
+                            .0,
+                        )),
                         function_name: ScSymbol::from(StringM::from_str(method).unwrap()),
                         args: VecM::<ScVal>::try_from(params.unwrap_or(Vec::new())).unwrap(),
                     },
@@ -82,9 +91,6 @@ impl ContractBehavior for Contracts {
             durability: ContractDataDurability::Persistent,
         })
     }
-
-    
-    
 }
 
 pub fn contract_id_strkey(contract_id: &str) -> stellar_strkey::Contract {

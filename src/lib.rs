@@ -4,6 +4,7 @@
 //! utilized in the Stellar network.
 //! It provides a nice abstraction for building and signing transactions
 pub mod account;
+pub mod address;
 pub mod asset;
 pub mod claimant;
 pub mod contract;
@@ -25,4 +26,3 @@ pub mod transaction;
 pub mod transaction_builder;
 pub mod utils;
 pub mod xdr;
-pub mod address;

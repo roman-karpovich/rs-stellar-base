@@ -34,7 +34,8 @@ impl LiquidityPoolBehavior for LiquidityPool {
                 "liquidityPoolType is invalid",
             )));
         }
-        let LiquidityPoolParameters::LiquidityPoolConstantProduct(liquidity_pool_parametes_x) = liquidity_pool_parameters.clone();
+        let LiquidityPoolParameters::LiquidityPoolConstantProduct(liquidity_pool_parametes_x) =
+            liquidity_pool_parameters.clone();
 
         if liquidity_pool_parametes_x.fee != LIQUIDITY_POOL_FEE_V18 {
             return Err(Box::new(std::io::Error::new(
