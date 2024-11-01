@@ -10,6 +10,7 @@ use hex_literal::hex;
 use num_bigint::BigUint;
 use serde_json::from_str;
 use stellar_xdr::next::DecoratedSignature;
+use stellar_xdr::next::SorobanTransactionData;
 use stellar_xdr::next::StringM;
 
 use crate::account::Account;
@@ -52,6 +53,7 @@ pub struct TransactionBuilder {
     min_account_sequence_ledger_gap: Option<u32>,
     extra_signers: Option<Vec<stellar_xdr::next::AccountId>>,
     operations: Option<Vec<Operation>>,
+    soroban_data: Option<SorobanTransactionData>,
 }
 
 // Define a trait for TransactionBuilder behavior
@@ -67,6 +69,7 @@ pub trait TransactionBuilderBehavior {
     fn add_memo(&mut self, memo_text: &str) -> &mut Self;
     fn set_timeout(&mut self, timeout_seconds: i64) -> Result<&mut Self, String>;
     fn set_time_bounds(&mut self, time_bounds: TimeBounds) -> &mut Self;
+    fn set_soroban_data(&mut self, soroban_data: SorobanTransactionData) -> &mut Self;
 }
 
 pub const TIMEOUT_INFINITE: i64 = 0;
@@ -93,6 +96,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             min_account_sequence_ledger_gap: None,
             extra_signers: None,
             operations: Some(Vec::new()),
+            soroban_data: None,
         }
     }
 
@@ -154,7 +158,13 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         self.time_bounds = Some(time_bounds);
         self
     }
+    
+    fn set_soroban_data(&mut self, soroban_data: SorobanTransactionData) -> &mut Self {
+        self.soroban_data = Some(soroban_data);
+        self
+    }
 
+ 
     fn build(&mut self) -> Transaction {
         let source = self.source.as_ref().expect("Source account not set");
         let mut source_ref = source.borrow_mut();
@@ -200,6 +210,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             extra_signers: Vec::new(),
             operations: self.operations.clone(),
             hash: None,
+            soroban_data: self.soroban_data.clone()
         }
     }
 }
@@ -211,19 +222,15 @@ mod tests {
     use keypair::KeypairBehavior;
 
     use sha2::digest::crypto_common::Key;
+    use stellar_xdr::next::{Hash, HostFunction, InvokeContractArgs, ScAddress, ScString, ScSymbol, ScVal};
+    use stellar_xdr::next::ScAddress::Contract;
 
     use super::*;
     // use crate::{
     //     account::Account, asset::{Asset, AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::PaymentOpts, transaction::TransactionBehavior
     // };
     use crate::{
-        account::{Account, AccountBehavior},
-        asset::{Asset, AssetBehavior},
-        keypair::{self, Keypair},
-        network::{NetworkPassphrase, Networks},
-        operation::{Operation, OperationBehavior, PaymentOpts},
-        transaction::{self, TransactionBehavior},
-        transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
+        account::{Account, AccountBehavior}, asset::{Asset, AssetBehavior}, contract::{ContractBehavior, Contracts}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, op_list::invoke_host, operation::{Operation, OperationBehavior, PaymentOpts}, soroban_data_builder::{SorobanDataBuilder, SorobanDataBuilderBehavior}, transaction::{self, TransactionBehavior}, transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE}
     };
 
     #[test]
@@ -452,4 +459,54 @@ mod tests {
 
     //TODO: Compatibilty of TimeBounds with chrono date
     //TODO: Soroban Data Builder
+
+    #[test]
+    fn constructs_a_transaction_with_soroban_data() {
+        // Arrange
+        let source = Rc::new(RefCell::new(Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        ).unwrap()));
+    
+        let mut soroban_data_builder = SorobanDataBuilder::new(None);
+        soroban_data_builder
+            .set_resources(0, 5, 0)
+            .set_refundable_fee(1);
+        let soroban_transaction_data = soroban_data_builder.build();
+    
+        let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+        let binding = hex::encode(contract_id);
+        let hex_id = binding.as_bytes();
+        let mut array = [0u8; 32];
+        array.copy_from_slice(&hex_id[0..32]);
+    
+        let func = HostFunction::InvokeContract(InvokeContractArgs {
+            contract_address: ScAddress::from(Contract(Hash::from(array))),
+            function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
+            args: vec![ScVal::String(ScString::from(
+                StringM::from_str("world").unwrap(),
+            ))]
+            .try_into()
+            .unwrap(),
+        });
+    
+        // Act
+        let mut transaction_builder = TransactionBuilder::new(
+            source.clone(),
+            Networks::testnet(),
+            None,
+        );
+        let transaction = transaction_builder
+            .fee(100_u32)
+            .add_operation(Operation::invoke_host_function(func, None, None).unwrap())
+            .set_soroban_data(soroban_transaction_data.clone())
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap()
+            .build();
+    
+        // Assert
+        assert_eq!(transaction.soroban_data, Some(soroban_transaction_data));
+        assert_eq!(transaction.operations.unwrap().len(), 1);
+        assert_eq!(transaction.fee, 100);
+    }
 }

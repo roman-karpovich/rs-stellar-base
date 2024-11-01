@@ -2,6 +2,7 @@ use crate::hashing::HashingBehavior;
 use crate::operation::PaymentOpts;
 use hex_literal::hex;
 use num_bigint::BigUint;
+use stellar_xdr::next::SorobanTransactionData;
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
 use std::str::FromStr;
@@ -47,6 +48,7 @@ pub struct Transaction {
     pub extra_signers: Vec<stellar_xdr::next::AccountId>,
     pub operations: Option<Vec<Operation>>,
     pub hash: Option<[u8; 32]>,
+    pub soroban_data: Option<SorobanTransactionData>
 }
 
 // Define a trait for Transaction behavior
