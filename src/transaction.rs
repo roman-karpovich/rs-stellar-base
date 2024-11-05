@@ -87,8 +87,9 @@ impl TransactionBehavior for Transaction {
     }
 
     fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
-        let raw_tx = self.tx.to_xdr(stellar_xdr::next::Limits::none()).unwrap();
+        let raw_tx = self.tx.to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap();
         println!("Raw {:?}", self.tx);
+        println!("Raw XDR {:?}", raw_tx);
 
         let mut signatures =
             VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
@@ -96,7 +97,7 @@ impl TransactionBehavior for Transaction {
         let envelope = match self.envelope_type {
             stellar_xdr::next::EnvelopeType::TxV0 => {
                 let transaction_v0 = stellar_xdr::next::TransactionV0Envelope {
-                    tx: stellar_xdr::next::TransactionV0::from_xdr(
+                    tx: stellar_xdr::next::TransactionV0::from_xdr_base64(
                         &raw_tx,
                         stellar_xdr::next::Limits::none(),
                     )
@@ -108,7 +109,7 @@ impl TransactionBehavior for Transaction {
 
             stellar_xdr::next::EnvelopeType::Tx => {
                 let transaction_v1 = stellar_xdr::next::TransactionV1Envelope {
-                    tx: stellar_xdr::next::Transaction::from_xdr(
+                    tx: stellar_xdr::next::Transaction::from_xdr_base64(
                         &raw_tx,
                         stellar_xdr::next::Limits::none(),
                     )
@@ -133,7 +134,7 @@ impl TransactionBehavior for Transaction {
 #[cfg(test)]
 mod tests {
 
-    use core::panic;
+    use core::{panic};
     use keypair::KeypairBehavior;
     use std::{cell::RefCell, rc::Rc};
 
@@ -201,5 +202,22 @@ mod tests {
         let sig = &tx.signatures[0].signature.0;
         let verified = signer.verify(&tx.hash(), sig);
         assert_eq!(verified, true);
+    }
+
+    #[test]
+    fn can_successfully_decode_envelope() {
+        // from https://github.com/stellar/js-stellar-sdk/issues/73
+        let xdr = "AAAAAPQQv+uPYrlCDnjgPyPRgIjB6T8Zb8ANmL8YGAXC2IAgAAAAZAAIteYAAAAHAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUVVUgAAAAAAUtYuFczBLlsXyEp3q8BbTBpEGINWahqkFbnTPd93YUUAAAAXSHboAAAAABEAACcQAAAAAAAAAKIAAAAAAAAAAcLYgCAAAABAo2tU6n0Bb7bbbpaXacVeaTVbxNMBtnrrXVk2QAOje2Flllk/ORlmQdFU/9c8z43eWh1RNMpI3PscY+yDCnJPBQ==";
+        
+        // Decode base64 XDR
+        let tx_env = TransactionEnvelope::from_xdr_base64(xdr, Limits::none()).unwrap();
+    
+        let tx  = match tx_env {
+            TransactionEnvelope::TxV0(transaction_v0_envelope) => transaction_v0_envelope.tx,
+            _ => panic!("fff"),
+        };
+
+        let source_account = tx.source_account_ed25519;
+        assert_eq!(source_account.0.len(), 32);
     }
 }
