@@ -57,6 +57,7 @@ pub trait TransactionBehavior {
     fn hash(&self) -> [u8; 32];
     fn sign(&mut self, keypairs: &[Keypair]);
     fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>>;
+    //TODO: XDR Conversion, Proper From and To
 }
 
 impl TransactionBehavior for Transaction {
