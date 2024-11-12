@@ -39,6 +39,7 @@ use stellar_xdr::next::WriteXdr;
 #[derive(Default, Clone)]
 pub struct TransactionBuilder {
     tx: Option<stellar_xdr::next::Transaction>,
+    tx_v0: Option<stellar_xdr::next::TransactionV0>,
     network_passphrase: Option<String>,
     signatures: Option<Vec<DecoratedSignature>>,
     fee: Option<u32>,
@@ -82,6 +83,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     ) -> Self {
         Self {
             tx: None,
+            tx_v0: None,
             network_passphrase: Some(network.to_string()),
             signatures: None,
             fee: None,
@@ -200,17 +202,18 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             fee: fee.unwrap(),
             envelope_type: stellar_xdr::next::EnvelopeType::Tx,
             memo: None,
-            sequence: incremented_seq_num.to_string(),
-            source: source_ref.account_id().to_string(),
+            sequence: Some(incremented_seq_num.to_string()),
+            source: Some(source_ref.account_id().to_string()),
             time_bounds: self.time_bounds.clone(),
             ledger_bounds: None,
             min_account_sequence: Some("0".to_string()),
-            min_account_sequence_age: 0,
-            min_account_sequence_ledger_gap: 0,
-            extra_signers: Vec::new(),
+            min_account_sequence_age: Some(0),
+            min_account_sequence_ledger_gap: Some(0),
+            extra_signers: Some(Vec::new()),
             operations: self.operations.clone(),
             hash: None,
-            soroban_data: self.soroban_data.clone()
+            soroban_data: self.soroban_data.clone(),
+            tx_v0: None,
         }
     }
 }
@@ -289,8 +292,8 @@ mod tests {
 
         let transaction = builder.build();
 
-        assert_eq!(transaction.source, source.borrow().account_id().to_string());
-        assert_eq!(transaction.sequence, "1");
+        assert_eq!(transaction.source, Some(source.borrow().account_id().to_string()));
+        assert_eq!(transaction.sequence.unwrap(),"1");
         assert_eq!(source.borrow().sequence_number(), "1");
         assert_eq!(transaction.operations.unwrap().len(), 1);
         assert_eq!(transaction.fee, 100);
@@ -348,10 +351,10 @@ mod tests {
 
         // Assertions
         // Should have the same source account
-        assert_eq!(transaction.source, source.borrow().account_id().to_string());
+        assert_eq!(transaction.source, Some(source.borrow().account_id().to_string()));
 
         // Should have the incremented sequence number
-        assert_eq!(transaction.sequence, "1");
+        assert_eq!(transaction.sequence.unwrap(), "1");
 
         // Should increment the account's sequence number
         assert_eq!(source.borrow().sequence_number(), "1");
