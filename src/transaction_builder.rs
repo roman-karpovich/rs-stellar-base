@@ -10,6 +10,7 @@ use hex_literal::hex;
 use num_bigint::BigUint;
 use serde_json::from_str;
 use stellar_xdr::next::DecoratedSignature;
+use stellar_xdr::next::Limits;
 use stellar_xdr::next::SorobanTransactionData;
 use stellar_xdr::next::StringM;
 
@@ -59,6 +60,7 @@ pub struct TransactionBuilder {
 
 // Define a trait for TransactionBuilder behavior
 pub trait TransactionBuilderBehavior {
+    fn set_soroban_data_from_xdr_base64(&mut self, soroban_data: &str) -> &mut Self;
     fn new(
         source_account: Rc<RefCell<Account>>,
         network: &str,
@@ -163,6 +165,12 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     
     fn set_soroban_data(&mut self, soroban_data: SorobanTransactionData) -> &mut Self {
         self.soroban_data = Some(soroban_data);
+        self
+    }
+
+    fn set_soroban_data_from_xdr_base64(&mut self, soroban_data: &str) -> &mut Self {
+        let data = SorobanTransactionData::from_xdr_base64(soroban_data, Limits::none()).unwrap();
+        self.soroban_data = Some(data);
         self
     }
 
@@ -511,5 +519,119 @@ mod tests {
         assert_eq!(transaction.soroban_data, Some(soroban_transaction_data));
         assert_eq!(transaction.operations.unwrap().len(), 1);
         assert_eq!(transaction.fee, 100);
+    }
+
+
+    #[test]
+    fn test_set_soroban_data_from_xdr() {
+        // Arrange
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+                "0",
+            )
+            .unwrap(),
+        ));
+
+        let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+        let binding = hex::encode(contract_id);
+        let hex_id = binding.as_bytes();
+        let mut array = [0u8; 32];
+        array.copy_from_slice(&hex_id[0..32]);
+
+        let func = HostFunction::InvokeContract(InvokeContractArgs {
+            contract_address: ScAddress::from(Contract(Hash::from(array))),
+            function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
+            args: vec![ScVal::String(ScString::from(
+                StringM::from_str("world").unwrap(),
+            ))]
+            .try_into()
+            .unwrap(),
+        });
+
+        let mut soroban_data_builder = SorobanDataBuilder::new(None);
+        soroban_data_builder
+            .set_resources(0, 5, 0)
+            .set_refundable_fee(1);
+        let soroban_transaction_data = soroban_data_builder.build();
+
+        // Act
+        let mut transaction_builder = TransactionBuilder::new(
+            source.clone(),
+            Networks::testnet(),
+            None,
+        );
+        let transaction = transaction_builder
+            .fee(100_u32)
+            .add_operation(Operation::invoke_host_function(func, None, None).unwrap())
+            .set_soroban_data_from_xdr_base64(&(soroban_transaction_data.clone().to_xdr_base64(Limits::none()).unwrap()))
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap()
+            .build();
+
+        // Assert
+        assert_eq!(transaction.soroban_data, Some(soroban_transaction_data));
+        assert_eq!(transaction.operations.unwrap().len(), 1);
+        assert_eq!(transaction.fee, 100);
+    }
+
+    #[test]
+    fn test_set_transaction_ext_when_soroban_data_present() {
+        // Arrange
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+                "0",
+            )
+            .unwrap(),
+        ));
+
+        let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+        let binding = hex::encode(contract_id);
+        let hex_id = binding.as_bytes();
+        let mut array = [0u8; 32];
+        array.copy_from_slice(&hex_id[0..32]);
+
+        let func = HostFunction::InvokeContract(InvokeContractArgs {
+            contract_address: ScAddress::from(Contract(Hash::from(array))),
+            function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
+            args: vec![ScVal::String(ScString::from(
+                StringM::from_str("world").unwrap(),
+            ))]
+            .try_into()
+            .unwrap(),
+        });
+
+        let mut soroban_data_builder = SorobanDataBuilder::new(None);
+        soroban_data_builder
+            .set_resources(0, 5, 0)
+            .set_refundable_fee(1);
+        let soroban_transaction_data = soroban_data_builder.build();
+
+        // Act
+        let mut transaction_builder = TransactionBuilder::new(
+            source.clone(),
+            Networks::testnet(),
+            None,
+        );
+        let transaction = transaction_builder
+            .fee(100_u32)
+            .add_operation(Operation::invoke_host_function(func, None, None).unwrap())
+            .set_soroban_data_from_xdr_base64(&(soroban_transaction_data.clone().to_xdr_base64(Limits::none()).unwrap()))
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap()
+            .build();
+
+        // Assert
+
+        let tx_env = transaction.to_envelope().unwrap();
+
+        let val = match tx_env {
+            TransactionEnvelope::Tx(transaction_v1_envelope) => transaction_v1_envelope,
+            _ => panic!("Wrong"),
+        };
+
+        let inner_val = val.tx.ext;
+        assert_eq!(inner_val, TransactionExt::V0);
     }
 }
