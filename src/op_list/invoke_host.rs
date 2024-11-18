@@ -5,6 +5,7 @@ use crate::operation;
 use crate::operation::OpAttributes;
 use crate::operation::Operation;
 use crate::operation::OperationBehavior;
+use crate::utils::decode_encode_muxed_account::encode_muxed_account_to_address;
 use std::str::FromStr;
 use stellar_xdr::next::*;
 
@@ -35,7 +36,7 @@ impl Operation {
 
         if source.is_none() {
         } else {
-            op.set_source_account(Some(&source.unwrap()));
+            op.set_source_account(Some(&source.clone().unwrap()));
         }
 
         Ok(stellar_xdr::next::Operation {

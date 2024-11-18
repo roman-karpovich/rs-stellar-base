@@ -3,9 +3,9 @@ use stellar_xdr::{
     next::{LedgerFootprint, ReadXdr, WriteXdr},
 };
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct SorobanDataBuilder {
     data: stellar_xdr::next::SorobanTransactionData,
