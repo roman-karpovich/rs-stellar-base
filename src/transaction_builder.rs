@@ -23,6 +23,7 @@ use crate::op_list::create_account::create_account;
 use crate::transaction::Transaction;
 use crate::utils::decode_encode_muxed_account::decode_address_fully_to_muxed_account;
 use crate::utils::decode_encode_muxed_account::decode_address_to_muxed_account;
+use crate::utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address;
 use crate::utils::decode_encode_muxed_account::encode_muxed_account;
 use stellar_xdr::next::LedgerBounds;
 use stellar_xdr::next::Memo;
@@ -193,8 +194,6 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         let incremented_seq_num = current_seq_num.clone() + BigUint::from(1u32);
         source_ref.increment_sequence_number();
 
-        // let seq_num =
-        //     BigUint::from_str(self.source.clone().unwrap().sequence_number().as_str()).unwrap();
         let fee = self
             .fee
             .unwrap()
@@ -211,17 +210,15 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         } else {
             TransactionExt::V0
         };
-        // let array_test: [u8; 32] = binding.as_bytes().try_into().expect("Input must be exactly 32 bytes");
 
-        // println!("After where the fuck from we are getting the value {:?}",decode_address_fully_to_muxed_account(account_id));
 
         // let old = MuxedAccount::Ed25519(Uint256::from(array));
-        let new = encode_muxed_account(account_id, "144");
-
-        println!("Incremented {:?}", incremented_seq_num);
+        // let new = encode_muxed_account(account_id, &incremented_seq_num.to_string());
+        // println!("Incremented {:?}", incremented_seq_num);
+        let vv = decode_address_to_muxed_account_fix_for_g_address(account_id);
 
         let tx_obj = stellar_xdr::next::Transaction {
-            source_account: new, // MuxedAccount::Ed25519(Uint256([0; 32]))
+            source_account: vv, // MuxedAccount::Ed25519(Uint256([0; 32]))
             fee: fee.unwrap(),
             seq_num: SequenceNumber(incremented_seq_num.clone().clone().try_into().unwrap_or_else(|_| panic!("Number too large for i64"))),
             cond: Preconditions::None,
