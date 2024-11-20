@@ -93,7 +93,7 @@ impl Operation {
         let payment_op = stellar_xdr::next::PaymentOp {
             asset,
             amount,
-            destination: destination,
+            destination,
         };
 
         let body = stellar_xdr::next::OperationBody::Payment(payment_op);

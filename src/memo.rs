@@ -83,7 +83,7 @@ impl MemoBehavior for Memo {
                     String::from_utf8_unchecked(value.unwrap().as_bytes().to_vec()).as_bytes()
                 });
                 if let Some(v) = value {
-                    value_buf = Some(v.try_into().unwrap());
+                    value_buf = Some(v.into());
                 }
             }
             _ => return Err("Invalid memo type".into()),

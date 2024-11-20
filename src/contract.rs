@@ -62,7 +62,7 @@ impl ContractBehavior for Contracts {
                             .0,
                         )),
                         function_name: ScSymbol::from(StringM::from_str(method).unwrap()),
-                        args: VecM::<ScVal>::try_from(params.unwrap_or(Vec::new())).unwrap(),
+                        args: VecM::<ScVal>::try_from(params.unwrap_or_default()).unwrap(),
                     },
                 ),
                 auth: VecM::<SorobanAuthorizationEntry>::try_from(Vec::new()).unwrap(),

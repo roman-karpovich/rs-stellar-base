@@ -176,7 +176,7 @@ impl TransactionBehavior for Transaction {
                     envelope_type,
                     memo: Some(tx_v0_env.tx.memo),
                     sequence: Some(tx_v0_env.tx.seq_num.to_xdr_base64(Limits::none()).unwrap()),
-                    source: Some(stellar_strkey::Strkey::PublicKeyEd25519(PublicKey ( tx_v0_env.tx.source_account_ed25519.0.clone())).to_string()),
+                    source: Some(stellar_strkey::Strkey::PublicKeyEd25519(PublicKey ( tx_v0_env.tx.source_account_ed25519.0)).to_string()),
                     time_bounds: tx_v0_env.tx.time_bounds,
                     ledger_bounds: None,
                     min_account_sequence: None,
