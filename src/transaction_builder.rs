@@ -168,7 +168,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         self.time_bounds = Some(time_bounds);
         self
     }
-    
+
     fn set_soroban_data(&mut self, soroban_data: SorobanTransactionData) -> &mut Self {
         self.soroban_data = Some(soroban_data);
         self
@@ -185,9 +185,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         self
     }
 
- 
     fn build(&mut self) -> Transaction {
-
         let source = self.source.as_ref().expect("Source account not set");
         let mut source_ref = source.borrow_mut();
         let current_seq_num = BigUint::from_str(source_ref.sequence_number().as_str()).unwrap();
@@ -210,9 +208,15 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         let vv = decode_address_to_muxed_account_fix_for_g_address(account_id);
 
         let tx_obj = stellar_xdr::next::Transaction {
-            source_account: vv, 
+            source_account: vv,
             fee: fee.unwrap(),
-            seq_num: SequenceNumber(current_seq_num.clone().clone().try_into().unwrap_or_else(|_| panic!("Number too large for i64"))),
+            seq_num: SequenceNumber(
+                current_seq_num
+                    .clone()
+                    .clone()
+                    .try_into()
+                    .unwrap_or_else(|_| panic!("Number too large for i64")),
+            ),
             cond: Preconditions::None,
             memo: Memo::None,
             operations: self.operations.clone().unwrap().try_into().unwrap(),
@@ -248,15 +252,26 @@ mod tests {
     use keypair::KeypairBehavior;
 
     use sha2::digest::crypto_common::Key;
-    use stellar_xdr::next::{Hash, HostFunction, InvokeContractArgs, ScAddress, ScString, ScSymbol, ScVal};
     use stellar_xdr::next::ScAddress::Contract;
+    use stellar_xdr::next::{
+        Hash, HostFunction, InvokeContractArgs, ScAddress, ScString, ScSymbol, ScVal,
+    };
 
     use super::*;
     // use crate::{
     //     account::Account, asset::{Asset, AssetBehavior}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, operation::PaymentOpts, transaction::TransactionBehavior
     // };
     use crate::{
-        account::{Account, AccountBehavior}, asset::{Asset, AssetBehavior}, contract::{ContractBehavior, Contracts}, keypair::{self, Keypair}, network::{NetworkPassphrase, Networks}, op_list::invoke_host, operation::{Operation, OperationBehavior, PaymentOpts}, soroban_data_builder::{SorobanDataBuilder, SorobanDataBuilderBehavior}, transaction::{self, TransactionBehavior}, transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE}
+        account::{Account, AccountBehavior},
+        asset::{Asset, AssetBehavior},
+        contract::{ContractBehavior, Contracts},
+        keypair::{self, Keypair},
+        network::{NetworkPassphrase, Networks},
+        op_list::invoke_host,
+        operation::{Operation, OperationBehavior, PaymentOpts},
+        soroban_data_builder::{SorobanDataBuilder, SorobanDataBuilderBehavior},
+        transaction::{self, TransactionBehavior},
+        transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
     };
 
     #[test]
@@ -316,8 +331,11 @@ mod tests {
         let transaction = builder.build();
 
         // Use RefCell::borrow() explicitly
-        assert_eq!(transaction.source, Some(RefCell::borrow(&source).account_id().to_string()));
-        assert_eq!(transaction.sequence.unwrap(),"1");
+        assert_eq!(
+            transaction.source,
+            Some(RefCell::borrow(&source).account_id().to_string())
+        );
+        assert_eq!(transaction.sequence.unwrap(), "1");
         assert_eq!(RefCell::borrow(&source).sequence_number(), "1");
         assert_eq!(transaction.operations.unwrap().len(), 1);
         assert_eq!(transaction.fee, 100);
@@ -367,7 +385,10 @@ mod tests {
         let transaction = builder.build();
 
         // Use RefCell::borrow() explicitly
-        assert_eq!(transaction.source, Some(RefCell::borrow(&source).account_id().to_string()));
+        assert_eq!(
+            transaction.source,
+            Some(RefCell::borrow(&source).account_id().to_string())
+        );
         assert_eq!(transaction.sequence.unwrap(), "1");
         assert_eq!(RefCell::borrow(&source).sequence_number(), "1");
         assert_eq!(transaction.operations.unwrap().len(), 2);
@@ -472,23 +493,26 @@ mod tests {
     #[test]
     fn constructs_a_transaction_with_soroban_data() {
         // Arrange
-        let source = Rc::new(RefCell::new(Account::new(
-            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-            "0",
-        ).unwrap()));
-    
+        let source = Rc::new(RefCell::new(
+            Account::new(
+                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+                "0",
+            )
+            .unwrap(),
+        ));
+
         let mut soroban_data_builder = SorobanDataBuilder::new(None);
         soroban_data_builder
             .set_resources(0, 5, 0)
             .set_refundable_fee(1);
         let soroban_transaction_data = soroban_data_builder.build();
-    
+
         let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
         let binding = hex::encode(contract_id);
         let hex_id = binding.as_bytes();
         let mut array = [0u8; 32];
         array.copy_from_slice(&hex_id[0..32]);
-    
+
         let func = HostFunction::InvokeContract(InvokeContractArgs {
             contract_address: ScAddress::from(Contract(Hash::from(array))),
             function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
@@ -498,13 +522,10 @@ mod tests {
             .try_into()
             .unwrap(),
         });
-    
+
         // Act
-        let mut transaction_builder = TransactionBuilder::new(
-            source.clone(),
-            Networks::testnet(),
-            None,
-        );
+        let mut transaction_builder =
+            TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
             .add_operation(Operation::invoke_host_function(func, None, None).unwrap())
@@ -512,13 +533,12 @@ mod tests {
             .set_timeout(TIMEOUT_INFINITE)
             .unwrap()
             .build();
-    
+
         // Assert
         assert_eq!(transaction.soroban_data, Some(soroban_transaction_data));
         assert_eq!(transaction.operations.unwrap().len(), 1);
         assert_eq!(transaction.fee, 100);
     }
-
 
     #[test]
     fn test_set_soroban_data_from_xdr() {
@@ -554,15 +574,17 @@ mod tests {
         let soroban_transaction_data = soroban_data_builder.build();
 
         // Act
-        let mut transaction_builder = TransactionBuilder::new(
-            source.clone(),
-            Networks::testnet(),
-            None,
-        );
+        let mut transaction_builder =
+            TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
             .add_operation(Operation::invoke_host_function(func, None, None).unwrap())
-            .set_soroban_data_from_xdr_base64(&(soroban_transaction_data.clone().to_xdr_base64(Limits::none()).unwrap()))
+            .set_soroban_data_from_xdr_base64(
+                &(soroban_transaction_data
+                    .clone()
+                    .to_xdr_base64(Limits::none())
+                    .unwrap()),
+            )
             .set_timeout(TIMEOUT_INFINITE)
             .unwrap()
             .build();
@@ -607,15 +629,17 @@ mod tests {
         let soroban_transaction_data = soroban_data_builder.build();
 
         // Act
-        let mut transaction_builder = TransactionBuilder::new(
-            source.clone(),
-            Networks::testnet(),
-            None,
-        );
+        let mut transaction_builder =
+            TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
             .add_operation(Operation::invoke_host_function(func, None, None).unwrap())
-            .set_soroban_data_from_xdr_base64(&(soroban_transaction_data.clone().to_xdr_base64(Limits::none()).unwrap()))
+            .set_soroban_data_from_xdr_base64(
+                &(soroban_transaction_data
+                    .clone()
+                    .to_xdr_base64(Limits::none())
+                    .unwrap()),
+            )
             .set_timeout(TIMEOUT_INFINITE)
             .unwrap()
             .build();

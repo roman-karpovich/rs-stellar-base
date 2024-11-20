@@ -3,14 +3,14 @@ use crate::operation::PaymentOpts;
 use crate::utils::decode_encode_muxed_account::encode_muxed_account_to_address;
 use hex_literal::hex;
 use num_bigint::BigUint;
-use stellar_strkey::ed25519::PublicKey;
-use stellar_xdr::next::Limits;
-use stellar_xdr::next::SorobanTransactionData;
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
-use std::str::FromStr;
-use stellar_xdr::next::DecoratedSignature;
 use std::fmt;
+use std::str::FromStr;
+use stellar_strkey::ed25519::PublicKey;
+use stellar_xdr::next::DecoratedSignature;
+use stellar_xdr::next::Limits;
+use stellar_xdr::next::SorobanTransactionData;
 
 use crate::account::Account;
 use crate::hashing::Sha256Hasher;
@@ -53,7 +53,7 @@ pub struct Transaction {
     pub extra_signers: Option<Vec<stellar_xdr::next::AccountId>>,
     pub operations: Option<Vec<Operation>>,
     pub hash: Option<[u8; 32]>,
-    pub soroban_data: Option<SorobanTransactionData>
+    pub soroban_data: Option<SorobanTransactionData>,
 }
 
 // Define a trait for Transaction behavior
@@ -62,7 +62,7 @@ pub trait TransactionBehavior {
     fn hash(&self) -> [u8; 32];
     fn sign(&mut self, keypairs: &[Keypair]);
     fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>>;
-    fn from_xdr_envelope( xdr: &str, network: &str) -> Self;
+    fn from_xdr_envelope(xdr: &str, network: &str) -> Self;
     //TODO: XDR Conversion, Proper From and To
 }
 
@@ -80,12 +80,14 @@ impl TransactionBehavior for Transaction {
                     seq_num: tx_v0.seq_num.clone(),
                     cond: match &tx_v0.time_bounds {
                         None => stellar_xdr::next::Preconditions::None,
-                        Some(time_bounds) => stellar_xdr::next::Preconditions::Time(time_bounds.clone()),
+                        Some(time_bounds) => {
+                            stellar_xdr::next::Preconditions::Time(time_bounds.clone())
+                        }
                     },
                     memo: tx_v0.memo.clone(),
                     operations: tx_v0.operations.clone(),
                     ext: stellar_xdr::next::TransactionExt::V0,
-                }
+                },
             )
         } else if let Some(tx) = &self.tx {
             stellar_xdr::next::TransactionSignaturePayloadTaggedTransaction::Tx(tx.clone())
@@ -99,7 +101,7 @@ impl TransactionBehavior for Transaction {
             )),
             tagged_transaction: tagged_tx,
         };
-        
+
         tx_sig.to_xdr(Limits::none()).unwrap()
     }
 
@@ -118,7 +120,12 @@ impl TransactionBehavior for Transaction {
     }
 
     fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
-        let raw_tx = self.tx.clone().unwrap().to_xdr_base64(stellar_xdr::next::Limits::none()).unwrap();
+        let raw_tx = self
+            .tx
+            .clone()
+            .unwrap()
+            .to_xdr_base64(stellar_xdr::next::Limits::none())
+            .unwrap();
         // println!("Raw {:?}", self.tx);
         // println!("Raw XDR {:?}", raw_tx);
 
@@ -160,33 +167,36 @@ impl TransactionBehavior for Transaction {
 
         Ok(envelope)
     }
-    
+
     fn from_xdr_envelope(xdr: &str, network: &str) -> Self {
         let tx_env = TransactionEnvelope::from_xdr_base64(xdr, Limits::none()).unwrap();
         let envelope_type = tx_env.discriminant();
 
         match tx_env {
-            TransactionEnvelope::TxV0(tx_v0_env) => {
-                Self {
-                    tx: None,
-                    tx_v0: Some(tx_v0_env.tx.clone()),
-                    network_passphrase: network.to_owned(),
-                    signatures: tx_v0_env.signatures.to_vec(),
-                    fee: tx_v0_env.tx.fee,
-                    envelope_type,
-                    memo: Some(tx_v0_env.tx.memo),
-                    sequence: Some(tx_v0_env.tx.seq_num.to_xdr_base64(Limits::none()).unwrap()),
-                    source: Some(stellar_strkey::Strkey::PublicKeyEd25519(PublicKey ( tx_v0_env.tx.source_account_ed25519.0)).to_string()),
-                    time_bounds: tx_v0_env.tx.time_bounds,
-                    ledger_bounds: None,
-                    min_account_sequence: None,
-                    min_account_sequence_age: None,
-                    min_account_sequence_ledger_gap: None,
-                    extra_signers: None,
-                    operations: Some(tx_v0_env.tx.operations.to_vec()),
-                    hash: None,
-                    soroban_data: None,
-                }
+            TransactionEnvelope::TxV0(tx_v0_env) => Self {
+                tx: None,
+                tx_v0: Some(tx_v0_env.tx.clone()),
+                network_passphrase: network.to_owned(),
+                signatures: tx_v0_env.signatures.to_vec(),
+                fee: tx_v0_env.tx.fee,
+                envelope_type,
+                memo: Some(tx_v0_env.tx.memo),
+                sequence: Some(tx_v0_env.tx.seq_num.to_xdr_base64(Limits::none()).unwrap()),
+                source: Some(
+                    stellar_strkey::Strkey::PublicKeyEd25519(PublicKey(
+                        tx_v0_env.tx.source_account_ed25519.0,
+                    ))
+                    .to_string(),
+                ),
+                time_bounds: tx_v0_env.tx.time_bounds,
+                ledger_bounds: None,
+                min_account_sequence: None,
+                min_account_sequence_age: None,
+                min_account_sequence_ledger_gap: None,
+                extra_signers: None,
+                operations: Some(tx_v0_env.tx.operations.to_vec()),
+                hash: None,
+                soroban_data: None,
             },
             TransactionEnvelope::Tx(tx_env) => {
                 let mut time_bounds = None;
@@ -199,15 +209,17 @@ impl TransactionBehavior for Transaction {
                 match tx_env.tx.cond.clone() {
                     Preconditions::Time(tb) => {
                         time_bounds = Some(tb);
-                    },
+                    }
                     Preconditions::V2(v2) => {
                         time_bounds = v2.time_bounds;
                         ledger_bounds = v2.ledger_bounds;
-                        min_account_sequence = v2.min_seq_num.map(|seq| seq.to_xdr_base64(Limits::none()).unwrap());
+                        min_account_sequence = v2
+                            .min_seq_num
+                            .map(|seq| seq.to_xdr_base64(Limits::none()).unwrap());
                         min_account_sequence_age = Some(v2.min_seq_age);
                         min_account_sequence_ledger_gap = Some(v2.min_seq_ledger_gap);
                         extra_signers = Some(v2.extra_signers.to_vec());
-                    },
+                    }
                     Preconditions::None => {}
                 }
 
@@ -231,8 +243,8 @@ impl TransactionBehavior for Transaction {
                     hash: None,
                     soroban_data: None,
                 }
-            },
-            _ => panic!("Invalid envelope type")
+            }
+            _ => panic!("Invalid envelope type"),
         }
     }
 }
@@ -240,23 +252,23 @@ impl TransactionBehavior for Transaction {
 impl fmt::Display for Transaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "Transaction {{")?;
-        
+
         // Network information
         writeln!(f, "  Network: {}", self.network_passphrase)?;
-        
+
         // Source account
         if let Some(source) = &self.source {
             writeln!(f, "  Source Account: {}", source)?;
         }
-        
+
         // Fee
         writeln!(f, "  Fee: {}", self.fee)?;
-        
+
         // Sequence number
         if let Some(sequence) = &self.sequence {
             writeln!(f, "  Sequence Number: {}", sequence)?;
         }
-        
+
         // Memo
         if let Some(memo) = &self.memo {
             write!(f, "  Memo: ")?;
@@ -268,7 +280,7 @@ impl fmt::Display for Transaction {
                 stellar_xdr::next::Memo::None => writeln!(f, "NONE")?,
             }
         }
-        
+
         // Time bounds
         if let Some(time_bounds) = &self.time_bounds {
             writeln!(f, "  Time Bounds: {{")?;
@@ -276,7 +288,7 @@ impl fmt::Display for Transaction {
             writeln!(f, "    Max Time: {:?}", time_bounds.max_time)?;
             writeln!(f, "  }}")?;
         }
-        
+
         // Ledger bounds
         if let Some(ledger_bounds) = &self.ledger_bounds {
             writeln!(f, "  Ledger Bounds: {{")?;
@@ -284,22 +296,22 @@ impl fmt::Display for Transaction {
             writeln!(f, "    Max Ledger: {}", ledger_bounds.max_ledger)?;
             writeln!(f, "  }}")?;
         }
-        
+
         // Min account sequence
         if let Some(min_seq) = &self.min_account_sequence {
             writeln!(f, "  Min Account Sequence: {}", min_seq)?;
         }
-        
+
         // Min account sequence age
         if let Some(age) = &self.min_account_sequence_age {
             writeln!(f, "  Min Account Sequence Age: {}", age)?;
         }
-        
+
         // Min account sequence ledger gap
         if let Some(gap) = &self.min_account_sequence_ledger_gap {
             writeln!(f, "  Min Account Sequence Ledger Gap: {}", gap)?;
         }
-        
+
         // Operations
         if let Some(operations) = &self.operations {
             writeln!(f, "  Operations: [")?;
@@ -308,7 +320,7 @@ impl fmt::Display for Transaction {
             }
             writeln!(f, "  ]")?;
         }
-        
+
         // Signatures
         writeln!(f, "  Signatures: [")?;
         for (i, sig) in self.signatures.iter().enumerate() {
@@ -321,26 +333,25 @@ impl fmt::Display for Transaction {
             )?;
         }
         writeln!(f, "  ]")?;
-        
+
         // Transaction hash
         if let Some(hash) = &self.hash {
             writeln!(f, "  Hash: {:?}", hash)?;
         }
-        
+
         // Soroban data
         if let Some(soroban_data) = &self.soroban_data {
             writeln!(f, "  Soroban Data: {:?}", soroban_data)?;
         }
-        
+
         write!(f, "}}")
     }
 }
 
-
 #[cfg(test)]
 mod tests {
 
-    use core::{panic};
+    use core::panic;
     use keypair::KeypairBehavior;
     use std::{cell::RefCell, rc::Rc};
 
@@ -414,11 +425,11 @@ mod tests {
     fn can_successfully_decode_envelope() {
         // from https://github.com/stellar/js-stellar-sdk/issues/73
         let xdr = "AAAAAPQQv+uPYrlCDnjgPyPRgIjB6T8Zb8ANmL8YGAXC2IAgAAAAZAAIteYAAAAHAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUVVUgAAAAAAUtYuFczBLlsXyEp3q8BbTBpEGINWahqkFbnTPd93YUUAAAAXSHboAAAAABEAACcQAAAAAAAAAKIAAAAAAAAAAcLYgCAAAABAo2tU6n0Bb7bbbpaXacVeaTVbxNMBtnrrXVk2QAOje2Flllk/ORlmQdFU/9c8z43eWh1RNMpI3PscY+yDCnJPBQ==";
-        
+
         // Decode base64 XDR
         let tx_env = TransactionEnvelope::from_xdr_base64(xdr, Limits::none()).unwrap();
-    
-        let tx  = match tx_env {
+
+        let tx = match tx_env {
             TransactionEnvelope::TxV0(transaction_v0_envelope) => transaction_v0_envelope.tx,
             _ => panic!("fff"),
         };
@@ -437,6 +448,5 @@ mod tests {
             hex::encode(tx.hash()),
             "a84d534b3742ad89413bdbf259e02fa4c5d039123769e9bcc63616f723a2bcd5"
         );
-        
     }
 }
