@@ -48,7 +48,7 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
                 if encoded_data.is_empty() {
                     // Return default empty data for empty string
                     stellar_xdr::next::SorobanTransactionData {
-                        ext: stellar_xdr::next::ExtensionPoint::V0,
+                        ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
                         resources: stellar_xdr::next::SorobanResources {
                             footprint: LedgerFootprint {
                                 read_only: Vec::new().try_into().unwrap(),
@@ -71,7 +71,7 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
                     .unwrap(),
             )),
             None => stellar_xdr::next::SorobanTransactionData {
-                ext: stellar_xdr::next::ExtensionPoint::V0,
+                ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
                 resources: stellar_xdr::next::SorobanResources {
                     footprint: LedgerFootprint {
                         read_only: Vec::new().try_into().unwrap(),
@@ -193,7 +193,7 @@ mod tests {
     fn test_constructs_from_xdr_base64_and_nothing() {
         // Create sentinel data that matches the JS test
         let sentinel = SorobanTransactionData {
-            ext: ExtensionPoint::V0,
+            ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
             resources: SorobanResources {
                 footprint: LedgerFootprint {
                     read_only: Vec::new().try_into().unwrap(),
@@ -235,7 +235,7 @@ mod tests {
     fn test_sets_properties_as_expected() {
         // Create sentinel data
         let sentinel = SorobanTransactionData {
-            ext: ExtensionPoint::V0,
+            ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
             resources: SorobanResources {
                 footprint: LedgerFootprint {
                     read_only: Vec::new().try_into().unwrap(),
