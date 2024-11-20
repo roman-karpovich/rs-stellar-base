@@ -193,7 +193,6 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         let current_seq_num = BigUint::from_str(source_ref.sequence_number().as_str()).unwrap();
         let incremented_seq_num = current_seq_num.clone() + BigUint::from(1u32);
         source_ref.increment_sequence_number();
-
         let fee = self
             .fee
             .unwrap()
@@ -203,24 +202,17 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         let hex_val = binding.as_bytes();
         let mut array: [u8; 32] = [0; 32];
         array.copy_from_slice(&hex_val[..32]);
-
-
         let ext_on_the_fly = if self.soroban_data.is_some() {
             TransactionExt::V1(self.soroban_data.clone().unwrap())
         } else {
             TransactionExt::V0
         };
-
-
-        // let old = MuxedAccount::Ed25519(Uint256::from(array));
-        // let new = encode_muxed_account(account_id, &incremented_seq_num.to_string());
-        // println!("Incremented {:?}", incremented_seq_num);
         let vv = decode_address_to_muxed_account_fix_for_g_address(account_id);
 
         let tx_obj = stellar_xdr::next::Transaction {
-            source_account: vv, // MuxedAccount::Ed25519(Uint256([0; 32]))
+            source_account: vv, 
             fee: fee.unwrap(),
-            seq_num: SequenceNumber(incremented_seq_num.clone().clone().try_into().unwrap_or_else(|_| panic!("Number too large for i64"))),
+            seq_num: SequenceNumber(current_seq_num.clone().clone().try_into().unwrap_or_else(|_| panic!("Number too large for i64"))),
             cond: Preconditions::None,
             memo: Memo::None,
             operations: self.operations.clone().unwrap().try_into().unwrap(),
