@@ -1,4 +1,5 @@
-use stellar_strkey::Strkey;
+
+use stellar_strkey::{ed25519::PublicKey, Contract, Strkey};
 use stellar_xdr::next::*;
 
 pub enum AddressType {
@@ -59,15 +60,25 @@ impl AddressTrait for Address {
     fn new(address: &str) -> Result<Self, &'static str>
     where
         Self: Sized,
-    {
-        todo!()
-    }
+    {   
+        
+        let value =  match stellar_strkey::Strkey::from_string(address) {
+            Ok(Strkey::PublicKeyEd25519(public_key)) => (AddressType::Account, public_key.to_string().as_bytes().to_vec()),
+            Ok(Strkey::Contract(contract)) => (AddressType::Contract, contract.to_string().as_bytes().to_vec()),
+            _ => return Err("Unsupported address type")
+        };
 
+        Ok(Self {
+            address_type: value.0,
+            key: value.1,
+        })
+
+    }
     fn from_string(address: &str) -> Result<Self, &'static str>
     where
         Self: Sized,
     {
-        todo!()
+        Self::new(address)
     }
 
     fn account(buffer: &[u8]) -> Self
@@ -112,5 +123,17 @@ impl AddressTrait for Address {
 
     fn to_buffer(&self) -> Vec<u8> {
         todo!()
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_invalid_address_creation() {
+        let result = Address::new("GBBB");
+        assert!(result.is_err(), "Should fail for invalid address");
     }
 }

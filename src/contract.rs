@@ -77,7 +77,7 @@ impl ContractBehavior for Contracts {
     }
 
     fn to_string(&self) -> String {
-        todo!()
+        self.contract_id()
     }
 
     fn address(&self) -> Address {
