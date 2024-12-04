@@ -65,7 +65,9 @@ impl AddressTrait for Address {
         let value =  match stellar_strkey::Strkey::from_string(address) {
             Ok(Strkey::PublicKeyEd25519(public_key)) => (AddressType::Account, public_key.to_string().as_bytes().to_vec()),
             Ok(Strkey::Contract(contract)) => (AddressType::Contract, contract.to_string().as_bytes().to_vec()),
-            _ => return Err("Unsupported address type")
+            Ok(Strkey::MuxedAccountEd25519(x)) =>  return Err("Unsupported address type MuxedAccount"),
+            _ => return Err("Unsupported address type"),
+            
         };
 
         Ok(Self {
@@ -110,7 +112,10 @@ impl AddressTrait for Address {
     }
 
     fn to_string(&self) -> String {
-        todo!()
+        match &self.address_type {
+            AddressType::Account => Strkey::PublicKeyEd25519(PublicKey::from_string(&String::from_utf8(self.key.clone()).expect("Invalid UTF-8 sequence")).unwrap()).to_string(),
+            AddressType::Contract => Strkey::Contract(Contract::from_string(&String::from_utf8(self.key.clone()).expect("Invalid UTF-8 sequence")).unwrap()).to_string(),
+        }
     }
 
     fn to_sc_val(&self) -> Result<ScVal, &'static str> {
@@ -131,9 +136,42 @@ impl AddressTrait for Address {
 mod tests {
     use super::*;
 
+    const ACCOUNT: &str = "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB";
+    const CONTRACT: &str = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
+    const MUXED_ADDRESS: &str = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
+
     #[test]
     fn test_invalid_address_creation() {
         let result = Address::new("GBBB");
         assert!(result.is_err(), "Should fail for invalid address");
+    }
+
+    #[test]
+    fn test_account_address_creation() {
+        let account = Address::new(ACCOUNT).expect("Should create account address");
+        assert_eq!(account.to_string(), ACCOUNT);
+    }
+
+    #[test]
+    fn test_contract_address_creation() {
+        let contract = Address::new(CONTRACT).expect("Should create contract address");
+        assert_eq!(contract.to_string(), CONTRACT);
+    }
+
+    #[test]
+    fn test_muxed_account_creation_fails() {
+        const MUXED_ADDRESS: &str = "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
+        
+        // In Rust, this is typically done by checking for a specific error type or message
+        let result = Address::new(MUXED_ADDRESS);
+        assert!(result.is_err(), "Should fail for muxed account address");
+        
+        // Optionally, you can check the specific error message
+        match result {
+            Err(error_msg) => {
+                assert!(error_msg.contains("MuxedAccount"), "Error should mention MuxedAccount");
+            },
+            _ => panic!("Should have failed for muxed account address")
+        }
     }
 }
