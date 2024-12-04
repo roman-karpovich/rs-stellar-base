@@ -1,6 +1,10 @@
 
+use std::str::FromStr;
+
 use stellar_strkey::{ed25519::PublicKey, Contract, Strkey};
-use stellar_xdr::next::*;
+use stellar_xdr::next::{ *};
+
+use crate::hashing::{self, HashingBehavior};
 
 pub enum AddressType {
     Account,
@@ -24,12 +28,12 @@ pub trait AddressTrait {
         Self: Sized;
 
     /// Creates a new account Address object from a buffer of raw bytes.
-    fn account(buffer: &[u8]) -> Self
+    fn account(buffer: &[u8]) -> Result<Self, &'static str>
     where
         Self: Sized;
 
     /// Creates a new contract Address object from a buffer of raw bytes.
-    fn contract(buffer: &[u8]) -> Self
+    fn contract(buffer: &[u8]) -> Result<Self, &'static str>
     where
         Self: Sized;
 
@@ -83,35 +87,54 @@ impl AddressTrait for Address {
         Self::new(address)
     }
 
-    fn account(buffer: &[u8]) -> Self
+    fn account(buffer: &[u8]) -> Result<Self, &'static str>
     where
         Self: Sized,
     {
-        todo!()
+
+        let acc = Strkey::PublicKeyEd25519(PublicKey::from_payload(buffer).unwrap()).to_string();
+        Self::new(&acc)
     }
 
-    fn contract(buffer: &[u8]) -> Self
+    fn contract(buffer: &[u8]) -> Result<Self, &'static str>
     where
         Self: Sized,
     {
-        todo!()
+        Self::new(&Strkey::Contract(Contract(buffer.try_into().expect("Slice is not 32 bytes long"))).to_string())
     }
 
     fn from_sc_val(sc_val: &ScVal) -> Result<Self, &'static str>
     where
         Self: Sized,
     {
-        todo!()
+        let address_sc_val = match sc_val {
+            ScVal::Address(sc_address) => sc_address,
+            _ => panic!("Invalid Type")
+        };
+        Self::from_sc_address(address_sc_val)
+       
     }
 
     fn from_sc_address(sc_address: &ScAddress) -> Result<Self, &'static str>
     where
         Self: Sized,
     {
-        todo!()
+        match sc_address {
+            ScAddress::Account(account_id) => {
+                let public_key = account_id.0.clone();
+                let m = match public_key {
+                    stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(uint256) => uint256,
+                };
+
+                Self::account(&m.0)
+            }    
+                ,
+            ScAddress::Contract(hash) => Self::contract(&hash.0),
+        }
     }
 
-    fn to_string(&self) -> String {
+    fn to_string(&self) -> String 
+    {
         match &self.address_type {
             AddressType::Account => Strkey::PublicKeyEd25519(PublicKey::from_string(&String::from_utf8(self.key.clone()).expect("Invalid UTF-8 sequence")).unwrap()).to_string(),
             AddressType::Contract => Strkey::Contract(Contract::from_string(&String::from_utf8(self.key.clone()).expect("Invalid UTF-8 sequence")).unwrap()).to_string(),
@@ -123,7 +146,26 @@ impl AddressTrait for Address {
     }
 
     fn to_sc_address(&self) -> Result<ScAddress, &'static str> {
-        todo!()
+        
+        match &self.address_type {
+            AddressType::Account => 
+            {
+                println!("What the hell 1");
+                let inner_uin256 = hex::encode(&self.key.clone());
+                println!("len {:?}", self.key.len());
+                println!("len {:?}", String::from_utf8(self.key.clone()).unwrap().len());
+                let original = String::from_utf8(self.key.clone()).unwrap();
+                Ok(ScAddress::Account(AccountId::from_str(&original).unwrap()))
+            },
+            
+            AddressType::Contract => {
+                let original = String::from_utf8(self.key.clone()).unwrap();
+                let val = hashing::Sha256Hasher::hash(original);
+                Ok(ScAddress::Contract(Hash(val)))
+            } ,
+            _ => return Err("Unsupported type")
+        }
+       
     }
 
     fn to_buffer(&self) -> Vec<u8> {
@@ -134,6 +176,8 @@ impl AddressTrait for Address {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
     const ACCOUNT: &str = "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB";
@@ -172,6 +216,121 @@ mod tests {
                 assert!(error_msg.contains("MuxedAccount"), "Error should mention MuxedAccount");
             },
             _ => panic!("Should have failed for muxed account address")
+        }
+    }
+
+    #[test]
+    fn test_from_string() {
+        let account_address = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
+        let address = Address::from_string(account_address).unwrap();
+        assert_eq!(address.to_string(), account_address);
+    }
+
+    #[test]
+    fn test_account_from_buffer() {
+        let zero_buffer = vec![0; 32];
+        let address = Address::account(&zero_buffer).unwrap();
+        assert_eq!(address.to_string(), "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF");
+    }
+
+    #[test]
+    fn test_contract_from_buffer() {
+        let zero_buffer = vec![0; 32];
+        let address = Address::contract(&zero_buffer).unwrap();
+        assert_eq!(address.to_string(), "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4");
+    }
+
+    #[test]
+    fn creates_address_object_for_accounts() {
+        
+        let sc_address = ScAddress::from_str(ACCOUNT).unwrap();
+        
+        // Convert ScAddress to Address
+        let account = Address::from_sc_address(&sc_address).expect("Failed to create Address from ScAddress");
+        
+        // Verify the string representation matches the original account
+        assert_eq!(account.to_string(), ACCOUNT);
+    }
+
+    #[test]
+    fn creates_address_object_for_contracts() {
+        // Decode the contract address
+        let contract = Contract::from_string(CONTRACT).expect("Failed to decode contract address");
+        
+        // Create ScAddress for contract
+        let sc_address = ScAddress::Contract(Hash(contract.0));
+        
+        // Convert ScAddress to Address
+        let contract_address = Address::from_sc_address(&sc_address).expect("Failed to create Address from ScAddress");
+        
+        // Verify the string representation matches the original contract address
+        assert_eq!(contract_address.to_string(), CONTRACT);
+    }
+
+    #[test]
+    fn creates_address_object_for_accounts_sc_address() {
+        // Decode the account public key
+
+
+        let val = ScAddress::Account(AccountId::from_str(ACCOUNT).unwrap());
+        // Create ScVal with an account address
+        let sc_val = ScVal::Address(
+            val
+        );
+
+        // Convert ScVal to Address
+        let account = Address::from_sc_val(&sc_val).expect("Failed to create Address from ScVal");
+        
+        // Check that the toString() matches the original account
+        assert_eq!(account.to_string(), ACCOUNT);
+    }
+
+    #[test]
+    fn converts_accounts_to_sc_address() {
+        // First, create an Address from the account string
+        let address = Address::new(ACCOUNT).expect("Failed to create Address");
+        
+        // Convert to ScAddress
+        let sc_address = address.to_sc_address().expect("Failed to convert to ScAddress");
+        
+        // Check that the ScAddress is of the correct type
+        match sc_address {
+            ScAddress::Account(_) => {
+                // Test passes if it's an Account type
+                assert!(true)
+            },
+            ScAddress::Contract(_) => {
+                panic!("Expected ScAddress to be an Account type")
+            }
+        }
+
+        // To make this more similar to the JS test, we can also check the explicit type
+        match sc_address {
+            ScAddress::Account(_) => {
+                assert_eq!(sc_address.discriminant(), ScAddressType::Account);
+            },
+            _ => panic!("Expected Account type ScAddress")
+        }
+    }
+
+
+    #[test]
+    fn test_contract_to_sc_address() {
+  
+        
+        // Create an Address from the contract address
+        let address = Address::new(CONTRACT).expect("Failed to create Address");
+        
+        // Convert to ScAddress
+        let sc_address = address.to_sc_address().expect("Failed to convert to ScAddress");
+        
+        // Check that it's a contract type ScAddress
+        match sc_address {
+            ScAddress::Contract(_) => {
+                // Test passes if it's a Contract type
+                assert!(true)
+            },
+            _ => panic!("Expected ScAddress::Contract")
         }
     }
 }
