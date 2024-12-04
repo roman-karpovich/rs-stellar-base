@@ -142,7 +142,7 @@ impl AddressTrait for Address {
     }
 
     fn to_sc_val(&self) -> Result<ScVal, &'static str> {
-        todo!()
+        return Ok(stellar_xdr::next::ScVal::Address(self.to_sc_address().unwrap()))
     }
 
     fn to_sc_address(&self) -> Result<ScAddress, &'static str> {
@@ -169,7 +169,7 @@ impl AddressTrait for Address {
     }
 
     fn to_buffer(&self) -> Vec<u8> {
-        todo!()
+        return self.key.clone()
     }
 }
 
@@ -332,5 +332,60 @@ mod tests {
             },
             _ => panic!("Expected ScAddress::Contract")
         }
+    }
+
+    #[test]
+    fn test_to_sc_val() {
+        // Create an Address instance
+        let address = Address::new(ACCOUNT).expect("Failed to create Address");
+
+        // Convert the Address to ScVal
+        let sc_val = address.to_sc_val().expect("Failed to convert to ScVal");
+
+        // Ensure the ScVal is an Address type
+        match sc_val {
+            ScVal::Address(ref sc_address) => {
+                // Convert the Address to ScAddress and compare
+                let expected_sc_address = address.to_sc_address().expect("Failed to convert to ScAddress");
+                assert_eq!(sc_address, &expected_sc_address, "ScAddress mismatch");
+            }
+            _ => panic!("ScVal is not an Address"),
+        }
+    }
+
+    #[test]
+    fn test_to_buffer_for_account() {
+        // Create an Address instance for an account
+        let address = Address::new(ACCOUNT).expect("Failed to create Address");
+
+        // Convert the Address to raw public key bytes
+        let buffer = address.to_buffer();
+
+        // Decode the expected bytes using stellar_strkey
+        let expected = match Strkey::from_string(ACCOUNT).expect("Invalid ACCOUNT address") {
+            Strkey::PublicKeyEd25519(public_key) => public_key.to_string().as_bytes().to_vec(),
+            _ => panic!("Expected an Ed25519 public key"),
+        };
+
+        // Compare the buffers
+        assert_eq!(buffer, expected, "Buffer for account does not match");
+    }
+
+    #[test]
+    fn test_to_buffer_for_contract() {
+        // Create an Address instance for a contract
+        let address = Address::new(CONTRACT).expect("Failed to create Address");
+
+        // Convert the Address to raw contract key bytes
+        let buffer = address.to_buffer();
+
+        // Decode the expected bytes using stellar_strkey
+        let expected = match Strkey::from_string(CONTRACT).expect("Invalid CONTRACT address") {
+            Strkey::Contract(contract) => contract.to_string().as_bytes().to_vec(),
+            _ => panic!("Expected a contract key"),
+        };
+
+        // Compare the buffers
+        assert_eq!(buffer, expected, "Buffer for contract does not match");
     }
 }
