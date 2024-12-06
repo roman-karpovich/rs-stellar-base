@@ -9,7 +9,7 @@ use stellar_xdr::next::{
     StringM, VecM,
 };
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Contracts {
     id: Vec<u8>,
 }
@@ -80,8 +80,10 @@ impl ContractBehavior for Contracts {
         self.contract_id()
     }
 
+
     fn address(&self) -> Address {
-        Address::contract(&self.id).unwrap()
+        //TODO: Simplify this lol, wtf you doin
+        Address::contract(&contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0).unwrap()
     }
 
     fn get_footprint(&self) -> LedgerKey {
@@ -140,6 +142,17 @@ mod tests {
         assert!(result.is_err(), "Expected an error for invalid contract ID");
     }
 
-   // TODO: Contract Tests
+    #[test]
+    fn test_contract_address() {
+        // Create a contract using the NULL_ADDRESS
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+        
+        // Get the address and convert to string
+        let address_str = contract.address().to_string();
+        
+        // Assert that the address string matches the original contract ID
+        assert_eq!(address_str, NULL_ADDRESS, "Contract address should match the original contract ID");
+    }
+
     
 }
