@@ -39,7 +39,7 @@ pub trait ContractBehavior {
 // Implement the trait for the Contracts struct
 impl ContractBehavior for Contracts {
     fn new(contract_id: &str) -> std::result::Result<Contracts, &'static str> {
-        let contract_id = Strkey::Contract(Contract::from_str(contract_id).unwrap());
+        let contract_id = Strkey::Contract(Contract::from_str(contract_id).map_err(|_| "Failed to decode contract ID")?);
         Ok(Self {
             id: contract_id.to_string().as_bytes().to_vec(),
         })
@@ -95,4 +95,51 @@ impl ContractBehavior for Contracts {
 
 pub fn contract_id_strkey(contract_id: &str) -> stellar_strkey::Contract {
     stellar_strkey::Contract::from_string(contract_id).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    const NULL_ADDRESS: &str = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
+
+    #[test]
+    fn test_contract_constructor() {
+        let test_addresses = vec![
+            NULL_ADDRESS,
+            "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE"
+        ];
+
+        for cid in test_addresses {
+            let contract = Contracts::new(cid).expect("Failed to create contract");
+            assert_eq!(contract.contract_id(), cid);
+        }
+    }
+
+    #[test]
+    fn test_contract_obsolete_hex_id() {
+        // Create a string of 63 zeros followed by a 1
+        let obsolete_hex_id = "0".repeat(63) + "1";
+        
+        // Test that creating a contract with this ID results in an error
+        let result = Contracts::new(&obsolete_hex_id);
+        
+        // Assert that the result is an error
+        assert!(result.is_err(), "Expected an error for obsolete hex ID");
+    }
+
+    #[test]
+    fn test_contract_invalid_id() {
+        // Test with an entirely invalid string
+        let invalid_id = "foobar";
+        
+        // Test that creating a contract with this ID results in an error
+        let result = Contracts::new(invalid_id);
+        
+        // Assert that the result is an error
+        assert!(result.is_err(), "Expected an error for invalid contract ID");
+    }
+
+   // TODO: Contract Tests
+    
 }
