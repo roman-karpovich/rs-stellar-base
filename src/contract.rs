@@ -1,7 +1,7 @@
 use core::str;
 use std::str::FromStr;
 
-use crate::address::Address;
+use crate::address::{Address, AddressTrait};
 use stellar_strkey::{Contract, Strkey};
 use stellar_xdr::next::{
     ContractDataDurability, Hash, InvokeContractArgs, InvokeHostFunctionOp, LedgerKey,
@@ -81,7 +81,7 @@ impl ContractBehavior for Contracts {
     }
 
     fn address(&self) -> Address {
-        todo!()
+        Address::contract(&self.id).unwrap()
     }
 
     fn get_footprint(&self) -> LedgerKey {
