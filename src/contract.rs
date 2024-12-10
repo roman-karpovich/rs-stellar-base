@@ -101,6 +101,8 @@ pub fn contract_id_strkey(contract_id: &str) -> stellar_strkey::Contract {
 
 #[cfg(test)]
 mod tests {
+    use stellar_xdr::next::{Limits, OperationBody, WriteXdr};
+
     use super::*;
     
     const NULL_ADDRESS: &str = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
@@ -176,5 +178,161 @@ mod tests {
         assert_eq!(actual_footprint, expected_footprint);
     }
 
+
+    #[test]
+    fn test_call_method_with_arguments() {
+        // Define a NULL_ADDRESS equivalent
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+
+        // Method name
+        let method = "method";
+
+        // Arguments for the call
+        //TODO: Implement native_to_scval
+        let arg1 = ScVal::Symbol(ScSymbol::from(StringM::from_str("arg!").unwrap()));
+        let arg2 = ScVal::I32(2);
+
+        // Call the contract
+        let operation = contract.call(method, Some(vec![arg1.clone(), arg2.clone()]));
+
+        // Expected contract address
+        let expected_contract_address =
+            ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0));
+
+        // Verify the operation structure
+        if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+                // Check the contract address
+                assert_eq!(args.contract_address, expected_contract_address);
+
+                // Check the function name
+                assert_eq!(
+                    args.function_name,
+                    ScSymbol::from(StringM::from_str(method).unwrap())
+                );
+
+                // Check the arguments
+                assert_eq!(args.args.len(), 2);
+                assert_eq!(args.args[0], arg1);
+                assert_eq!(args.args[1], arg2);
+            } else {
+                panic!("Expected InvokeContract host function");
+            }
+        } else {
+            panic!("Expected InvokeHostFunction operation body");
+        }
+    }
+
+    #[test]
+    fn test_call_with_no_parameters() {
+        // Define a NULL_ADDRESS equivalent
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+
+        // Call the contract with a method that takes no parameters
+        let operation = contract.call("empty", None);
+
+        // Verify the operation is correctly built
+        if let OperationBody::InvokeHostFunction(host_function_op) = operation.clone().body {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+                // Check the function name
+                assert_eq!(
+                    args.function_name,
+                    ScSymbol::from(StringM::from_str("empty").unwrap())
+                );
+
+                // Check that no parameters are passed
+                assert!(args.args.is_empty());
+            } else {
+                panic!("Expected InvokeContract host function");
+            }
+        } else {
+            panic!("Expected InvokeHostFunction operation body");
+        }
+
+        // Serialize to XDR
+        let xdr = operation.to_xdr(Limits::none()).unwrap();
+        assert!(!xdr.is_empty(), "XDR serialization should produce a non-empty result");
+    }
+
+    #[test]
+    fn test_call_builds_valid_xdr() {
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+
+        // Method and parameters for the call
+        let method = "method";
+        let arg1 = ScVal::Symbol(ScSymbol::from(StringM::from_str("arg!").unwrap()));
+        let arg2 = ScVal::I32(2);
+        let operation = contract.call(method, Some(vec![arg1, arg2]));
+
+        // Serialize to XDR
+        let xdr = operation.to_xdr(Limits::none()).unwrap();
+        assert!(!xdr.is_empty(), "XDR serialization should produce a non-empty result");
+    }
+
+    #[test]
+    fn test_contract_id_as_sc_address() {
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+
+        // Call the contract
+        let operation = contract.call("method", None);
+
+        // Extract the args
+        if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+                let expected_address = ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0));
+                assert_eq!(args.contract_address, expected_address);
+            } else {
+                panic!("Expected InvokeContract host function");
+            }
+        } else {
+            panic!("Expected InvokeHostFunction operation body");
+        }
+    }
+
+    #[test]
+    fn test_method_name_as_second_arg() {
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+
+        // Call the contract
+        let operation = contract.call("method", None);
+
+        // Extract the args
+        if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+                assert_eq!(
+                    args.function_name,
+                    ScSymbol::from(StringM::from_str("method").unwrap())
+                );
+            } else {
+                panic!("Expected InvokeContract host function");
+            }
+        } else {
+            panic!("Expected InvokeHostFunction operation body");
+        }
+    }
+
+    #[test]
+    fn test_passes_all_params() {
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+
+        // Method and parameters for the call
+        let method = "method";
+        let arg1 = ScVal::Symbol(ScSymbol::from(StringM::from_str("arg!").unwrap()));
+        let arg2 = ScVal::I32(2);
+        let operation = contract.call(method, Some(vec![arg1.clone(), arg2.clone()]));
+
+        // Extract the args
+        if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+                assert_eq!(args.args.len(), 2);
+                assert_eq!(args.args[0], arg1);
+                assert_eq!(args.args[1], arg2);
+            } else {
+                panic!("Expected InvokeContract host function");
+            }
+        } else {
+            panic!("Expected InvokeHostFunction operation body");
+        }
+    }
     
 }
