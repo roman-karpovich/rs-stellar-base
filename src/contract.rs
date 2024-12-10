@@ -154,5 +154,27 @@ mod tests {
         assert_eq!(address_str, NULL_ADDRESS, "Contract address should match the original contract ID");
     }
 
+    #[test]
+    fn test_get_footprint_includes_correct_contract_ledger_keys() {
+        // Create a contract with a NULL_ADDRESS equivalent (all zeros in this case)
+        let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
+
+        // Assert the contract ID is as expected
+        assert_eq!(contract.contract_id(), NULL_ADDRESS);
+
+        // Get the actual footprint
+        let actual_footprint = contract.get_footprint();
+
+        // Build the expected footprint
+        let expected_footprint = LedgerKey::ContractData(LedgerKeyContractData {
+            contract: ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0)),
+            key: ScVal::LedgerKeyContractInstance,
+            durability: ContractDataDurability::Persistent,
+        });
+
+        // Assert the footprints match
+        assert_eq!(actual_footprint, expected_footprint);
+    }
+
     
 }
