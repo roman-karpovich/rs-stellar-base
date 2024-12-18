@@ -39,7 +39,9 @@ pub trait ContractBehavior {
 // Implement the trait for the Contracts struct
 impl ContractBehavior for Contracts {
     fn new(contract_id: &str) -> std::result::Result<Contracts, &'static str> {
-        let contract_id = Strkey::Contract(Contract::from_str(contract_id).map_err(|_| "Failed to decode contract ID")?);
+        let contract_id = Strkey::Contract(
+            Contract::from_str(contract_id).map_err(|_| "Failed to decode contract ID")?,
+        );
         Ok(Self {
             id: contract_id.to_string().as_bytes().to_vec(),
         })
@@ -80,10 +82,12 @@ impl ContractBehavior for Contracts {
         self.contract_id()
     }
 
-
     fn address(&self) -> Address {
         //TODO: Simplify this lol, wtf you doin
-        Address::contract(&contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0).unwrap()
+        Address::contract(
+            &contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0,
+        )
+        .unwrap()
     }
 
     fn get_footprint(&self) -> LedgerKey {
@@ -104,14 +108,14 @@ mod tests {
     use stellar_xdr::next::{Limits, OperationBody, WriteXdr};
 
     use super::*;
-    
+
     const NULL_ADDRESS: &str = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM";
 
     #[test]
     fn test_contract_constructor() {
         let test_addresses = vec![
             NULL_ADDRESS,
-            "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE"
+            "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE",
         ];
 
         for cid in test_addresses {
@@ -124,10 +128,10 @@ mod tests {
     fn test_contract_obsolete_hex_id() {
         // Create a string of 63 zeros followed by a 1
         let obsolete_hex_id = "0".repeat(63) + "1";
-        
+
         // Test that creating a contract with this ID results in an error
         let result = Contracts::new(&obsolete_hex_id);
-        
+
         // Assert that the result is an error
         assert!(result.is_err(), "Expected an error for obsolete hex ID");
     }
@@ -136,10 +140,10 @@ mod tests {
     fn test_contract_invalid_id() {
         // Test with an entirely invalid string
         let invalid_id = "foobar";
-        
+
         // Test that creating a contract with this ID results in an error
         let result = Contracts::new(invalid_id);
-        
+
         // Assert that the result is an error
         assert!(result.is_err(), "Expected an error for invalid contract ID");
     }
@@ -148,12 +152,15 @@ mod tests {
     fn test_contract_address() {
         // Create a contract using the NULL_ADDRESS
         let contract = Contracts::new(NULL_ADDRESS).expect("Failed to create contract");
-        
+
         // Get the address and convert to string
         let address_str = contract.address().to_string();
-        
+
         // Assert that the address string matches the original contract ID
-        assert_eq!(address_str, NULL_ADDRESS, "Contract address should match the original contract ID");
+        assert_eq!(
+            address_str, NULL_ADDRESS,
+            "Contract address should match the original contract ID"
+        );
     }
 
     #[test]
@@ -178,7 +185,6 @@ mod tests {
         assert_eq!(actual_footprint, expected_footprint);
     }
 
-
     #[test]
     fn test_call_method_with_arguments() {
         // Define a NULL_ADDRESS equivalent
@@ -201,7 +207,9 @@ mod tests {
 
         // Verify the operation structure
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
+                host_function_op.host_function
+            {
                 // Check the contract address
                 assert_eq!(args.contract_address, expected_contract_address);
 
@@ -233,7 +241,9 @@ mod tests {
 
         // Verify the operation is correctly built
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.clone().body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
+                host_function_op.host_function
+            {
                 // Check the function name
                 assert_eq!(
                     args.function_name,
@@ -251,7 +261,10 @@ mod tests {
 
         // Serialize to XDR
         let xdr = operation.to_xdr(Limits::none()).unwrap();
-        assert!(!xdr.is_empty(), "XDR serialization should produce a non-empty result");
+        assert!(
+            !xdr.is_empty(),
+            "XDR serialization should produce a non-empty result"
+        );
     }
 
     #[test]
@@ -266,7 +279,10 @@ mod tests {
 
         // Serialize to XDR
         let xdr = operation.to_xdr(Limits::none()).unwrap();
-        assert!(!xdr.is_empty(), "XDR serialization should produce a non-empty result");
+        assert!(
+            !xdr.is_empty(),
+            "XDR serialization should produce a non-empty result"
+        );
     }
 
     #[test]
@@ -278,8 +294,11 @@ mod tests {
 
         // Extract the args
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
-                let expected_address = ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0));
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
+                host_function_op.host_function
+            {
+                let expected_address =
+                    ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0));
                 assert_eq!(args.contract_address, expected_address);
             } else {
                 panic!("Expected InvokeContract host function");
@@ -298,7 +317,9 @@ mod tests {
 
         // Extract the args
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
+                host_function_op.host_function
+            {
                 assert_eq!(
                     args.function_name,
                     ScSymbol::from(StringM::from_str("method").unwrap())
@@ -323,7 +344,9 @@ mod tests {
 
         // Extract the args
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) = host_function_op.host_function {
+            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
+                host_function_op.host_function
+            {
                 assert_eq!(args.args.len(), 2);
                 assert_eq!(args.args[0], arg1);
                 assert_eq!(args.args[1], arg2);
@@ -334,5 +357,4 @@ mod tests {
             panic!("Expected InvokeHostFunction operation body");
         }
     }
-    
 }

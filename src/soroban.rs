@@ -40,11 +40,7 @@ impl SorobanBehavior for Soroban {
         let (whole, fraction) = padded.split_at(padded.len() - decimals);
 
         // Format the amount with a leading zero before the decimal point if necessary
-        let formatted = format!(
-            "{}.{}",
-            whole.trim_start_matches('0'),
-            fraction
-        );
+        let formatted = format!("{}.{}", whole.trim_start_matches('0'), fraction);
 
         // Ensure the result includes a leading zero if the fractional part exists
         let mut result = if formatted.starts_with('.') {
@@ -92,7 +88,7 @@ impl SorobanBehavior for Soroban {
 mod tests {
     use super::*;
     use std::panic;
-    
+
     #[test]
     fn test_format_token_amount_success_cases() {
         let test_cases = [
@@ -106,7 +102,7 @@ mod tests {
 
         for (amount, decimals, expected) in test_cases.iter() {
             assert_eq!(
-                Soroban::format_token_amount(amount, *decimals), 
+                Soroban::format_token_amount(amount, *decimals),
                 *expected,
                 "Failed for amount: {}, decimals: {}",
                 amount,
@@ -117,18 +113,13 @@ mod tests {
 
     #[test]
     fn test_format_token_amount_failure_cases() {
-        let test_cases = [
-            ("1000000001.1", 7),
-            ("10000.00001.1", 4),
-        ];
+        let test_cases = [("1000000001.1", 7), ("10000.00001.1", 4)];
 
         for (amount, decimals) in test_cases.iter() {
-            let result = panic::catch_unwind(|| {
-                Soroban::format_token_amount(amount, *decimals)
-            });
+            let result = panic::catch_unwind(|| Soroban::format_token_amount(amount, *decimals));
 
             assert!(
-                result.is_err(), 
+                result.is_err(),
                 "Expected panic for amount: {}, decimals: {}",
                 amount,
                 decimals
@@ -161,7 +152,7 @@ mod tests {
     fn test_parse_token_amount_failure_cases() {
         let test_cases = [
             // Invalid case with multiple decimal points
-            ("1000000.001.1", 7, "Invalid decimal value")
+            ("1000000.001.1", 7, "Invalid decimal value"),
         ];
 
         for (amount, decimals, expected) in test_cases.iter() {
@@ -178,7 +169,11 @@ mod tests {
 
             if let Err(err) = result {
                 let err_msg = err.downcast_ref::<String>().unwrap();
-                assert!(err_msg.contains(expected), "Error message does not match: {}", err_msg);
+                assert!(
+                    err_msg.contains(expected),
+                    "Error message does not match: {}",
+                    err_msg
+                );
             }
         }
     }
