@@ -129,9 +129,7 @@ impl AddressTrait for Address {
         match sc_address {
             ScAddress::Account(account_id) => {
                 let public_key = account_id.0.clone();
-                let m = match public_key {
-                    stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(uint256) => uint256,
-                };
+                let stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(m) = public_key;
 
                 Self::account(&m.0)
             }
@@ -159,16 +157,16 @@ impl AddressTrait for Address {
     }
 
     fn to_sc_val(&self) -> Result<ScVal, &'static str> {
-        return Ok(stellar_xdr::next::ScVal::Address(
+        Ok(stellar_xdr::next::ScVal::Address(
             self.to_sc_address().unwrap(),
-        ));
+        ))
     }
 
     fn to_sc_address(&self) -> Result<ScAddress, &'static str> {
         match &self.address_type {
             AddressType::Account => {
                 println!("What the hell 1");
-                let inner_uin256 = hex::encode(&self.key.clone());
+                let inner_uin256 = hex::encode(self.key.clone());
                 println!("len {:?}", self.key.len());
                 println!(
                     "len {:?}",
@@ -183,12 +181,12 @@ impl AddressTrait for Address {
                 let val = hashing::Sha256Hasher::hash(original);
                 Ok(ScAddress::Contract(Hash(val)))
             }
-            _ => return Err("Unsupported type"),
+            _ => Err("Unsupported type"),
         }
     }
 
     fn to_buffer(&self) -> Vec<u8> {
-        return self.key.clone();
+        self.key.clone()
     }
 }
 
