@@ -25,4 +25,6 @@ pub mod soroban_data_builder;
 pub mod transaction;
 pub mod transaction_builder;
 pub mod utils;
-pub mod xdr;
+pub mod xdr {
+    pub use stellar_xdr::*;
+}
