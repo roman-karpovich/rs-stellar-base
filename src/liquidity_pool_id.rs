@@ -1,7 +1,8 @@
 use crate::asset::AssetBehavior;
+use crate::xdr;
+use crate::xdr::ReadXdr;
 use regex::Regex;
 use std::{error::Error, str::FromStr};
-use stellar_xdr::next::{Hash, PoolId, ReadXdr, TrustLineAsset};
 
 #[derive(Debug, PartialEq)]
 pub struct LiquidityPoolId {
@@ -13,11 +14,11 @@ pub trait LiquidityPoolIdBehavior {
     fn new(liquidity_pool_id: &str) -> Result<Self, Box<dyn Error>>
     where
         Self: Sized;
-    fn from_operation(tl_asset_xdr: TrustLineAsset) -> Result<Self, &'static str>
+    fn from_operation(tl_asset_xdr: xdr::TrustLineAsset) -> Result<Self, &'static str>
     where
         Self: Sized;
     fn get_asset_type(&self) -> &'static str;
-    fn to_xdr_object(&self) -> TrustLineAsset;
+    fn to_xdr_object(&self) -> xdr::TrustLineAsset;
     fn get_liquidity_pool_id(&self) -> &str;
     fn equals(&self, asset: &Self) -> bool;
     fn to_string(&self) -> String;
@@ -39,9 +40,9 @@ impl LiquidityPoolIdBehavior for LiquidityPoolId {
         })
     }
 
-    fn from_operation(tl_asset_xdr: TrustLineAsset) -> Result<Self, &'static str> {
+    fn from_operation(tl_asset_xdr: xdr::TrustLineAsset) -> Result<Self, &'static str> {
         match tl_asset_xdr {
-            TrustLineAsset::PoolShare(x) => {
+            xdr::TrustLineAsset::PoolShare(x) => {
                 let liquidity_pool_id = x.0.to_string();
                 Ok(Self { liquidity_pool_id })
             }
@@ -54,9 +55,9 @@ impl LiquidityPoolIdBehavior for LiquidityPoolId {
         "liquidity_pool_shares"
     }
 
-    fn to_xdr_object(&self) -> TrustLineAsset {
-        let val = Hash::from_str(&self.liquidity_pool_id).unwrap();
-        TrustLineAsset::PoolShare(PoolId(val))
+    fn to_xdr_object(&self) -> xdr::TrustLineAsset {
+        let val = xdr::Hash::from_str(&self.liquidity_pool_id).unwrap();
+        xdr::TrustLineAsset::PoolShare(xdr::PoolId(val))
     }
 
     fn get_liquidity_pool_id(&self) -> &str {
@@ -74,7 +75,7 @@ impl LiquidityPoolIdBehavior for LiquidityPoolId {
 
 #[cfg(test)]
 mod tests {
-    use stellar_xdr::next::{AlphaNum4, AssetCode4};
+    use xdr::{AlphaNum4, AssetCode4};
 
     use crate::{asset::Asset, keypair::Keypair};
 
@@ -147,7 +148,7 @@ mod tests {
         let tl_xdr = asset.to_xdr_object();
 
         let val = match tl_xdr {
-            TrustLineAsset::PoolShare(x) => {
+            xdr::TrustLineAsset::PoolShare(x) => {
                 let liquidity_pool_id = x.0.to_string();
                 liquidity_pool_id
             }
@@ -167,7 +168,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Invalid type")]
     fn test_invalid_asset_type() {
-        let xdr = TrustLineAsset::Native;
+        let xdr = xdr::TrustLineAsset::Native;
         LiquidityPoolId::from_operation(xdr);
     }
 
@@ -193,8 +194,8 @@ mod tests {
     #[test]
     fn test_parses_liquidity_pool_id_asset_xdr() {
         let pool_id = "dd7b1ab831c273310ddbec6f97870aa83c2fbd78ce22aded37ecbf4f3380fac7";
-        let xdr_pool_id = PoolId(Hash::from_str(pool_id).unwrap());
-        let asset_xdr = TrustLineAsset::PoolShare(xdr_pool_id);
+        let xdr_pool_id = xdr::PoolId(xdr::Hash::from_str(pool_id).unwrap());
+        let asset_xdr = xdr::TrustLineAsset::PoolShare(xdr_pool_id);
         let asset = LiquidityPoolId::from_operation(asset_xdr).unwrap();
         assert_eq!(asset.get_liquidity_pool_id(), pool_id);
         assert_eq!(asset.get_asset_type(), "liquidity_pool_shares");

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
+use crate::xdr;
 use stellar_strkey::{ed25519::PublicKey, Contract, Strkey};
-use stellar_xdr::next::*;
 
 use crate::hashing::{self, HashingBehavior};
 
@@ -37,12 +37,12 @@ pub trait AddressTrait {
         Self: Sized;
 
     /// Convert from an xdr.ScVal type.
-    fn from_sc_val(sc_val: &ScVal) -> Result<Self, &'static str>
+    fn from_sc_val(sc_val: &xdr::ScVal) -> Result<Self, &'static str>
     where
         Self: Sized;
 
     /// Convert from an xdr.ScAddress type.
-    fn from_sc_address(sc_address: &ScAddress) -> Result<Self, &'static str>
+    fn from_sc_address(sc_address: &xdr::ScAddress) -> Result<Self, &'static str>
     where
         Self: Sized;
 
@@ -50,10 +50,10 @@ pub trait AddressTrait {
     fn to_string(&self) -> String;
 
     /// Convert the Address to an xdr.ScVal type.
-    fn to_sc_val(&self) -> Result<ScVal, &'static str>;
+    fn to_sc_val(&self) -> Result<xdr::ScVal, &'static str>;
 
     /// Convert the Address to an xdr.ScAddress type.
-    fn to_sc_address(&self) -> Result<ScAddress, &'static str>;
+    fn to_sc_address(&self) -> Result<xdr::ScAddress, &'static str>;
 
     /// Return the raw public key bytes for this address.
     fn to_buffer(&self) -> Vec<u8>;
@@ -111,29 +111,29 @@ impl AddressTrait for Address {
         )
     }
 
-    fn from_sc_val(sc_val: &ScVal) -> Result<Self, &'static str>
+    fn from_sc_val(sc_val: &xdr::ScVal) -> Result<Self, &'static str>
     where
         Self: Sized,
     {
         let address_sc_val = match sc_val {
-            ScVal::Address(sc_address) => sc_address,
+            xdr::ScVal::Address(sc_address) => sc_address,
             _ => panic!("Invalid Type"),
         };
         Self::from_sc_address(address_sc_val)
     }
 
-    fn from_sc_address(sc_address: &ScAddress) -> Result<Self, &'static str>
+    fn from_sc_address(sc_address: &xdr::ScAddress) -> Result<Self, &'static str>
     where
         Self: Sized,
     {
         match sc_address {
-            ScAddress::Account(account_id) => {
+            xdr::ScAddress::Account(account_id) => {
                 let public_key = account_id.0.clone();
-                let stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(m) = public_key;
+                let xdr::PublicKey::PublicKeyTypeEd25519(m) = public_key;
 
                 Self::account(&m.0)
             }
-            ScAddress::Contract(hash) => Self::contract(&hash.0),
+            xdr::ScAddress::Contract(hash) => Self::contract(&hash.0),
         }
     }
 
@@ -156,13 +156,11 @@ impl AddressTrait for Address {
         }
     }
 
-    fn to_sc_val(&self) -> Result<ScVal, &'static str> {
-        Ok(stellar_xdr::next::ScVal::Address(
-            self.to_sc_address().unwrap(),
-        ))
+    fn to_sc_val(&self) -> Result<xdr::ScVal, &'static str> {
+        Ok(xdr::ScVal::Address(self.to_sc_address().unwrap()))
     }
 
-    fn to_sc_address(&self) -> Result<ScAddress, &'static str> {
+    fn to_sc_address(&self) -> Result<xdr::ScAddress, &'static str> {
         match &self.address_type {
             AddressType::Account => {
                 println!("What the hell 1");
@@ -173,13 +171,15 @@ impl AddressTrait for Address {
                     String::from_utf8(self.key.clone()).unwrap().len()
                 );
                 let original = String::from_utf8(self.key.clone()).unwrap();
-                Ok(ScAddress::Account(AccountId::from_str(&original).unwrap()))
+                Ok(xdr::ScAddress::Account(
+                    xdr::AccountId::from_str(&original).unwrap(),
+                ))
             }
 
             AddressType::Contract => {
                 let original = String::from_utf8(self.key.clone()).unwrap();
                 let val = hashing::Sha256Hasher::hash(original);
-                Ok(ScAddress::Contract(Hash(val)))
+                Ok(xdr::ScAddress::Contract(xdr::Hash(val)))
             }
             _ => Err("Unsupported type"),
         }
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn creates_address_object_for_accounts() {
-        let sc_address = ScAddress::from_str(ACCOUNT).unwrap();
+        let sc_address = xdr::ScAddress::from_str(ACCOUNT).unwrap();
 
         // Convert ScAddress to Address
         let account =
@@ -285,7 +285,7 @@ mod tests {
         let contract = Contract::from_string(CONTRACT).expect("Failed to decode contract address");
 
         // Create ScAddress for contract
-        let sc_address = ScAddress::Contract(Hash(contract.0));
+        let sc_address = xdr::ScAddress::Contract(xdr::Hash(contract.0));
 
         // Convert ScAddress to Address
         let contract_address =
@@ -299,9 +299,9 @@ mod tests {
     fn creates_address_object_for_accounts_sc_address() {
         // Decode the account public key
 
-        let val = ScAddress::Account(AccountId::from_str(ACCOUNT).unwrap());
+        let val = xdr::ScAddress::Account(xdr::AccountId::from_str(ACCOUNT).unwrap());
         // Create ScVal with an account address
-        let sc_val = ScVal::Address(val);
+        let sc_val = xdr::ScVal::Address(val);
 
         // Convert ScVal to Address
         let account = Address::from_sc_val(&sc_val).expect("Failed to create Address from ScVal");
@@ -322,19 +322,19 @@ mod tests {
 
         // Check that the ScAddress is of the correct type
         match sc_address {
-            ScAddress::Account(_) => {
+            xdr::ScAddress::Account(_) => {
                 // Test passes if it's an Account type
                 assert!(true)
             }
-            ScAddress::Contract(_) => {
+            xdr::ScAddress::Contract(_) => {
                 panic!("Expected ScAddress to be an Account type")
             }
         }
 
         // To make this more similar to the JS test, we can also check the explicit type
         match sc_address {
-            ScAddress::Account(_) => {
-                assert_eq!(sc_address.discriminant(), ScAddressType::Account);
+            xdr::ScAddress::Account(_) => {
+                assert_eq!(sc_address.discriminant(), xdr::ScAddressType::Account);
             }
             _ => panic!("Expected Account type ScAddress"),
         }
@@ -352,7 +352,7 @@ mod tests {
 
         // Check that it's a contract type ScAddress
         match sc_address {
-            ScAddress::Contract(_) => {
+            xdr::ScAddress::Contract(_) => {
                 // Test passes if it's a Contract type
                 assert!(true)
             }
@@ -370,7 +370,7 @@ mod tests {
 
         // Ensure the ScVal is an Address type
         match sc_val {
-            ScVal::Address(ref sc_address) => {
+            xdr::ScVal::Address(ref sc_address) => {
                 // Convert the Address to ScAddress and compare
                 let expected_sc_address = address
                     .to_sc_address()

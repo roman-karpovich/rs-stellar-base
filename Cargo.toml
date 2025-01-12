@@ -18,11 +18,18 @@ hex = "0.4.3"
 lazy_static = "1.4.0"
 nacl = "0.5.3"
 num-bigint = "0.4.3"
-rand_core = {version = "0.6.4", default-features = true, features = ["getrandom"]}
+rand_core = { version = "0.6.4", default-features = true, features = [
+  "getrandom",
+] }
 getrandom = { version = "0.2.10", features = ["js"] }
 sha2 = "0.10.7"
 stellar-strkey = "0.0.9"
-stellar-xdr =  { version = "22.0.0", default-features = true, features = ["base64", "std", "next", "serde", "alloc"] }
+stellar-xdr = { version = "22.1.0", default-features = true, features = [
+  "base64",
+  "std",
+  "serde",
+  "alloc",
+] }
 hex-literal = "0.4.1"
 num-traits = "0.2.15"
 hyper = "0.14.27"
@@ -34,3 +41,7 @@ serde_json = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 libsodium-sys = "0.2.7"
+
+[features]
+default = []
+next = ["stellar-xdr/next"]

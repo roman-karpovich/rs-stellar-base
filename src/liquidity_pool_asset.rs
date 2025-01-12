@@ -1,11 +1,8 @@
-use crate::get_liquidity_pool::LiquidityPoolBehavior;
-use stellar_xdr::next::{
-    ChangeTrustAsset, LiquidityPoolConstantProductParameters, LiquidityPoolParameters,
-};
-
 use crate::asset::Asset;
 use crate::asset::AssetBehavior;
 use crate::get_liquidity_pool::LiquidityPool;
+use crate::get_liquidity_pool::LiquidityPoolBehavior;
+use crate::xdr;
 const LIQUIDITY_POOL_FEE_V18: i32 = 30;
 #[derive(Debug)]
 pub struct LiquidityPoolAsset {
@@ -19,11 +16,11 @@ pub trait LiquidityPoolAssetBehavior {
     fn new(asset_a: Asset, asset_b: Asset, fee: i32) -> Result<Self, &'static str>
     where
         Self: Sized;
-    fn from_operation(ct_asset_xdr: &ChangeTrustAsset) -> Result<Self, String>
+    fn from_operation(ct_asset_xdr: &xdr::ChangeTrustAsset) -> Result<Self, String>
     where
         Self: Sized;
-    fn to_xdr_object(&self) -> ChangeTrustAsset;
-    fn get_liquidity_pool_parameters(&self) -> LiquidityPoolParameters;
+    fn to_xdr_object(&self) -> xdr::ChangeTrustAsset;
+    fn get_liquidity_pool_parameters(&self) -> xdr::LiquidityPoolParameters;
     fn equals(&self, other: &Self) -> bool;
     fn get_asset_type(&self) -> &'static str;
     fn to_string(&self) -> String;
@@ -45,11 +42,10 @@ impl LiquidityPoolAssetBehavior for LiquidityPoolAsset {
         })
     }
 
-    fn from_operation(ct_asset_xdr: &ChangeTrustAsset) -> Result<LiquidityPoolAsset, String> {
+    fn from_operation(ct_asset_xdr: &xdr::ChangeTrustAsset) -> Result<LiquidityPoolAsset, String> {
         match ct_asset_xdr {
-            ChangeTrustAsset::PoolShare(x) => {
-                let stellar_xdr::next::LiquidityPoolParameters::LiquidityPoolConstantProduct(val) =
-                    x;
+            xdr::ChangeTrustAsset::PoolShare(x) => {
+                let xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(val) = x;
 
                 let asset_a = Asset::from_operation(val.asset_a.clone()).unwrap();
                 let asset_b = Asset::from_operation(val.asset_b.clone()).unwrap();
@@ -61,28 +57,27 @@ impl LiquidityPoolAssetBehavior for LiquidityPoolAsset {
         }
     }
 
-    fn to_xdr_object(&self) -> ChangeTrustAsset {
-        let lp_constant_product_params_xdr = LiquidityPoolConstantProductParameters {
+    fn to_xdr_object(&self) -> xdr::ChangeTrustAsset {
+        let lp_constant_product_params_xdr = xdr::LiquidityPoolConstantProductParameters {
             asset_a: self.asset_a.to_xdr_object(),
             asset_b: self.asset_b.to_xdr_object(),
             fee: self.fee,
         };
 
-        let lp_params_xdr =
-            LiquidityPoolParameters::LiquidityPoolConstantProduct(lp_constant_product_params_xdr);
-        ChangeTrustAsset::PoolShare(lp_params_xdr)
+        let lp_params_xdr = xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(
+            lp_constant_product_params_xdr,
+        );
+        xdr::ChangeTrustAsset::PoolShare(lp_params_xdr)
     }
 
-    fn get_liquidity_pool_parameters(&self) -> LiquidityPoolParameters {
-        let lp_constant_product_params_xdr = LiquidityPoolConstantProductParameters {
+    fn get_liquidity_pool_parameters(&self) -> xdr::LiquidityPoolParameters {
+        let lp_constant_product_params_xdr = xdr::LiquidityPoolConstantProductParameters {
             asset_a: self.asset_a.to_xdr_object(),
             asset_b: self.asset_b.to_xdr_object(),
             fee: self.fee,
         };
 
-        stellar_xdr::next::LiquidityPoolParameters::LiquidityPoolConstantProduct(
-            lp_constant_product_params_xdr,
-        )
+        xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(lp_constant_product_params_xdr)
     }
 
     fn equals(&self, other: &LiquidityPoolAsset) -> bool {
@@ -105,7 +100,7 @@ impl LiquidityPoolAssetBehavior for LiquidityPoolAsset {
 
 #[cfg(test)]
 mod tests {
-    use stellar_xdr::next::AlphaNum4;
+    use xdr::AlphaNum4;
 
     use super::*;
 
@@ -145,7 +140,7 @@ mod tests {
 
         let got_pool_params = asset.get_liquidity_pool_parameters();
         let val = match got_pool_params {
-            LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
+            xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
         };
         assert_eq!(val.asset_a, asset_a.to_xdr_object());
         assert_eq!(val.asset_b, asset_b.to_xdr_object());
@@ -188,13 +183,13 @@ mod tests {
         let xdr = asset.to_xdr_object();
 
         let val = match xdr {
-            ChangeTrustAsset::PoolShare(x) => x,
+            xdr::ChangeTrustAsset::PoolShare(x) => x,
             _ => panic!("Expected LiquidityPool variant"),
         };
 
-        let got_pool_params: LiquidityPoolParameters = asset.get_liquidity_pool_parameters();
+        let got_pool_params: xdr::LiquidityPoolParameters = asset.get_liquidity_pool_parameters();
         let val = match got_pool_params {
-            LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
+            xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
         };
         assert_eq!(Asset::from_operation(val.asset_a).unwrap(), asset_a);
         assert_eq!(Asset::from_operation(val.asset_b).unwrap(), asset_b);
@@ -203,7 +198,7 @@ mod tests {
 
     #[test]
     fn from_operation_throws_error_for_native_asset_type() {
-        let xdr = ChangeTrustAsset::Native;
+        let xdr = xdr::ChangeTrustAsset::Native;
 
         let result = LiquidityPoolAsset::from_operation(&xdr).unwrap_err();
 
@@ -223,11 +218,11 @@ mod tests {
 
         let asset_xdr = Asset::new("KHL", Some(issuer)).unwrap().to_xdr_object();
         let c = match asset_xdr {
-            stellar_xdr::next::Asset::CreditAlphanum4(x) => x,
+            xdr::Asset::CreditAlphanum4(x) => x,
             _ => panic!("Wrong Type:"),
         };
 
-        let vval: ChangeTrustAsset = ChangeTrustAsset::CreditAlphanum4(c);
+        let vval: xdr::ChangeTrustAsset = xdr::ChangeTrustAsset::CreditAlphanum4(c);
 
         match LiquidityPoolAsset::from_operation(&vval) {
             Ok(_) => panic!("Expected an error for assetTypeCreditAlphanum4, but got Ok"),
@@ -244,11 +239,11 @@ mod tests {
             .unwrap()
             .to_xdr_object();
         let c = match asset_xdr {
-            stellar_xdr::next::Asset::CreditAlphanum12(x) => x,
+            xdr::Asset::CreditAlphanum12(x) => x,
             _ => panic!("Wrong Type:"),
         };
 
-        let vval: ChangeTrustAsset = ChangeTrustAsset::CreditAlphanum12(c);
+        let vval: xdr::ChangeTrustAsset = xdr::ChangeTrustAsset::CreditAlphanum12(c);
 
         match LiquidityPoolAsset::from_operation(&vval) {
             Ok(_) => panic!("Expected an error for assetTypeCreditAlphanum12, but got Ok"),
@@ -270,20 +265,21 @@ mod tests {
         .unwrap();
         let fee = LIQUIDITY_POOL_FEE_V18;
 
-        let lp_constant_product_params_xdr = LiquidityPoolConstantProductParameters {
+        let lp_constant_product_params_xdr = xdr::LiquidityPoolConstantProductParameters {
             asset_a: asset_a.to_xdr_object(),
             asset_b: asset_b.to_xdr_object(),
             fee,
         };
 
-        let lp_params_xdr =
-            LiquidityPoolParameters::LiquidityPoolConstantProduct(lp_constant_product_params_xdr);
-        let xdr = ChangeTrustAsset::PoolShare(lp_params_xdr);
+        let lp_params_xdr = xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(
+            lp_constant_product_params_xdr,
+        );
+        let xdr = xdr::ChangeTrustAsset::PoolShare(lp_params_xdr);
 
         let asset = LiquidityPoolAsset::from_operation(&xdr).expect("Expected successful parsing");
         let got_pool_params = asset.get_liquidity_pool_parameters();
         let x = match got_pool_params {
-            LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
+            xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
         };
         assert_eq!(x.asset_a, asset_a.to_xdr_object());
         assert_eq!(x.asset_b, asset_b.to_xdr_object());

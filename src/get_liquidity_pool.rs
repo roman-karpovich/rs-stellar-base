@@ -1,7 +1,8 @@
 use crate::hashing::HashingBehavior;
 use std::error::Error;
 
-use stellar_xdr::next::{LiquidityPoolParameters, WriteXdr};
+use crate::xdr;
+use crate::xdr::WriteXdr;
 
 use crate::asset::Asset;
 use crate::hashing::Sha256Hasher;
@@ -14,7 +15,7 @@ const LIQUIDITY_POOL_FEE_V18: i32 = 30;
 pub trait LiquidityPoolBehavior {
     fn get_liquidity_pool_id(
         liquidity_pool_type: &str,
-        liquidity_pool_parameters: LiquidityPoolParameters,
+        liquidity_pool_parameters: xdr::LiquidityPoolParameters,
     ) -> Result<Vec<u8>, Box<dyn Error>>;
 }
 
@@ -26,7 +27,7 @@ impl LiquidityPoolBehavior for LiquidityPool {
     /// Returns the raw Pool ID buffer.
     fn get_liquidity_pool_id(
         liquidity_pool_type: &str,
-        liquidity_pool_parameters: LiquidityPoolParameters,
+        liquidity_pool_parameters: xdr::LiquidityPoolParameters,
     ) -> Result<Vec<u8>, Box<dyn Error>> {
         if liquidity_pool_type != "constant_product" {
             return Err(Box::new(std::io::Error::new(
@@ -34,7 +35,7 @@ impl LiquidityPoolBehavior for LiquidityPool {
                 "liquidityPoolType is invalid",
             )));
         }
-        let LiquidityPoolParameters::LiquidityPoolConstantProduct(liquidity_pool_parametes_x) =
+        let xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(liquidity_pool_parametes_x) =
             liquidity_pool_parameters.clone();
 
         if liquidity_pool_parametes_x.fee != LIQUIDITY_POOL_FEE_V18 {
@@ -56,14 +57,14 @@ impl LiquidityPoolBehavior for LiquidityPool {
         }
         let va_1 = liquidity_pool_parametes_x.clone().asset_a;
 
-        let lp_type_data = stellar_xdr::next::LiquidityPoolType::LiquidityPoolConstantProduct
-            .to_xdr(stellar_xdr::next::Limits::none());
-        let lp_params_data = stellar_xdr::next::LiquidityPoolConstantProductParameters {
+        let lp_type_data =
+            xdr::LiquidityPoolType::LiquidityPoolConstantProduct.to_xdr(xdr::Limits::none());
+        let lp_params_data = xdr::LiquidityPoolConstantProductParameters {
             asset_a: liquidity_pool_parametes_x.clone().asset_a,
             asset_b: liquidity_pool_parametes_x.clone().asset_b,
             fee: liquidity_pool_parametes_x.fee,
         }
-        .to_xdr(stellar_xdr::next::Limits::none());
+        .to_xdr(xdr::Limits::none());
 
         let mut payload = Vec::new();
         payload.extend(lp_type_data.unwrap());

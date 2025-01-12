@@ -6,15 +6,15 @@ use crate::operation::OpAttributes;
 use crate::operation::Operation;
 use crate::operation::OperationBehavior;
 use crate::utils::decode_encode_muxed_account::encode_muxed_account_to_address;
+use crate::xdr;
 use std::str::FromStr;
-use stellar_xdr::next::*;
 
 impl Operation {
     pub fn invoke_host_function(
-        func: HostFunction,
-        auth: Option<VecM<SorobanAuthorizationEntry>>,
+        func: xdr::HostFunction,
+        auth: Option<xdr::VecM<xdr::SorobanAuthorizationEntry>>,
         source: Option<String>,
-    ) -> Result<stellar_xdr::next::Operation, &'static str> {
+    ) -> Result<xdr::Operation, &'static str> {
         let mut op = Operation {
             op_attrs: None,
             opts: None,
@@ -23,23 +23,23 @@ impl Operation {
         let auth_arr;
 
         if auth.is_none() {
-            auth_arr = VecM::default();
+            auth_arr = xdr::VecM::default();
         } else {
             auth_arr = auth.unwrap();
         }
-        let invoke_host_function_op = InvokeHostFunctionOp {
+        let invoke_host_function_op = xdr::InvokeHostFunctionOp {
             host_function: func,
             auth: auth_arr,
         };
 
-        let op_body = OperationBody::InvokeHostFunction(invoke_host_function_op);
+        let op_body = xdr::OperationBody::InvokeHostFunction(invoke_host_function_op);
 
         if source.is_none() {
         } else {
             op.set_source_account(Some(&source.clone().unwrap()));
         }
 
-        Ok(stellar_xdr::next::Operation {
+        Ok(xdr::Operation {
             source_account: None,
             body: op_body,
         })
@@ -50,7 +50,8 @@ impl Operation {
 mod tests {
     use crate::contract::ContractBehavior;
     use crate::contract::Contracts;
-    use stellar_xdr::next::ScAddress::Contract;
+    use crate::xdr::WriteXdr;
+    use xdr::ScAddress::Contract;
 
     use super::*;
 
@@ -63,11 +64,11 @@ mod tests {
         let mut array = [0u8; 32];
         array.copy_from_slice(&hex_id[0..32]);
 
-        let func = HostFunction::InvokeContract(InvokeContractArgs {
-            contract_address: ScAddress::from(Contract(Hash::from(array))),
-            function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
-            args: vec![ScVal::String(ScString::from(
-                StringM::from_str("world").unwrap(),
+        let func = xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
+            contract_address: xdr::ScAddress::from(Contract(xdr::Hash::from(array))),
+            function_name: xdr::ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
+            args: vec![xdr::ScVal::String(xdr::ScString::from(
+                xdr::StringM::from_str("world").unwrap(),
             ))]
             .try_into()
             .unwrap(),
@@ -75,7 +76,7 @@ mod tests {
 
         let op = Operation::invoke_host_function(func, None, None).unwrap();
 
-        let xdr = op.to_xdr(Limits::none()).unwrap();
+        let xdr = op.to_xdr(xdr::Limits::none()).unwrap();
         let obj = Operation::from_xdr_object(op).unwrap();
 
         match obj.get("type").unwrap() {

@@ -8,50 +8,37 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 use stellar_strkey::ed25519::PublicKey;
-use stellar_xdr::next::DecoratedSignature;
-use stellar_xdr::next::Limits;
-use stellar_xdr::next::SorobanTransactionData;
+use xdr::DecoratedSignature;
+use xdr::Limits;
+use xdr::SorobanTransactionData;
 
 use crate::account::Account;
 use crate::hashing::Sha256Hasher;
 use crate::keypair::Keypair;
 use crate::keypair::KeypairBehavior;
 use crate::op_list::create_account::create_account;
-use stellar_xdr::next::LedgerBounds;
-use stellar_xdr::next::Memo;
-use stellar_xdr::next::MuxedAccount;
-use stellar_xdr::next::Operation;
-use stellar_xdr::next::Preconditions;
-use stellar_xdr::next::ReadXdr;
-use stellar_xdr::next::SequenceNumber;
-use stellar_xdr::next::Signature;
-use stellar_xdr::next::TimeBounds;
-use stellar_xdr::next::TransactionEnvelope;
-use stellar_xdr::next::TransactionExt;
-use stellar_xdr::next::TransactionV0Envelope;
-use stellar_xdr::next::TransactionV1Envelope;
-use stellar_xdr::next::Uint256;
-use stellar_xdr::next::VecM;
-use stellar_xdr::next::WriteXdr;
+use crate::xdr;
+use crate::xdr::ReadXdr;
+use crate::xdr::WriteXdr;
 
 #[derive(Debug, Clone)]
 pub struct Transaction {
-    pub tx: Option<stellar_xdr::next::Transaction>,
-    pub tx_v0: Option<stellar_xdr::next::TransactionV0>,
+    pub tx: Option<xdr::Transaction>,
+    pub tx_v0: Option<xdr::TransactionV0>,
     pub network_passphrase: String,
     pub signatures: Vec<DecoratedSignature>,
     pub fee: u32,
-    pub envelope_type: stellar_xdr::next::EnvelopeType,
-    pub memo: Option<stellar_xdr::next::Memo>,
+    pub envelope_type: xdr::EnvelopeType,
+    pub memo: Option<xdr::Memo>,
     pub sequence: Option<String>,
     pub source: Option<String>,
-    pub time_bounds: Option<TimeBounds>,
-    pub ledger_bounds: Option<LedgerBounds>,
+    pub time_bounds: Option<xdr::TimeBounds>,
+    pub ledger_bounds: Option<xdr::LedgerBounds>,
     pub min_account_sequence: Option<String>,
     pub min_account_sequence_age: Option<u32>,
     pub min_account_sequence_ledger_gap: Option<u32>,
-    pub extra_signers: Option<Vec<stellar_xdr::next::AccountId>>,
-    pub operations: Option<Vec<Operation>>,
+    pub extra_signers: Option<Vec<xdr::AccountId>>,
+    pub operations: Option<Vec<xdr::Operation>>,
     pub hash: Option<[u8; 32]>,
     pub soroban_data: Option<SorobanTransactionData>,
 }
@@ -61,7 +48,7 @@ pub trait TransactionBehavior {
     fn signature_base(&self) -> Vec<u8>;
     fn hash(&self) -> [u8; 32];
     fn sign(&mut self, keypairs: &[Keypair]);
-    fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>>;
+    fn to_envelope(&self) -> Result<xdr::TransactionEnvelope, Box<dyn Error>>;
     fn from_xdr_envelope(xdr: &str, network: &str) -> Self;
     //TODO: XDR Conversion, Proper From and To
 }
@@ -71,34 +58,26 @@ impl TransactionBehavior for Transaction {
         let tagged_tx = if let Some(tx_v0) = &self.tx_v0 {
             // For V0 transactions, we need to reconstruct a Transaction from the V0 format
             // Similar to JS: "Backwards Compatibility: Use ENVELOPE_TYPE_TX to sign ENVELOPE_TYPE_TX_V0"
-            stellar_xdr::next::TransactionSignaturePayloadTaggedTransaction::Tx(
-                stellar_xdr::next::Transaction {
-                    source_account: stellar_xdr::next::MuxedAccount::Ed25519(
-                        tx_v0.source_account_ed25519.clone(),
-                    ),
-                    fee: tx_v0.fee,
-                    seq_num: tx_v0.seq_num.clone(),
-                    cond: match &tx_v0.time_bounds {
-                        None => stellar_xdr::next::Preconditions::None,
-                        Some(time_bounds) => {
-                            stellar_xdr::next::Preconditions::Time(time_bounds.clone())
-                        }
-                    },
-                    memo: tx_v0.memo.clone(),
-                    operations: tx_v0.operations.clone(),
-                    ext: stellar_xdr::next::TransactionExt::V0,
+            xdr::TransactionSignaturePayloadTaggedTransaction::Tx(xdr::Transaction {
+                source_account: xdr::MuxedAccount::Ed25519(tx_v0.source_account_ed25519.clone()),
+                fee: tx_v0.fee,
+                seq_num: tx_v0.seq_num.clone(),
+                cond: match &tx_v0.time_bounds {
+                    None => xdr::Preconditions::None,
+                    Some(time_bounds) => xdr::Preconditions::Time(time_bounds.clone()),
                 },
-            )
+                memo: tx_v0.memo.clone(),
+                operations: tx_v0.operations.clone(),
+                ext: xdr::TransactionExt::V0,
+            })
         } else if let Some(tx) = &self.tx {
-            stellar_xdr::next::TransactionSignaturePayloadTaggedTransaction::Tx(tx.clone())
+            xdr::TransactionSignaturePayloadTaggedTransaction::Tx(tx.clone())
         } else {
             panic!("Transaction must have either tx or tx_v0 set")
         };
 
-        let tx_sig = stellar_xdr::next::TransactionSignaturePayload {
-            network_id: stellar_xdr::next::Hash(Sha256Hasher::hash(
-                self.network_passphrase.as_bytes(),
-            )),
+        let tx_sig = xdr::TransactionSignaturePayload {
+            network_id: xdr::Hash(Sha256Hasher::hash(self.network_passphrase.as_bytes())),
             tagged_transaction: tagged_tx,
         };
 
@@ -119,42 +98,34 @@ impl TransactionBehavior for Transaction {
         self.hash = Some(tx_hash);
     }
 
-    fn to_envelope(&self) -> Result<TransactionEnvelope, Box<dyn Error>> {
+    fn to_envelope(&self) -> Result<xdr::TransactionEnvelope, Box<dyn Error>> {
         let raw_tx = self
             .tx
             .clone()
             .unwrap()
-            .to_xdr_base64(stellar_xdr::next::Limits::none())
+            .to_xdr_base64(xdr::Limits::none())
             .unwrap();
         // println!("Raw {:?}", self.tx);
         // println!("Raw XDR {:?}", raw_tx);
 
         let mut signatures =
-            VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
+            xdr::VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures
 
         let envelope = match self.envelope_type {
-            stellar_xdr::next::EnvelopeType::TxV0 => {
-                let transaction_v0 = stellar_xdr::next::TransactionV0Envelope {
-                    tx: stellar_xdr::next::TransactionV0::from_xdr_base64(
-                        &raw_tx,
-                        stellar_xdr::next::Limits::none(),
-                    )
-                    .unwrap(), // Make a copy of tx
+            xdr::EnvelopeType::TxV0 => {
+                let transaction_v0 = xdr::TransactionV0Envelope {
+                    tx: xdr::TransactionV0::from_xdr_base64(&raw_tx, xdr::Limits::none()).unwrap(), // Make a copy of tx
                     signatures,
                 };
-                stellar_xdr::next::TransactionEnvelope::TxV0(transaction_v0)
+                xdr::TransactionEnvelope::TxV0(transaction_v0)
             }
 
-            stellar_xdr::next::EnvelopeType::Tx => {
-                let transaction_v1 = stellar_xdr::next::TransactionV1Envelope {
-                    tx: stellar_xdr::next::Transaction::from_xdr_base64(
-                        &raw_tx,
-                        stellar_xdr::next::Limits::none(),
-                    )
-                    .unwrap(), // Make a copy of tx
+            xdr::EnvelopeType::Tx => {
+                let transaction_v1 = xdr::TransactionV1Envelope {
+                    tx: xdr::Transaction::from_xdr_base64(&raw_tx, xdr::Limits::none()).unwrap(), // Make a copy of tx
                     signatures,
                 };
-                stellar_xdr::next::TransactionEnvelope::Tx(transaction_v1)
+                xdr::TransactionEnvelope::Tx(transaction_v1)
             }
             _ => {
                 return Err(format!(
@@ -169,11 +140,11 @@ impl TransactionBehavior for Transaction {
     }
 
     fn from_xdr_envelope(xdr: &str, network: &str) -> Self {
-        let tx_env = TransactionEnvelope::from_xdr_base64(xdr, Limits::none()).unwrap();
+        let tx_env = xdr::TransactionEnvelope::from_xdr_base64(xdr, Limits::none()).unwrap();
         let envelope_type = tx_env.discriminant();
 
         match tx_env {
-            TransactionEnvelope::TxV0(tx_v0_env) => Self {
+            xdr::TransactionEnvelope::TxV0(tx_v0_env) => Self {
                 tx: None,
                 tx_v0: Some(tx_v0_env.tx.clone()),
                 network_passphrase: network.to_owned(),
@@ -198,7 +169,7 @@ impl TransactionBehavior for Transaction {
                 hash: None,
                 soroban_data: None,
             },
-            TransactionEnvelope::Tx(tx_env) => {
+            xdr::TransactionEnvelope::Tx(tx_env) => {
                 let mut time_bounds = None;
                 let mut ledger_bounds = None;
                 let mut min_account_sequence = None;
@@ -207,10 +178,10 @@ impl TransactionBehavior for Transaction {
                 let mut extra_signers = None;
 
                 match tx_env.tx.cond.clone() {
-                    Preconditions::Time(tb) => {
+                    xdr::Preconditions::Time(tb) => {
                         time_bounds = Some(tb);
                     }
-                    Preconditions::V2(v2) => {
+                    xdr::Preconditions::V2(v2) => {
                         time_bounds = v2.time_bounds;
                         ledger_bounds = v2.ledger_bounds;
                         min_account_sequence = v2
@@ -220,7 +191,7 @@ impl TransactionBehavior for Transaction {
                         min_account_sequence_ledger_gap = Some(v2.min_seq_ledger_gap);
                         extra_signers = Some(v2.extra_signers.to_vec());
                     }
-                    Preconditions::None => {}
+                    xdr::Preconditions::None => {}
                 }
 
                 Self {
@@ -273,11 +244,11 @@ impl fmt::Display for Transaction {
         if let Some(memo) = &self.memo {
             write!(f, "  Memo: ")?;
             match memo {
-                stellar_xdr::next::Memo::Text(text) => writeln!(f, "TEXT: {:?}", text)?,
-                stellar_xdr::next::Memo::Id(id) => writeln!(f, "ID: {}", id)?,
-                stellar_xdr::next::Memo::Hash(hash) => writeln!(f, "HASH: {:?}", hash)?,
-                stellar_xdr::next::Memo::Return(ret) => writeln!(f, "RETURN: {:?}", ret)?,
-                stellar_xdr::next::Memo::None => writeln!(f, "NONE")?,
+                xdr::Memo::Text(text) => writeln!(f, "TEXT: {:?}", text)?,
+                xdr::Memo::Id(id) => writeln!(f, "ID: {}", id)?,
+                xdr::Memo::Hash(hash) => writeln!(f, "HASH: {:?}", hash)?,
+                xdr::Memo::Return(ret) => writeln!(f, "RETURN: {:?}", ret)?,
+                xdr::Memo::None => writeln!(f, "NONE")?,
             }
         }
 
@@ -356,7 +327,7 @@ mod tests {
     use std::{cell::RefCell, rc::Rc};
 
     use sha2::digest::crypto_common::Key;
-    use stellar_xdr::next::Limits;
+    use xdr::Limits;
 
     use super::*;
     use crate::{
@@ -427,10 +398,10 @@ mod tests {
         let xdr = "AAAAAPQQv+uPYrlCDnjgPyPRgIjB6T8Zb8ANmL8YGAXC2IAgAAAAZAAIteYAAAAHAAAAAAAAAAAAAAABAAAAAAAAAAMAAAAAAAAAAUVVUgAAAAAAUtYuFczBLlsXyEp3q8BbTBpEGINWahqkFbnTPd93YUUAAAAXSHboAAAAABEAACcQAAAAAAAAAKIAAAAAAAAAAcLYgCAAAABAo2tU6n0Bb7bbbpaXacVeaTVbxNMBtnrrXVk2QAOje2Flllk/ORlmQdFU/9c8z43eWh1RNMpI3PscY+yDCnJPBQ==";
 
         // Decode base64 XDR
-        let tx_env = TransactionEnvelope::from_xdr_base64(xdr, Limits::none()).unwrap();
+        let tx_env = xdr::TransactionEnvelope::from_xdr_base64(xdr, Limits::none()).unwrap();
 
         let tx = match tx_env {
-            TransactionEnvelope::TxV0(transaction_v0_envelope) => transaction_v0_envelope.tx,
+            xdr::TransactionEnvelope::TxV0(transaction_v0_envelope) => transaction_v0_envelope.tx,
             _ => panic!("fff"),
         };
 

@@ -1,11 +1,12 @@
 use core::panic;
 use std::{collections::HashMap, str::FromStr};
 
+use crate::xdr;
+use crate::xdr::{SignerKey as XDRSignerKey, SignerKeyEd25519SignedPayload};
 use stellar_strkey::{
     ed25519::{PublicKey, SignedPayload},
     HashX, PreAuthTx,
 };
-use stellar_xdr::curr::{SignerKey as XDRSignerKey, SignerKeyEd25519SignedPayload};
 
 pub struct SignerKey;
 
@@ -25,19 +26,13 @@ impl SignerKeyBehavior for SignerKey {
         match val.unwrap() {
             stellar_strkey::Strkey::SignedPayloadEd25519(x) => {
                 XDRSignerKey::Ed25519SignedPayload(SignerKeyEd25519SignedPayload {
-                    ed25519: stellar_xdr::curr::Uint256(x.ed25519),
+                    ed25519: xdr::Uint256(x.ed25519),
                     payload: x.payload.try_into().unwrap(),
                 })
             }
-            stellar_strkey::Strkey::PublicKeyEd25519(x) => {
-                XDRSignerKey::Ed25519(stellar_xdr::curr::Uint256(x.0))
-            }
-            stellar_strkey::Strkey::PreAuthTx(x) => {
-                XDRSignerKey::PreAuthTx(stellar_xdr::curr::Uint256(x.0))
-            }
-            stellar_strkey::Strkey::HashX(x) => {
-                XDRSignerKey::HashX(stellar_xdr::curr::Uint256(x.0))
-            }
+            stellar_strkey::Strkey::PublicKeyEd25519(x) => XDRSignerKey::Ed25519(xdr::Uint256(x.0)),
+            stellar_strkey::Strkey::PreAuthTx(x) => XDRSignerKey::PreAuthTx(xdr::Uint256(x.0)),
+            stellar_strkey::Strkey::HashX(x) => XDRSignerKey::HashX(xdr::Uint256(x.0)),
             _ => panic!("Invalid Type"),
         }
     }
@@ -82,31 +77,31 @@ fn assert_panic<F: FnOnce(), S: AsRef<str>>(f: F, expected_msg: S) {
 }
 
 mod tests {
-    use stellar_xdr::curr::{ReadXdr, WriteXdr};
+    use xdr::{ReadXdr, WriteXdr};
 
     use super::*;
     #[derive(Debug)]
     struct TestCase {
         strkey: &'static str,
-        r#type: stellar_xdr::curr::SignerKeyType,
+        r#type: xdr::SignerKeyType,
     }
 
     static TEST_CASES: [TestCase; 4] = [
         TestCase {
             strkey: "GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVSGZ",
-            r#type: stellar_xdr::curr::SignerKeyType::Ed25519,
+            r#type: xdr::SignerKeyType::Ed25519,
         },
         TestCase {
             strkey: "TBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWHXL7",
-            r#type: stellar_xdr::curr::SignerKeyType::PreAuthTx,
+            r#type: xdr::SignerKeyType::PreAuthTx,
         },
         TestCase {
             strkey: "XBU2RRGLXH3E5CQHTD3ODLDF2BWDCYUSSBLLZ5GNW7JXHDIYKXZWGTOG",
-            r#type: stellar_xdr::curr::SignerKeyType::HashX,
+            r#type: xdr::SignerKeyType::HashX,
         },
         TestCase {
             strkey: "PA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAQACAQDAQCQMBYIBEFAWDANBYHRAEISCMKBKFQXDAMRUGY4DUPB6IBZGM",
-            r#type: stellar_xdr::curr::SignerKeyType::Ed25519SignedPayload,
+            r#type: xdr::SignerKeyType::Ed25519SignedPayload,
         },
     ];
 
@@ -117,10 +112,8 @@ mod tests {
 
             assert_eq!(skey.discriminant(), test_case.r#type);
 
-            let raw_xdr = skey.to_xdr(stellar_xdr::curr::Limits::none()).unwrap();
-            let raw_sk =
-                stellar_xdr::curr::SignerKey::from_xdr(raw_xdr, stellar_xdr::curr::Limits::none())
-                    .unwrap();
+            let raw_xdr = skey.to_xdr(xdr::Limits::none()).unwrap();
+            let raw_sk = xdr::SignerKey::from_xdr(raw_xdr, xdr::Limits::none()).unwrap();
             assert_eq!(raw_sk, skey);
 
             let address = SignerKey::encode_signer_key(&skey);
