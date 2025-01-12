@@ -245,7 +245,6 @@ impl KeypairBehavior for Keypair {
         if !self.can_sign() {
             return Err("cannot sign, no secret_key available".into());
         }
-        // println!("Key {:?}", &self.secret_key);
 
         if let Some(s) = &self.secret_key {
             return Ok(sign(data, s).to_vec());
