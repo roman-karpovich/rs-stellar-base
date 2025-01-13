@@ -26,5 +26,17 @@ pub mod transaction;
 pub mod transaction_builder;
 pub mod utils;
 pub mod xdr {
-    pub use stellar_xdr::*;
+    #[cfg(not(feature = "next"))]
+    pub use stellar_xdr::curr::*;
+
+    #[cfg(feature = "next")]
+    pub use stellar_xdr::next::*;
+
+    /*
+     * Why no consistent naming here?
+     */
+    #[cfg(not(feature = "next"))]
+    pub use stellar_xdr::curr::ExtensionPoint;
+    #[cfg(feature = "next")]
+    pub use stellar_xdr::next::SorobanTransactionDataExt as ExtensionPoint;
 }

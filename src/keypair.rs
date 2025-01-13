@@ -4,6 +4,10 @@
 //! public-key signature systems.
 use crate::hashing::HashingBehavior;
 use crate::hashing::Sha256Hasher;
+use crate::signing::{generate, sign, verify};
+use crate::xdr;
+use crate::xdr::WriteXdr;
+use hex::FromHex;
 use nacl::sign::{generate_keypair, signature};
 use rand_core::{OsRng, RngCore};
 use sha2::Sha512;
@@ -13,13 +17,6 @@ use stellar_strkey::{
     ed25519::{PrivateKey, PublicKey},
     Strkey,
 };
-use stellar_xdr::next::MuxedAccountMed25519;
-use stellar_xdr::next::{
-    AccountId, DecoratedSignature, Signature, SignatureHint, Uint256, Uint64, WriteXdr,
-};
-
-use crate::signing::{generate, sign, verify};
-use hex::FromHex;
 
 #[derive(Debug, Clone)]
 pub struct Keypair {
@@ -94,13 +91,13 @@ pub trait KeypairBehavior {
         Self: Sized;
 
     // XDR representation of the account id
-    fn xdr_account_id(&self) -> AccountId;
+    fn xdr_account_id(&self) -> xdr::AccountId;
 
     // XDR representation of the public key
-    fn xdr_public_key(&self) -> stellar_xdr::next::PublicKey;
+    fn xdr_public_key(&self) -> xdr::PublicKey;
 
     // XDR representation of the muxed account id
-    fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::next::MuxedAccount;
+    fn xdr_muxed_account_id(&self, id: &str) -> xdr::MuxedAccount;
 
     // Returns the raw public key array
     fn raw_pubkey(&self) -> [u8; 32];
@@ -109,10 +106,10 @@ pub trait KeypairBehavior {
     fn signature_hint(&self) -> Option<Vec<u8>>;
 
     // Returns the decorated signature (hint+sig) for arbitrary data
-    fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature;
+    fn sign_decorated(&self, data: &[u8]) -> xdr::DecoratedSignature;
 
     // Returns the raw decorated signature (hint+sig) for a signed payload signer
-    fn sign_payload_decorated(&self, data: &[u8]) -> DecoratedSignature;
+    fn sign_payload_decorated(&self, data: &[u8]) -> xdr::DecoratedSignature;
 }
 
 impl KeypairBehavior for Keypair {
@@ -275,24 +272,24 @@ impl KeypairBehavior for Keypair {
         }
     }
     /// xdr representation of the account id
-    fn xdr_account_id(&self) -> AccountId {
-        AccountId(stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(Uint256(
+    fn xdr_account_id(&self) -> xdr::AccountId {
+        xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
             PublicKey::from_payload(&self.public_key).unwrap().0,
         )))
     }
 
     /// xdr representation of the public key
-    fn xdr_public_key(&self) -> stellar_xdr::next::PublicKey {
-        stellar_xdr::next::PublicKey::PublicKeyTypeEd25519(Uint256(
+    fn xdr_public_key(&self) -> xdr::PublicKey {
+        xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
             PublicKey::from_payload(&self.public_key).unwrap().0,
         ))
     }
 
     /// xdr representation of the public key
-    fn xdr_muxed_account_id(&self, id: &str) -> stellar_xdr::next::MuxedAccount {
-        stellar_xdr::next::MuxedAccount::MuxedEd25519(MuxedAccountMed25519 {
-            id: Uint64::from_str(id).unwrap(),
-            ed25519: Uint256(PublicKey::from_payload(&self.public_key).unwrap().0),
+    fn xdr_muxed_account_id(&self, id: &str) -> xdr::MuxedAccount {
+        xdr::MuxedAccount::MuxedEd25519(xdr::MuxedAccountMed25519 {
+            id: xdr::Uint64::from_str(id).unwrap(),
+            ed25519: xdr::Uint256(PublicKey::from_payload(&self.public_key).unwrap().0),
         })
     }
 
@@ -309,7 +306,7 @@ impl KeypairBehavior for Keypair {
     /// part of the decorated signature
     fn signature_hint(&self) -> Option<Vec<u8>> {
         let a = Self::xdr_account_id(self)
-            .to_xdr(stellar_xdr::next::Limits::none())
+            .to_xdr(xdr::Limits::none())
             .unwrap();
         if a.len() >= 4 {
             let start_index = a.len() - 4;
@@ -320,27 +317,27 @@ impl KeypairBehavior for Keypair {
     }
 
     /// Returns the decorated signature (hint+sig) for arbitrary data.
-    fn sign_decorated(&self, data: &[u8]) -> DecoratedSignature {
+    fn sign_decorated(&self, data: &[u8]) -> xdr::DecoratedSignature {
         let signature = Self::sign(self, data).unwrap();
         let hint = Self::signature_hint(self).unwrap();
         let mut hint_u8: [u8; 4] = [0; 4];
         hint_u8.copy_from_slice(&hint[..4]);
-        let val = SignatureHint::from(hint_u8);
-        let signature_xdr = Signature::try_from(signature).unwrap();
-        stellar_xdr::next::DecoratedSignature {
+        let val = xdr::SignatureHint::from(hint_u8);
+        let signature_xdr = xdr::Signature::try_from(signature).unwrap();
+        xdr::DecoratedSignature {
             hint: val,
             signature: signature_xdr,
         }
     }
 
     /// Returns the raw decorated signature (hint+sig) for a signed payload signer.
-    fn sign_payload_decorated(&self, data: &[u8]) -> DecoratedSignature {
+    fn sign_payload_decorated(&self, data: &[u8]) -> xdr::DecoratedSignature {
         let signature = Self::sign(self, data).unwrap();
         let hint = Self::signature_hint(self).unwrap();
         let mut key_hint_u8: [u8; 4] = [0; 4];
         key_hint_u8.copy_from_slice(&hint[..4]);
-        let val = SignatureHint::from(key_hint_u8);
-        let signature_xdr = Signature::try_from(signature).unwrap();
+        let val = xdr::SignatureHint::from(key_hint_u8);
+        let signature_xdr = xdr::Signature::try_from(signature).unwrap();
         let mut hint: [u8; 4] = [0; 4];
 
         if data.len() >= 4 {
@@ -357,9 +354,9 @@ impl KeypairBehavior for Keypair {
             hint[i] ^= key_hint_u8[i];
         }
 
-        let val = SignatureHint::from(hint);
+        let val = xdr::SignatureHint::from(hint);
 
-        stellar_xdr::next::DecoratedSignature {
+        xdr::DecoratedSignature {
             hint: val,
             signature: signature_xdr,
         }
@@ -481,7 +478,7 @@ mod tests {
         let the_secret = "SD7X7LEHBNMUIKQGKPARG5TDJNBHKC346OUARHGZL5ITC6IJPXHILY36";
         let kp = Keypair::from_secret(&the_secret).unwrap();
         let message = "test post please ignore".as_bytes();
-        let sign: DecoratedSignature = kp.sign_decorated(&message);
+        let sign: xdr::DecoratedSignature = kp.sign_decorated(&message);
         assert_eq!(sign.hint.0.to_vec(), vec![0x0B, 0xFA, 0xD1, 0x34]);
     }
 }

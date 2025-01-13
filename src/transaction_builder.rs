@@ -10,10 +10,6 @@ use std::time::UNIX_EPOCH;
 use hex_literal::hex;
 use num_bigint::BigUint;
 use serde_json::from_str;
-use stellar_xdr::next::DecoratedSignature;
-use stellar_xdr::next::Limits;
-use stellar_xdr::next::SorobanTransactionData;
-use stellar_xdr::next::StringM;
 
 use crate::account::Account;
 use crate::account::AccountBehavior;
@@ -25,42 +21,29 @@ use crate::utils::decode_encode_muxed_account::decode_address_fully_to_muxed_acc
 use crate::utils::decode_encode_muxed_account::decode_address_to_muxed_account;
 use crate::utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address;
 use crate::utils::decode_encode_muxed_account::encode_muxed_account;
-use stellar_xdr::next::LedgerBounds;
-use stellar_xdr::next::Memo;
-use stellar_xdr::next::MuxedAccount;
-use stellar_xdr::next::Operation;
-use stellar_xdr::next::Preconditions;
-use stellar_xdr::next::ReadXdr;
-use stellar_xdr::next::SequenceNumber;
-use stellar_xdr::next::Signature;
-use stellar_xdr::next::TimeBounds;
-use stellar_xdr::next::TransactionEnvelope;
-use stellar_xdr::next::TransactionExt;
-use stellar_xdr::next::TransactionV0Envelope;
-use stellar_xdr::next::TransactionV1Envelope;
-use stellar_xdr::next::Uint256;
-use stellar_xdr::next::VecM;
-use stellar_xdr::next::WriteXdr;
+use crate::xdr;
+use crate::xdr::ReadXdr;
+use crate::xdr::WriteXdr;
 
 #[derive(Default, Clone)]
 pub struct TransactionBuilder {
-    tx: Option<stellar_xdr::next::Transaction>,
-    tx_v0: Option<stellar_xdr::next::TransactionV0>,
+    tx: Option<xdr::Transaction>,
+    tx_v0: Option<xdr::TransactionV0>,
     network_passphrase: Option<String>,
-    signatures: Option<Vec<DecoratedSignature>>,
+    signatures: Option<Vec<xdr::DecoratedSignature>>,
     fee: Option<u32>,
-    envelope_type: Option<stellar_xdr::next::EnvelopeType>,
-    memo: Option<stellar_xdr::next::Memo>,
+    envelope_type: Option<xdr::EnvelopeType>,
+    memo: Option<xdr::Memo>,
     sequence: Option<String>,
     source: Option<Rc<RefCell<Account>>>,
-    time_bounds: Option<TimeBounds>,
-    ledger_bounds: Option<LedgerBounds>,
+    time_bounds: Option<xdr::TimeBounds>,
+    ledger_bounds: Option<xdr::LedgerBounds>,
     min_account_sequence: Option<String>,
     min_account_sequence_age: Option<u32>,
     min_account_sequence_ledger_gap: Option<u32>,
-    extra_signers: Option<Vec<stellar_xdr::next::AccountId>>,
-    operations: Option<Vec<Operation>>,
-    soroban_data: Option<SorobanTransactionData>,
+    extra_signers: Option<Vec<xdr::AccountId>>,
+    operations: Option<Vec<xdr::Operation>>,
+    soroban_data: Option<xdr::SorobanTransactionData>,
 }
 
 // Define a trait for TransactionBuilder behavior
@@ -69,15 +52,15 @@ pub trait TransactionBuilderBehavior {
     fn new(
         source_account: Rc<RefCell<Account>>,
         network: &str,
-        time_bounds: Option<TimeBounds>,
+        time_bounds: Option<xdr::TimeBounds>,
     ) -> Self;
     fn fee(&mut self, fee: impl Into<u32>) -> &mut Self;
-    fn add_operation(&mut self, operation: Operation) -> &mut Self;
+    fn add_operation(&mut self, operation: xdr::Operation) -> &mut Self;
     fn build(&mut self) -> Transaction;
     fn add_memo(&mut self, memo_text: &str) -> &mut Self;
     fn set_timeout(&mut self, timeout_seconds: i64) -> Result<&mut Self, String>;
-    fn set_time_bounds(&mut self, time_bounds: TimeBounds) -> &mut Self;
-    fn set_soroban_data(&mut self, soroban_data: SorobanTransactionData) -> &mut Self;
+    fn set_time_bounds(&mut self, time_bounds: xdr::TimeBounds) -> &mut Self;
+    fn set_soroban_data(&mut self, soroban_data: xdr::SorobanTransactionData) -> &mut Self;
     fn clear_operations(&mut self) -> &mut Self;
 }
 
@@ -87,7 +70,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     fn new(
         source_account: Rc<RefCell<Account>>,
         network: &str,
-        time_bounds: Option<TimeBounds>,
+        time_bounds: Option<xdr::TimeBounds>,
     ) -> Self {
         Self {
             tx: None,
@@ -115,7 +98,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         self
     }
 
-    fn add_operation(&mut self, operation: Operation) -> &mut Self {
+    fn add_operation(&mut self, operation: xdr::Operation) -> &mut Self {
         if let Some(ref mut vec) = self.operations {
             vec.push(operation);
         }
@@ -123,15 +106,15 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     }
 
     fn add_memo(&mut self, memo_text: &str) -> &mut Self {
-        self.memo = Some(stellar_xdr::next::Memo::Text(
-            StringM::<28>::from_str(memo_text).unwrap(),
+        self.memo = Some(xdr::Memo::Text(
+            xdr::StringM::<28>::from_str(memo_text).unwrap(),
         ));
         self
     }
 
     fn set_timeout(&mut self, timeout_seconds: i64) -> Result<&mut Self, String> {
         if let Some(timebounds) = &self.time_bounds {
-            if timebounds.max_time > stellar_xdr::next::TimePoint(0) {
+            if timebounds.max_time > xdr::TimePoint(0) {
                 return Err("TimeBounds.max_time has been already set - setting timeout would overwrite it.".to_string());
             }
         }
@@ -147,35 +130,36 @@ impl TransactionBuilderBehavior for TransactionBuilder {
 
         if timeout_seconds > 0 {
             let timeout_timestamp = current_time + timeout_seconds as u64;
-            self.time_bounds = Some(TimeBounds {
+            self.time_bounds = Some(xdr::TimeBounds {
                 min_time: self
                     .time_bounds
                     .as_ref()
-                    .map_or(stellar_xdr::next::TimePoint(0), |tb| tb.min_time.clone()),
-                max_time: stellar_xdr::next::TimePoint(timeout_timestamp),
+                    .map_or(xdr::TimePoint(0), |tb| tb.min_time.clone()),
+                max_time: xdr::TimePoint(timeout_timestamp),
             });
         } else {
-            self.time_bounds = Some(TimeBounds {
-                min_time: stellar_xdr::next::TimePoint(0),
-                max_time: stellar_xdr::next::TimePoint(0),
+            self.time_bounds = Some(xdr::TimeBounds {
+                min_time: xdr::TimePoint(0),
+                max_time: xdr::TimePoint(0),
             });
         }
 
         Ok(self)
     }
 
-    fn set_time_bounds(&mut self, time_bounds: TimeBounds) -> &mut Self {
+    fn set_time_bounds(&mut self, time_bounds: xdr::TimeBounds) -> &mut Self {
         self.time_bounds = Some(time_bounds);
         self
     }
 
-    fn set_soroban_data(&mut self, soroban_data: SorobanTransactionData) -> &mut Self {
+    fn set_soroban_data(&mut self, soroban_data: xdr::SorobanTransactionData) -> &mut Self {
         self.soroban_data = Some(soroban_data);
         self
     }
 
     fn set_soroban_data_from_xdr_base64(&mut self, soroban_data: &str) -> &mut Self {
-        let data = SorobanTransactionData::from_xdr_base64(soroban_data, Limits::none()).unwrap();
+        let data = xdr::SorobanTransactionData::from_xdr_base64(soroban_data, xdr::Limits::none())
+            .unwrap();
         self.soroban_data = Some(data);
         self
     }
@@ -201,24 +185,24 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         let mut array: [u8; 32] = [0; 32];
         array.copy_from_slice(&hex_val[..32]);
         let ext_on_the_fly = if self.soroban_data.is_some() {
-            TransactionExt::V1(self.soroban_data.clone().unwrap())
+            xdr::TransactionExt::V1(self.soroban_data.clone().unwrap())
         } else {
-            TransactionExt::V0
+            xdr::TransactionExt::V0
         };
         let vv = decode_address_to_muxed_account_fix_for_g_address(account_id);
 
-        let tx_obj = stellar_xdr::next::Transaction {
+        let tx_obj = xdr::Transaction {
             source_account: vv,
             fee: fee.unwrap(),
-            seq_num: SequenceNumber(
+            seq_num: xdr::SequenceNumber(
                 current_seq_num
                     .clone()
                     .clone()
                     .try_into()
                     .unwrap_or_else(|_| panic!("Number too large for i64")),
             ),
-            cond: Preconditions::None,
-            memo: Memo::None,
+            cond: xdr::Preconditions::None,
+            memo: xdr::Memo::None,
             operations: self.operations.clone().unwrap().try_into().unwrap(),
             ext: ext_on_the_fly,
         };
@@ -227,7 +211,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             network_passphrase: self.network_passphrase.clone().unwrap(),
             signatures: Vec::new(),
             fee: fee.unwrap(),
-            envelope_type: stellar_xdr::next::EnvelopeType::Tx,
+            envelope_type: xdr::EnvelopeType::Tx,
             memo: None,
             sequence: Some(incremented_seq_num.clone().to_string()),
             source: Some(source_ref.account_id().to_string()),
@@ -252,10 +236,8 @@ mod tests {
     use keypair::KeypairBehavior;
 
     use sha2::digest::crypto_common::Key;
-    use stellar_xdr::next::ScAddress::Contract;
-    use stellar_xdr::next::{
-        Hash, HostFunction, InvokeContractArgs, ScAddress, ScString, ScSymbol, ScVal,
-    };
+    use xdr::ScAddress::Contract;
+    use xdr::{Hash, HostFunction, InvokeContractArgs, ScAddress, ScString, ScSymbol, ScVal};
 
     use super::*;
     // use crate::{
@@ -310,7 +292,7 @@ mod tests {
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
         let amount = "1000".to_string();
         let asset = Asset::native();
-        let memo = Memo::Id(100);
+        let memo = xdr::Memo::Id(100);
         let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
 
         builder
@@ -452,9 +434,9 @@ mod tests {
             .unwrap(),
         ));
 
-        let timebounds = TimeBounds {
-            min_time: stellar_xdr::next::TimePoint(1455287522),
-            max_time: stellar_xdr::next::TimePoint(1455297545),
+        let timebounds = xdr::TimeBounds {
+            min_time: xdr::TimePoint(1455287522),
+            max_time: xdr::TimePoint(1455297545),
         };
 
         let mut builder = TransactionBuilder::new(
@@ -515,9 +497,9 @@ mod tests {
 
         let func = HostFunction::InvokeContract(InvokeContractArgs {
             contract_address: ScAddress::from(Contract(Hash::from(array))),
-            function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
+            function_name: ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![ScVal::String(ScString::from(
-                StringM::from_str("world").unwrap(),
+                xdr::StringM::from_str("world").unwrap(),
             ))]
             .try_into()
             .unwrap(),
@@ -559,9 +541,9 @@ mod tests {
 
         let func = HostFunction::InvokeContract(InvokeContractArgs {
             contract_address: ScAddress::from(Contract(Hash::from(array))),
-            function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
-            args: vec![ScVal::String(ScString::from(
-                StringM::from_str("world").unwrap(),
+            function_name: ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
+            args: vec![xdr::ScVal::String(ScString::from(
+                xdr::StringM::from_str("world").unwrap(),
             ))]
             .try_into()
             .unwrap(),
@@ -582,7 +564,7 @@ mod tests {
             .set_soroban_data_from_xdr_base64(
                 &(soroban_transaction_data
                     .clone()
-                    .to_xdr_base64(Limits::none())
+                    .to_xdr_base64(xdr::Limits::none())
                     .unwrap()),
             )
             .set_timeout(TIMEOUT_INFINITE)
@@ -614,9 +596,9 @@ mod tests {
 
         let func = HostFunction::InvokeContract(InvokeContractArgs {
             contract_address: ScAddress::from(Contract(Hash::from(array))),
-            function_name: ScSymbol::from(StringM::from_str("hello").unwrap()),
+            function_name: ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![ScVal::String(ScString::from(
-                StringM::from_str("world").unwrap(),
+                xdr::StringM::from_str("world").unwrap(),
             ))]
             .try_into()
             .unwrap(),
@@ -637,7 +619,7 @@ mod tests {
             .set_soroban_data_from_xdr_base64(
                 &(soroban_transaction_data
                     .clone()
-                    .to_xdr_base64(Limits::none())
+                    .to_xdr_base64(xdr::Limits::none())
                     .unwrap()),
             )
             .set_timeout(TIMEOUT_INFINITE)
@@ -649,11 +631,11 @@ mod tests {
         let tx_env = transaction.to_envelope().unwrap();
 
         let val = match tx_env {
-            TransactionEnvelope::Tx(transaction_v1_envelope) => transaction_v1_envelope,
+            xdr::TransactionEnvelope::Tx(transaction_v1_envelope) => transaction_v1_envelope,
             _ => panic!("Wrong"),
         };
 
         let inner_val = val.tx.ext;
-        assert_eq!(inner_val, TransactionExt::V1(soroban_transaction_data));
+        assert_eq!(inner_val, xdr::TransactionExt::V1(soroban_transaction_data));
     }
 }

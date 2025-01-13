@@ -1,5 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
-
+use crate::xdr;
 use crate::{
     account::{Account, AccountBehavior},
     utils::decode_encode_muxed_account::{
@@ -8,11 +7,12 @@ use crate::{
     },
 };
 use arrayref::array_ref;
+use std::{cell::RefCell, rc::Rc};
 use stellar_strkey::ed25519::PublicKey;
 
 pub struct MuxedAccount {
     account: Rc<RefCell<Account>>,
-    muxed_xdr: stellar_xdr::next::MuxedAccount,
+    muxed_xdr: xdr::MuxedAccount,
     m_address: String,
     id: String,
 }
@@ -36,7 +36,7 @@ pub trait MuxedAccountBehavior {
     fn id(&self) -> &str;
     fn sequence_number(&self) -> String;
     fn increment_sequence_number(&mut self);
-    fn to_xdr_object(&self) -> &stellar_xdr::next::MuxedAccount;
+    fn to_xdr_object(&self) -> &xdr::MuxedAccount;
     fn equals(&self, other_muxed_account: &MuxedAccount) -> bool;
 }
 
@@ -90,16 +90,14 @@ impl MuxedAccountBehavior for MuxedAccount {
         }
 
         let val = match &self.muxed_xdr {
-            stellar_xdr::next::MuxedAccount::MuxedEd25519(x) => x,
+            xdr::MuxedAccount::MuxedEd25519(x) => x,
             _ => return Err("Bad XDR".into()),
         };
 
-        let muxed_xdr = stellar_xdr::next::MuxedAccount::MuxedEd25519(
-            stellar_xdr::next::MuxedAccountMed25519 {
-                id: id.parse::<u64>().unwrap(),
-                ed25519: val.ed25519.clone(),
-            },
-        );
+        let muxed_xdr = xdr::MuxedAccount::MuxedEd25519(xdr::MuxedAccountMed25519 {
+            id: id.parse::<u64>().unwrap(),
+            ed25519: val.ed25519.clone(),
+        });
         self.muxed_xdr = muxed_xdr;
 
         self.m_address = encode_muxed_account_to_address(&self.muxed_xdr); // Replace with your actual encoding function
@@ -128,7 +126,7 @@ impl MuxedAccountBehavior for MuxedAccount {
         self.account.borrow_mut().increment_sequence_number();
     }
 
-    fn to_xdr_object(&self) -> &stellar_xdr::next::MuxedAccount {
+    fn to_xdr_object(&self) -> &xdr::MuxedAccount {
         &self.muxed_xdr
     }
 
@@ -174,12 +172,12 @@ mod tests {
         assert_eq!(mux.account_id(), mpubkey_id);
 
         let mux_xdr = mux.to_xdr_object().discriminant();
-        assert_eq!(mux_xdr, stellar_xdr::next::CryptoKeyType::MuxedEd25519);
+        assert_eq!(mux_xdr, xdr::CryptoKeyType::MuxedEd25519);
 
         let mux_xdr = mux.to_xdr_object();
 
         let inner_mux = match mux_xdr {
-            stellar_xdr::next::MuxedAccount::MuxedEd25519(x) => x,
+            xdr::MuxedAccount::MuxedEd25519(x) => x,
             _ => panic!("Bad XDR"),
         };
 
@@ -190,12 +188,12 @@ mod tests {
 
         assert_eq!(
             inner_mux.ed25519,
-            stellar_xdr::next::Uint256::from(*array_ref!(vv, 0, 32))
+            xdr::Uint256::from(*array_ref!(vv, 0, 32))
         );
 
         assert_eq!(
             inner_mux.id,
-            stellar_xdr::next::Uint64::from("420".parse::<u64>().unwrap())
+            xdr::Uint64::from("420".parse::<u64>().unwrap())
         );
 
         let encoded_address = encode_muxed_account_to_address(mux_xdr); // Implement this function

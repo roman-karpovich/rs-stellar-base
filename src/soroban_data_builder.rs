@@ -1,14 +1,11 @@
-use stellar_xdr::{
-    curr::VecM,
-    next::{LedgerFootprint, ReadXdr, WriteXdr},
-};
-
+use crate::xdr;
+use crate::xdr::{ReadXdr, WriteXdr};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 
 pub struct SorobanDataBuilder {
-    data: stellar_xdr::next::SorobanTransactionData,
+    data: xdr::SorobanTransactionData,
 }
 
 pub enum Either<L, R> {
@@ -19,38 +16,35 @@ pub enum Either<L, R> {
 pub trait SorobanDataBuilderBehavior {
     fn append_footprint(
         &mut self,
-        read_only: Vec<stellar_xdr::next::LedgerKey>,
-        read_write: Vec<stellar_xdr::next::LedgerKey>,
+        read_only: Vec<xdr::LedgerKey>,
+        read_write: Vec<xdr::LedgerKey>,
     ) -> &mut Self;
     fn set_resources(&mut self, instructions: u32, read_bytes: u32, write_bytes: u32) -> &mut Self;
-    fn new(soroban_data: Option<Either<String, stellar_xdr::next::SorobanTransactionData>>)
-        -> Self;
-    fn from_xdr(data: Either<String, Vec<u8>>) -> stellar_xdr::next::SorobanTransactionData;
+    fn new(soroban_data: Option<Either<String, xdr::SorobanTransactionData>>) -> Self;
+    fn from_xdr(data: Either<String, Vec<u8>>) -> xdr::SorobanTransactionData;
     fn set_footprint(
         &mut self,
-        read_only: Option<Vec<stellar_xdr::next::LedgerKey>>,
-        read_write: Option<Vec<stellar_xdr::next::LedgerKey>>,
+        read_only: Option<Vec<xdr::LedgerKey>>,
+        read_write: Option<Vec<xdr::LedgerKey>>,
     ) -> &mut Self;
     fn set_refundable_fee(&mut self, fee: i64) -> &mut Self;
-    fn set_read_only(&mut self, read_only: Vec<stellar_xdr::next::LedgerKey>) -> &mut Self;
-    fn set_read_write(&mut self, read_write: Vec<stellar_xdr::next::LedgerKey>) -> &mut Self;
-    fn get_read_only(&self) -> &Vec<stellar_xdr::next::LedgerKey>;
-    fn get_read_write(&self) -> Vec<stellar_xdr::next::LedgerKey>;
-    fn build(&self) -> stellar_xdr::next::SorobanTransactionData;
-    fn get_footprint(&self) -> &stellar_xdr::next::LedgerFootprint;
+    fn set_read_only(&mut self, read_only: Vec<xdr::LedgerKey>) -> &mut Self;
+    fn set_read_write(&mut self, read_write: Vec<xdr::LedgerKey>) -> &mut Self;
+    fn get_read_only(&self) -> &Vec<xdr::LedgerKey>;
+    fn get_read_write(&self) -> Vec<xdr::LedgerKey>;
+    fn build(&self) -> xdr::SorobanTransactionData;
+    fn get_footprint(&self) -> &xdr::LedgerFootprint;
 }
 impl SorobanDataBuilderBehavior for SorobanDataBuilder {
-    fn new(
-        soroban_data: Option<Either<String, stellar_xdr::next::SorobanTransactionData>>,
-    ) -> Self {
+    fn new(soroban_data: Option<Either<String, xdr::SorobanTransactionData>>) -> Self {
         let data = match soroban_data {
             Some(Either::Left(encoded_data)) => {
                 if encoded_data.is_empty() {
                     // Return default empty data for empty string
-                    stellar_xdr::next::SorobanTransactionData {
-                        ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
-                        resources: stellar_xdr::next::SorobanResources {
-                            footprint: LedgerFootprint {
+                    xdr::SorobanTransactionData {
+                        ext: xdr::ExtensionPoint::V0,
+                        resources: xdr::SorobanResources {
+                            footprint: xdr::LedgerFootprint {
                                 read_only: Vec::new().try_into().unwrap(),
                                 read_write: Vec::new().try_into().unwrap(),
                             },
@@ -66,14 +60,12 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
                 }
             }
             Some(Either::Right(data_instance)) => SorobanDataBuilder::from_xdr(Either::Left(
-                data_instance
-                    .to_xdr_base64(stellar_xdr::next::Limits::none())
-                    .unwrap(),
+                data_instance.to_xdr_base64(xdr::Limits::none()).unwrap(),
             )),
-            None => stellar_xdr::next::SorobanTransactionData {
-                ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
-                resources: stellar_xdr::next::SorobanResources {
-                    footprint: LedgerFootprint {
+            None => xdr::SorobanTransactionData {
+                ext: xdr::ExtensionPoint::V0,
+                resources: xdr::SorobanResources {
+                    footprint: xdr::LedgerFootprint {
                         read_only: Vec::new().try_into().unwrap(),
                         read_write: Vec::new().try_into().unwrap(),
                     },
@@ -89,25 +81,21 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
         Self { data }
     }
 
-    fn from_xdr(data: Either<String, Vec<u8>>) -> stellar_xdr::next::SorobanTransactionData {
+    fn from_xdr(data: Either<String, Vec<u8>>) -> xdr::SorobanTransactionData {
         match data {
-            Either::Left(encoded) => stellar_xdr::next::SorobanTransactionData::from_xdr_base64(
-                encoded,
-                stellar_xdr::next::Limits::none(),
-            )
-            .unwrap(),
-            Either::Right(raw) => stellar_xdr::next::SorobanTransactionData::from_xdr(
-                raw,
-                stellar_xdr::next::Limits::none(),
-            )
-            .unwrap(),
+            Either::Left(encoded) => {
+                xdr::SorobanTransactionData::from_xdr_base64(encoded, xdr::Limits::none()).unwrap()
+            }
+            Either::Right(raw) => {
+                xdr::SorobanTransactionData::from_xdr(raw, xdr::Limits::none()).unwrap()
+            }
         }
     }
 
     fn append_footprint(
         &mut self,
-        read_only: Vec<stellar_xdr::next::LedgerKey>,
-        read_write: Vec<stellar_xdr::next::LedgerKey>,
+        read_only: Vec<xdr::LedgerKey>,
+        read_write: Vec<xdr::LedgerKey>,
     ) -> &mut Self {
         // Get current footprints
         let mut current_read_only = self.get_read_only().clone();
@@ -123,8 +111,8 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
 
     fn set_footprint(
         &mut self,
-        read_only: Option<Vec<stellar_xdr::next::LedgerKey>>,
-        read_write: Option<Vec<stellar_xdr::next::LedgerKey>>,
+        read_only: Option<Vec<xdr::LedgerKey>>,
+        read_write: Option<Vec<xdr::LedgerKey>>,
     ) -> &mut Self {
         if let Some(ros) = read_only {
             self.set_read_only(ros);
@@ -140,35 +128,33 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
         self
     }
 
-    fn set_read_only(&mut self, read_only: Vec<stellar_xdr::next::LedgerKey>) -> &mut Self {
+    fn set_read_only(&mut self, read_only: Vec<xdr::LedgerKey>) -> &mut Self {
         self.data.resources.footprint.read_only = read_only.try_into().unwrap();
         self
     }
 
-    fn set_read_write(&mut self, read_write: Vec<stellar_xdr::next::LedgerKey>) -> &mut Self {
+    fn set_read_write(&mut self, read_write: Vec<xdr::LedgerKey>) -> &mut Self {
         self.data.resources.footprint.read_write = read_write.try_into().unwrap();
         self
     }
 
-    fn get_read_only(&self) -> &Vec<stellar_xdr::next::LedgerKey> {
+    fn get_read_only(&self) -> &Vec<xdr::LedgerKey> {
         &self.data.resources.footprint.read_only
     }
 
-    fn get_read_write(&self) -> Vec<stellar_xdr::next::LedgerKey> {
+    fn get_read_write(&self) -> Vec<xdr::LedgerKey> {
         self.data.resources.footprint.read_write.to_vec()
     }
 
-    fn build(&self) -> stellar_xdr::next::SorobanTransactionData {
-        stellar_xdr::next::SorobanTransactionData::from_xdr_base64(
-            self.data
-                .to_xdr_base64(stellar_xdr::next::Limits::none())
-                .unwrap(),
-            stellar_xdr::next::Limits::none(),
+    fn build(&self) -> xdr::SorobanTransactionData {
+        xdr::SorobanTransactionData::from_xdr_base64(
+            self.data.to_xdr_base64(xdr::Limits::none()).unwrap(),
+            xdr::Limits::none(),
         )
         .unwrap()
     }
 
-    fn get_footprint(&self) -> &stellar_xdr::next::LedgerFootprint {
+    fn get_footprint(&self) -> &xdr::LedgerFootprint {
         &self.data.resources.footprint
     }
 
@@ -181,21 +167,17 @@ impl SorobanDataBuilderBehavior for SorobanDataBuilder {
 }
 #[cfg(test)]
 mod tests {
-    use crate::contract::{ContractBehavior, Contracts};
-
     use super::*;
-    use stellar_xdr::next::{
-        ExtensionPoint, LedgerFootprint, LedgerKey, Limits, SorobanResources,
-        SorobanTransactionData,
-    };
+    use crate::contract::{ContractBehavior, Contracts};
+    use crate::xdr;
 
     #[test]
     fn test_constructs_from_xdr_base64_and_nothing() {
         // Create sentinel data that matches the JS test
-        let sentinel = SorobanTransactionData {
-            ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
-            resources: SorobanResources {
-                footprint: LedgerFootprint {
+        let sentinel = xdr::SorobanTransactionData {
+            ext: xdr::ExtensionPoint::V0,
+            resources: xdr::SorobanResources {
+                footprint: xdr::LedgerFootprint {
                     read_only: Vec::new().try_into().unwrap(),
                     read_write: Vec::new().try_into().unwrap(),
                 },
@@ -214,7 +196,7 @@ mod tests {
         assert_eq!(from_raw, sentinel);
 
         // Test construction from base64 string (equivalent to fromStr)
-        let base64_str = sentinel.to_xdr_base64(Limits::none()).unwrap();
+        let base64_str = sentinel.to_xdr_base64(xdr::Limits::none()).unwrap();
         let from_str = SorobanDataBuilder::new(Some(Either::Left(base64_str))).build();
         assert_eq!(from_str, sentinel);
 
@@ -234,10 +216,10 @@ mod tests {
     #[test]
     fn test_sets_properties_as_expected() {
         // Create sentinel data
-        let sentinel = SorobanTransactionData {
-            ext: stellar_xdr::next::SorobanTransactionDataExt::V0,
-            resources: SorobanResources {
-                footprint: LedgerFootprint {
+        let sentinel = xdr::SorobanTransactionData {
+            ext: xdr::ExtensionPoint::V0,
+            resources: xdr::SorobanResources {
+                footprint: xdr::LedgerFootprint {
                     read_only: Vec::new().try_into().unwrap(),
                     read_write: Vec::new().try_into().unwrap(),
                 },

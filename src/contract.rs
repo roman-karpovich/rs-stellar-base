@@ -2,12 +2,8 @@ use core::str;
 use std::str::FromStr;
 
 use crate::address::{Address, AddressTrait};
+use crate::xdr;
 use stellar_strkey::{Contract, Strkey};
-use stellar_xdr::next::{
-    ContractDataDurability, Hash, InvokeContractArgs, InvokeHostFunctionOp, LedgerKey,
-    LedgerKeyContractData, Operation, ScAddress, ScSymbol, ScVal, SorobanAuthorizationEntry,
-    StringM, VecM,
-};
 
 #[derive(Clone, Debug)]
 pub struct Contracts {
@@ -30,10 +26,10 @@ pub trait ContractBehavior {
     fn address(&self) -> Address; // Address type needs to be defined.
 
     /// Invokes a contract call with the specified method and parameters.
-    fn call(&self, method: &str, params: Option<Vec<ScVal>>) -> Operation; // Operation and ScVal types need to be defined.
+    fn call(&self, method: &str, params: Option<Vec<xdr::ScVal>>) -> xdr::Operation; // Operation and ScVal types need to be defined.
 
     /// Returns the read-only footprint entries necessary for invocations to this contract.
-    fn get_footprint(&self) -> LedgerKey; // LedgerKey type needs to be defined.
+    fn get_footprint(&self) -> xdr::LedgerKey; // LedgerKey type needs to be defined.
 }
 
 // Implement the trait for the Contracts struct
@@ -47,27 +43,18 @@ impl ContractBehavior for Contracts {
         })
     }
 
-    fn call(
-        &self,
-        method: &str,
-        params: Option<Vec<stellar_xdr::next::ScVal>>,
-    ) -> stellar_xdr::next::Operation {
-        stellar_xdr::next::Operation {
+    fn call(&self, method: &str, params: Option<Vec<xdr::ScVal>>) -> xdr::Operation {
+        xdr::Operation {
             source_account: None,
-            body: stellar_xdr::next::OperationBody::InvokeHostFunction(InvokeHostFunctionOp {
-                host_function: stellar_xdr::next::HostFunction::InvokeContract(
-                    InvokeContractArgs {
-                        contract_address: stellar_xdr::next::ScAddress::Contract(Hash(
-                            contract_id_strkey(
-                                String::from_utf8(self.id.clone()).unwrap().as_str(),
-                            )
-                            .0,
-                        )),
-                        function_name: ScSymbol::from(StringM::from_str(method).unwrap()),
-                        args: VecM::<ScVal>::try_from(params.unwrap_or_default()).unwrap(),
-                    },
-                ),
-                auth: VecM::<SorobanAuthorizationEntry>::try_from(Vec::new()).unwrap(),
+            body: xdr::OperationBody::InvokeHostFunction(xdr::InvokeHostFunctionOp {
+                host_function: xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
+                    contract_address: xdr::ScAddress::Contract(xdr::Hash(
+                        contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0,
+                    )),
+                    function_name: xdr::ScSymbol::from(xdr::StringM::from_str(method).unwrap()),
+                    args: xdr::VecM::<xdr::ScVal>::try_from(params.unwrap_or_default()).unwrap(),
+                }),
+                auth: xdr::VecM::<xdr::SorobanAuthorizationEntry>::try_from(Vec::new()).unwrap(),
             }),
         }
     }
@@ -90,11 +77,13 @@ impl ContractBehavior for Contracts {
         .unwrap()
     }
 
-    fn get_footprint(&self) -> LedgerKey {
-        LedgerKey::ContractData(LedgerKeyContractData {
-            contract: ScAddress::Contract(Hash(contract_id_strkey(&self.contract_id()).0)),
-            key: ScVal::LedgerKeyContractInstance,
-            durability: ContractDataDurability::Persistent,
+    fn get_footprint(&self) -> xdr::LedgerKey {
+        xdr::LedgerKey::ContractData(xdr::LedgerKeyContractData {
+            contract: xdr::ScAddress::Contract(xdr::Hash(
+                contract_id_strkey(&self.contract_id()).0,
+            )),
+            key: xdr::ScVal::LedgerKeyContractInstance,
+            durability: xdr::ContractDataDurability::Persistent,
         })
     }
 }
@@ -105,7 +94,7 @@ pub fn contract_id_strkey(contract_id: &str) -> stellar_strkey::Contract {
 
 #[cfg(test)]
 mod tests {
-    use stellar_xdr::next::{Limits, OperationBody, WriteXdr};
+    use xdr::{Limits, OperationBody, WriteXdr};
 
     use super::*;
 
@@ -175,10 +164,10 @@ mod tests {
         let actual_footprint = contract.get_footprint();
 
         // Build the expected footprint
-        let expected_footprint = LedgerKey::ContractData(LedgerKeyContractData {
-            contract: ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0)),
-            key: ScVal::LedgerKeyContractInstance,
-            durability: ContractDataDurability::Persistent,
+        let expected_footprint = xdr::LedgerKey::ContractData(xdr::LedgerKeyContractData {
+            contract: xdr::ScAddress::Contract(xdr::Hash(contract_id_strkey(NULL_ADDRESS).0)),
+            key: xdr::ScVal::LedgerKeyContractInstance,
+            durability: xdr::ContractDataDurability::Persistent,
         });
 
         // Assert the footprints match
@@ -195,28 +184,26 @@ mod tests {
 
         // Arguments for the call
         //TODO: Implement native_to_scval
-        let arg1 = ScVal::Symbol(ScSymbol::from(StringM::from_str("arg!").unwrap()));
-        let arg2 = ScVal::I32(2);
+        let arg1 = xdr::ScVal::Symbol(xdr::ScSymbol::from(xdr::StringM::from_str("arg!").unwrap()));
+        let arg2 = xdr::ScVal::I32(2);
 
         // Call the contract
         let operation = contract.call(method, Some(vec![arg1.clone(), arg2.clone()]));
 
         // Expected contract address
         let expected_contract_address =
-            ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0));
+            xdr::ScAddress::Contract(xdr::Hash(contract_id_strkey(NULL_ADDRESS).0));
 
         // Verify the operation structure
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
-                host_function_op.host_function
-            {
+            if let xdr::HostFunction::InvokeContract(args) = host_function_op.host_function {
                 // Check the contract address
                 assert_eq!(args.contract_address, expected_contract_address);
 
                 // Check the function name
                 assert_eq!(
                     args.function_name,
-                    ScSymbol::from(StringM::from_str(method).unwrap())
+                    xdr::ScSymbol::from(xdr::StringM::from_str(method).unwrap())
                 );
 
                 // Check the arguments
@@ -241,13 +228,11 @@ mod tests {
 
         // Verify the operation is correctly built
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.clone().body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
-                host_function_op.host_function
-            {
+            if let xdr::HostFunction::InvokeContract(args) = host_function_op.host_function {
                 // Check the function name
                 assert_eq!(
                     args.function_name,
-                    ScSymbol::from(StringM::from_str("empty").unwrap())
+                    xdr::ScSymbol::from(xdr::StringM::from_str("empty").unwrap())
                 );
 
                 // Check that no parameters are passed
@@ -273,8 +258,8 @@ mod tests {
 
         // Method and parameters for the call
         let method = "method";
-        let arg1 = ScVal::Symbol(ScSymbol::from(StringM::from_str("arg!").unwrap()));
-        let arg2 = ScVal::I32(2);
+        let arg1 = xdr::ScVal::Symbol(xdr::ScSymbol::from(xdr::StringM::from_str("arg!").unwrap()));
+        let arg2 = xdr::ScVal::I32(2);
         let operation = contract.call(method, Some(vec![arg1, arg2]));
 
         // Serialize to XDR
@@ -294,11 +279,9 @@ mod tests {
 
         // Extract the args
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
-                host_function_op.host_function
-            {
+            if let xdr::HostFunction::InvokeContract(args) = host_function_op.host_function {
                 let expected_address =
-                    ScAddress::Contract(Hash(contract_id_strkey(NULL_ADDRESS).0));
+                    xdr::ScAddress::Contract(xdr::Hash(contract_id_strkey(NULL_ADDRESS).0));
                 assert_eq!(args.contract_address, expected_address);
             } else {
                 panic!("Expected InvokeContract host function");
@@ -317,12 +300,10 @@ mod tests {
 
         // Extract the args
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
-                host_function_op.host_function
-            {
+            if let xdr::HostFunction::InvokeContract(args) = host_function_op.host_function {
                 assert_eq!(
                     args.function_name,
-                    ScSymbol::from(StringM::from_str("method").unwrap())
+                    xdr::ScSymbol::from(xdr::StringM::from_str("method").unwrap())
                 );
             } else {
                 panic!("Expected InvokeContract host function");
@@ -338,15 +319,13 @@ mod tests {
 
         // Method and parameters for the call
         let method = "method";
-        let arg1 = ScVal::Symbol(ScSymbol::from(StringM::from_str("arg!").unwrap()));
-        let arg2 = ScVal::I32(2);
+        let arg1 = xdr::ScVal::Symbol(xdr::ScSymbol::from(xdr::StringM::from_str("arg!").unwrap()));
+        let arg2 = xdr::ScVal::I32(2);
         let operation = contract.call(method, Some(vec![arg1.clone(), arg2.clone()]));
 
         // Extract the args
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
-            if let stellar_xdr::next::HostFunction::InvokeContract(args) =
-                host_function_op.host_function
-            {
+            if let xdr::HostFunction::InvokeContract(args) = host_function_op.host_function {
                 assert_eq!(args.args.len(), 2);
                 assert_eq!(args.args[0], arg1);
                 assert_eq!(args.args[1], arg2);
