@@ -165,13 +165,7 @@ impl AddressTrait for Address {
     fn to_sc_address(&self) -> Result<ScAddress, &'static str> {
         match &self.address_type {
             AddressType::Account => {
-                println!("What the hell 1");
                 let inner_uin256 = hex::encode(self.key.clone());
-                println!("len {:?}", self.key.len());
-                println!(
-                    "len {:?}",
-                    String::from_utf8(self.key.clone()).unwrap().len()
-                );
                 let original = String::from_utf8(self.key.clone()).unwrap();
                 Ok(ScAddress::Account(AccountId::from_str(&original).unwrap()))
             }

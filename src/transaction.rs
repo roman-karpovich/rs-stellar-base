@@ -126,8 +126,6 @@ impl TransactionBehavior for Transaction {
             .unwrap()
             .to_xdr_base64(stellar_xdr::next::Limits::none())
             .unwrap();
-        // println!("Raw {:?}", self.tx);
-        // println!("Raw XDR {:?}", raw_tx);
 
         let mut signatures =
             VecM::<DecoratedSignature, 20>::try_from(self.signatures.clone()).unwrap(); // Make a copy of the signatures

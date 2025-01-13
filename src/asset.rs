@@ -48,7 +48,6 @@ pub trait AssetBehavior {
 impl AssetBehavior for Asset {
     fn new(code: &str, issuer: Option<&str>) -> Result<Self, String> {
         if !Regex::new(r"^[a-zA-Z0-9]{1,12}$").unwrap().is_match(code) {
-            // println!("{}", code);
             return Err(
                 "Asset code is invalid (maximum alphanumeric, 12 characters at max)".to_string(),
             );
@@ -101,7 +100,7 @@ impl AssetBehavior for Asset {
                 } else {
                     None
                 };
-                // println!("Asset Code {:?}", String::from_utf8(anum.asset_code.as_slice().into()).unwrap());
+
                 let code = trim_end(
                     String::from_utf8(anum.asset_code.as_slice().into()).unwrap(),
                     '\0',
@@ -238,8 +237,6 @@ impl AssetBehavior for Asset {
                     .0,
             )));
 
-            // println!("Padded Code {:?}", padded_code);
-
             stellar_xdr::next::Asset::CreditAlphanum4(AlphaNum4 {
                 asset_code: AssetCode4(asset_code),
                 issuer: addr.clone(),
@@ -312,7 +309,6 @@ impl AssetBehavior for Asset {
         if code_compare != 0 {
             return code_compare;
         }
-        println!("Are we getting here {:?}", asset_b);
 
         Self::ascii_compare(
             &asset_a.get_issuer().unwrap_or("".to_owned()),
