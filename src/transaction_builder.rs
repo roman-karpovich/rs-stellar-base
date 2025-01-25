@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
-use std::i64;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::time::SystemTime;
@@ -180,10 +179,6 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             .unwrap()
             .checked_mul(self.operations.clone().unwrap().len().try_into().unwrap());
         let account_id = source_ref.account_id();
-        let binding = hex::encode(account_id);
-        let hex_val = binding.as_bytes();
-        let mut array: [u8; 32] = [0; 32];
-        array.copy_from_slice(&hex_val[..32]);
         let ext_on_the_fly = if self.soroban_data.is_some() {
             xdr::TransactionExt::V1(self.soroban_data.clone().unwrap())
         } else {
@@ -191,17 +186,21 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         };
         let vv = decode_address_to_muxed_account_fix_for_g_address(account_id);
 
+        let tx_cond = if let Some(tb) = self.time_bounds.clone() {
+            xdr::Preconditions::Time(tb)
+        } else {
+            xdr::Preconditions::None
+        };
+
         let tx_obj = xdr::Transaction {
             source_account: vv,
             fee: fee.unwrap(),
             seq_num: xdr::SequenceNumber(
                 current_seq_num
-                    .clone()
-                    .clone()
                     .try_into()
                     .unwrap_or_else(|_| panic!("Number too large for i64")),
             ),
-            cond: xdr::Preconditions::None,
+            cond: tx_cond,
             memo: xdr::Memo::None,
             operations: self.operations.clone().unwrap().try_into().unwrap(),
             ext: ext_on_the_fly,
