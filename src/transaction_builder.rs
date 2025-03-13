@@ -250,7 +250,7 @@ mod tests {
         keypair::{self, Keypair},
         network::{NetworkPassphrase, Networks},
         op_list::invoke_host,
-        operation::{Operation, OperationBehavior, PaymentOpts},
+        operation::{Operation, PaymentOpts},
         soroban_data_builder::{SorobanDataBuilder, SorobanDataBuilderBehavior},
         transaction::{self, TransactionBehavior},
         transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
@@ -289,7 +289,7 @@ mod tests {
             .unwrap(),
         ));
 
-        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let amount = 1000 * operation::ONE;
         let asset = Asset::native();
         let memo = xdr::Memo::Id(100);
@@ -298,7 +298,7 @@ mod tests {
         builder
             .fee(100_u32)
             .add_operation(
-                Operation::new(None)
+                Operation::new()
                     .payment(destination, &asset, amount)
                     .unwrap(),
             )
@@ -329,9 +329,9 @@ mod tests {
             .unwrap(),
         ));
 
-        let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let amount1 = 1000 * operation::ONE;
-        let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2".to_string();
+        let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2";
         let amount2 = 2000 * operation::ONE;
         let asset = Asset::native();
 
@@ -340,12 +340,12 @@ mod tests {
         builder
             .fee(100_u32)
             .add_operation(
-                Operation::new(None)
+                Operation::new()
                     .payment(destination1, &asset, amount1)
                     .unwrap(),
             )
             .add_operation(
-                Operation::new(None)
+                Operation::new()
                     .payment(destination2, &asset, amount2)
                     .unwrap(),
             )
@@ -376,9 +376,9 @@ mod tests {
             .unwrap(),
         ));
 
-        let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let amount1 = 1000 * operation::ONE;
-        let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2".to_string();
+        let destination2 = "GC6ACGSA2NJGD6YWUNX2BYBL3VM4MZRSEU2RLIUZZL35NLV5IAHAX2E2";
         let amount2 = 2000 * operation::ONE;
         let asset = Asset::native();
 
@@ -387,12 +387,12 @@ mod tests {
         let transaction = builder
             .fee(1000_u32) // Set custom base fee
             .add_operation(
-                Operation::new(None)
+                Operation::new()
                     .payment(destination1, &asset, amount1)
                     .unwrap(),
             )
             .add_operation(
-                Operation::new(None)
+                Operation::new()
                     .payment(destination2, &asset, amount2)
                     .unwrap(),
             )
@@ -425,7 +425,7 @@ mod tests {
             Some(timebounds.clone()),
         );
         builder.fee(100_u32).add_operation(
-            Operation::new(None)
+            Operation::new()
                 .payment(
                     "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".into(),
                     &Asset::native(),
@@ -490,11 +490,7 @@ mod tests {
             TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
-            .add_operation(
-                Operation::new(None)
-                    .invoke_host_function(func, None)
-                    .unwrap(),
-            )
+            .add_operation(Operation::new().invoke_host_function(func, None).unwrap())
             .set_soroban_data(soroban_transaction_data.clone())
             .set_timeout(TIMEOUT_INFINITE)
             .unwrap()
@@ -544,11 +540,7 @@ mod tests {
             TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
-            .add_operation(
-                Operation::new(None)
-                    .invoke_host_function(func, None)
-                    .unwrap(),
-            )
+            .add_operation(Operation::new().invoke_host_function(func, None).unwrap())
             .set_soroban_data_from_xdr_base64(
                 &(soroban_transaction_data
                     .clone()
@@ -603,11 +595,7 @@ mod tests {
             TransactionBuilder::new(source.clone(), Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
-            .add_operation(
-                Operation::new(None)
-                    .invoke_host_function(func, None)
-                    .unwrap(),
-            )
+            .add_operation(Operation::new().invoke_host_function(func, None).unwrap())
             .set_soroban_data_from_xdr_base64(
                 &(soroban_transaction_data
                     .clone()

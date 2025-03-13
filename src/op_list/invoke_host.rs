@@ -4,7 +4,6 @@ use crate::keypair::Keypair;
 use crate::operation;
 use crate::operation::OpAttributes;
 use crate::operation::Operation;
-use crate::operation::OperationBehavior;
 use crate::utils::decode_encode_muxed_account::encode_muxed_account_to_address;
 use crate::xdr;
 use std::str::FromStr;
@@ -59,9 +58,7 @@ mod tests {
             .unwrap(),
         });
 
-        let op = Operation::new(None)
-            .invoke_host_function(func, None)
-            .unwrap();
+        let op = Operation::new().invoke_host_function(func, None).unwrap();
 
         let xdr = op.to_xdr(xdr::Limits::none()).unwrap();
         let obj = Operation::from_xdr_object(op).unwrap();

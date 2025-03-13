@@ -59,26 +59,28 @@ pub struct PaymentOpts {
     pub source: Option<String>,
 }
 
-pub trait OperationBehavior {
-    fn new(source: Option<String>) -> Self;
-    fn from_xdr_object(operation: xdr::Operation) -> Result<HashMap<String, Value>, &'static str>;
-    fn check_unsigned_int_value<F>(
-        name: &str,
-        value: &Option<String>,
-        is_valid_function: Option<F>,
-    ) -> Result<Option<u32>, String>
-    where
-        F: Fn(u32, &str) -> bool;
+#[derive(Debug)]
+pub enum Error {
+    InvalidField(String),
 }
 
-impl OperationBehavior for Operation {
-    fn new(source: Option<String>) -> Self {
-        Self {
-            source: source.map(|s| decode_address_to_muxed_account_fix_for_g_address(&s)),
-        }
+impl Operation {
+    pub fn new() -> Self {
+        Self { source: None }
     }
 
-    fn from_xdr_object(operation: xdr::Operation) -> Result<HashMap<String, Value>, &'static str> {
+    pub fn with_source(source: &str) -> Result<Self, Error> {
+        Ok(Self {
+            source: Some(
+                xdr::MuxedAccount::from_str(source)
+                    .map_err(|_| Error::InvalidField("source".into()))?,
+            ),
+        })
+    }
+
+    pub fn from_xdr_object(
+        operation: xdr::Operation,
+    ) -> Result<HashMap<String, Value>, &'static str> {
         let mut result: HashMap<String, Value> = HashMap::new();
 
         if let Some(source_account) = operation.source_account {
@@ -558,6 +560,13 @@ impl OperationBehavior for Operation {
         }
     }
 }
+
+impl Default for Operation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Validates that a given amount is possible for a Stellar asset.
 pub fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
     if !value.is_empty() {

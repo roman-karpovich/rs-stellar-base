@@ -333,7 +333,7 @@ mod tests {
         asset::{Asset, AssetBehavior},
         keypair::{self, Keypair},
         network::{NetworkPassphrase, Networks},
-        operation::{self, Operation, OperationBehavior},
+        operation::{self, Operation},
         transaction::TransactionBehavior,
         transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
     };
@@ -355,8 +355,8 @@ mod tests {
         let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None)
             .fee(100_u32)
             .add_operation(
-                Operation::new(None)
-                    .payment(destination.to_owned(), &asset, amount)
+                Operation::new()
+                    .payment(destination, &asset, amount)
                     .unwrap(),
             )
             .add_memo("Happy birthday!")
