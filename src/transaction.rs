@@ -16,7 +16,6 @@ use crate::account::Account;
 use crate::hashing::Sha256Hasher;
 use crate::keypair::Keypair;
 use crate::keypair::KeypairBehavior;
-use crate::op_list::create_account::create_account;
 use crate::xdr;
 use crate::xdr::ReadXdr;
 use crate::xdr::WriteXdr;
@@ -366,11 +365,15 @@ mod tests {
 
         //TODO: Tests still coming in for Envelope
 
-        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".to_string();
+        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
         let mut tx = TransactionBuilder::new(source, Networks::testnet(), None)
             .fee(100_u32)
-            .add_operation(create_account(destination, "10".to_string()).unwrap())
+            .add_operation(
+                Operation::new()
+                    .create_account(destination, 10 * operation::ONE)
+                    .unwrap(),
+            )
             .build();
 
         tx.sign(&[signer.clone()]);

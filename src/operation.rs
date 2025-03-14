@@ -670,25 +670,26 @@ mod tests {
     use crate::{
         account::Account,
         keypair::{self, Keypair},
-        op_list::create_account::create_account,
     };
     use keypair::KeypairBehavior;
-    use xdr::{Int64, Operation, OperationBody, ReadXdr};
+    use xdr::{Int64, OperationBody, ReadXdr};
 
     use super::*;
 
     #[test]
     fn create_account_op_test() {
-        let destination = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ".to_string();
+        let destination = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
         let destination_hex =
             hex!("899b2840ed5636c56ddc5f14b23975f79f1ba2388d2694e4c56ecdddc960e5ef");
         // println!("Destination hex {:?}", destination_hex);
-        let starting_balance = "1000".to_string();
+        let starting_balance = 1000 * ONE;
 
-        let op = create_account(destination.clone(), starting_balance).unwrap();
+        let op = Operation::new()
+            .create_account(destination, starting_balance)
+            .unwrap();
 
-        let op = Operation::to_xdr(&op, xdr::Limits::none()).unwrap();
-        let op_from = Operation::from_xdr(op.as_slice(), xdr::Limits::none())
+        let op = xdr::Operation::to_xdr(&op, xdr::Limits::none()).unwrap();
+        let op_from = xdr::Operation::from_xdr(op.as_slice(), xdr::Limits::none())
             .unwrap()
             .body;
 

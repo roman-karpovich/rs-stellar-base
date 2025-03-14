@@ -1,38 +1,27 @@
-use crate::operation::is_valid_amount;
+use std::str::FromStr;
+
+use crate::operation::{self, Operation};
 use crate::xdr;
-use crate::{
-    keypair::*, operation::to_xdr_amount,
-    utils::decode_encode_muxed_account::decode_address_to_muxed_account,
-};
-use hex_literal::hex;
-use sha2::digest::crypto_common::Key;
-use stellar_strkey::ed25519::PublicKey;
-use stellar_strkey::*;
-/// Creates and funds a new account with the specified starting balance
-pub fn create_account(
-    destination: String,
-    starting_balance: String,
-) -> Result<xdr::Operation, Box<dyn std::error::Error>> {
-    let key = PublicKey::from_string(&destination);
+impl Operation {
+    /// Creates and funds a new account with the specified starting balance
+    /// (the `starting_balance` is in stroops)
+    ///
+    /// Threshold: Medium
+    pub fn create_account(
+        &self,
+        destination: &str,
+        starting_balance: i64,
+    ) -> Result<xdr::Operation, operation::Error> {
+        let destination = xdr::AccountId::from_str(destination)
+            .map_err(|_| operation::Error::InvalidField("destination".into()))?;
+        let body = xdr::OperationBody::CreateAccount(xdr::CreateAccountOp {
+            destination,
+            starting_balance,
+        });
 
-    if key.is_err() {
-        return Err("destination is invalid".into());
+        Ok(xdr::Operation {
+            source_account: self.source.clone(),
+            body,
+        })
     }
-
-    if !is_valid_amount(&starting_balance, true) {
-        return Err("startingBalance must be of type String, represent a non-negative number and have at most 7 digits after the decimal".into());
-    }
-    let dest = Keypair::from_public_key(&destination)
-        .unwrap()
-        .xdr_account_id();
-    let starting_balance = to_xdr_amount(&starting_balance)?;
-    let body = xdr::OperationBody::CreateAccount(xdr::CreateAccountOp {
-        destination: dest,
-        starting_balance,
-    });
-
-    Ok(xdr::Operation {
-        source_account: None,
-        body,
-    })
 }

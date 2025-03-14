@@ -1,6 +1,9 @@
+use std::str::FromStr;
+
 use crate::{
-    operation::Operation,
-    utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address, xdr,
+    operation::{self, Operation},
+    utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address,
+    xdr,
 };
 
 impl Operation {
@@ -8,20 +11,13 @@ impl Operation {
     /// from the ledger
     ///
     /// Threshold: High
-    pub fn account_merge(
-        destination: String,
-        source: Option<String>,
-    ) -> Result<xdr::Operation, String> {
+    pub fn account_merge(&self, destination: &str) -> Result<xdr::Operation, operation::Error> {
         //
-
-        let muxed = match decode_address_to_muxed_account_fix_for_g_address(&destination) {
-            account => account,
-            _ => return Err("destination is invalid".to_string()),
-        };
+        let muxed = xdr::MuxedAccount::from_str(destination)
+            .map_err(|_| operation::Error::InvalidField("destination".into()))?;
         let body = xdr::OperationBody::AccountMerge(muxed);
-        let source_account = source.map(|s| decode_address_to_muxed_account_fix_for_g_address(&s));
         Ok(xdr::Operation {
-            source_account,
+            source_account: self.source.clone(),
             body,
         })
     }
@@ -29,13 +25,13 @@ impl Operation {
 
 #[cfg(test)]
 mod tests {
-    use crate::operation::{self, Operation, OperationBehavior};
+    use crate::operation::{self, Operation};
     use crate::xdr::{Limits, WriteXdr};
 
     #[test]
     fn test_account_merge() {
-        let destination = "GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI".into();
-        let result = Operation::account_merge(destination, None);
+        let destination = "GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI";
+        let result = Operation::new().account_merge(destination);
         if let Ok(op) = result {
             let xdr = op.to_xdr(Limits::none()).unwrap();
             let obj = Operation::from_xdr_object(op).unwrap();
@@ -50,9 +46,11 @@ mod tests {
     }
     #[test]
     fn test_account_merge_with_source() {
-        let destination = "GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI".into();
-        let source = Some("GAQODVWAY3AYAGEAT4CG3YSPM4FBTBB2QSXCYJLM3HVIV5ILTP5BRXCD".into());
-        let result = Operation::account_merge(destination, source);
+        let destination = "GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI";
+        let source = "GAQODVWAY3AYAGEAT4CG3YSPM4FBTBB2QSXCYJLM3HVIV5ILTP5BRXCD";
+        let result = Operation::with_source(source)
+            .unwrap()
+            .account_merge(destination);
         if let Ok(op) = result {
             let xdr = op.to_xdr(Limits::none()).unwrap();
             let obj = Operation::from_xdr_object(op).unwrap();

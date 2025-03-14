@@ -35,7 +35,6 @@ mod tests {
     use crate::contract::ContractBehavior;
     use crate::contract::Contracts;
     use crate::xdr::WriteXdr;
-    use xdr::ScAddress::Contract;
 
     use super::*;
 
@@ -49,7 +48,7 @@ mod tests {
         array.copy_from_slice(&hex_id[0..32]);
 
         let func = xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
-            contract_address: xdr::ScAddress::from(Contract(xdr::Hash::from(array))),
+            contract_address: xdr::ScAddress::Contract(xdr::Hash::from(array)),
             function_name: xdr::ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![xdr::ScVal::String(xdr::ScString::from(
                 xdr::StringM::from_str("world").unwrap(),
