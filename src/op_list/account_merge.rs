@@ -1,9 +1,6 @@
-use std::str::FromStr;
-
 use crate::{
-    operation::{self, Operation},
-    utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address,
-    xdr,
+    operation::Operation,
+    utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address, xdr,
 };
 
 impl Operation {
