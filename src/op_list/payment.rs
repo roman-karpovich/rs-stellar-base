@@ -74,7 +74,12 @@ mod tests {
                             panic!("Not a muxed account")
                         }
                     }
+                } else {
+                    panic!("Fail")
                 }
+
+                assert_eq!(asset, a.to_xdr_object());
+                assert_eq!(amount, am);
             }
         } else {
             panic!("Fail")
@@ -118,6 +123,9 @@ mod tests {
                 } else {
                     panic!("Fail")
                 }
+
+                assert_eq!(asset, a.to_xdr_object());
+                assert_eq!(amount, am);
             }
         } else {
             panic!("Fail")
