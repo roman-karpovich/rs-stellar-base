@@ -24,21 +24,31 @@ impl Operation {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
+    use stellar_strkey::{ed25519, Strkey};
+
     use crate::operation::{self, Operation};
-    use crate::xdr::{Limits, WriteXdr};
+    use crate::xdr::{self, Limits, WriteXdr};
 
     #[test]
     fn test_account_merge() {
         let destination = "GBZXN7PIRZGNMHGA7MUUUF4GWPY5AYPV6LY4UV2GL6VJGIQRXFDNMADI";
         let result = Operation::new().account_merge(destination);
         if let Ok(op) = result {
-            let xdr = op.to_xdr(Limits::none()).unwrap();
-            let obj = Operation::from_xdr_object(op).unwrap();
-
-            match obj.get("type").unwrap() {
-                operation::Value::Single(x) => assert_eq!(x, "accountMerge"),
-                _ => panic!("Invalid operation"),
-            };
+            if let xdr::OperationBody::AccountMerge(xdr::MuxedAccount::Ed25519(xdr::Uint256(mpk))) =
+                op.body
+            {
+                if let Strkey::PublicKeyEd25519(ed25519::PublicKey(pk)) =
+                    Strkey::from_str(destination).unwrap()
+                {
+                    assert_eq!(mpk, pk);
+                } else {
+                    panic!("Fail")
+                }
+            } else {
+                panic!("Fail")
+            }
         } else {
             panic!("Fail")
         }
@@ -50,14 +60,26 @@ mod tests {
         let result = Operation::with_source(source)
             .unwrap()
             .account_merge(destination);
-        if let Ok(op) = result {
-            let xdr = op.to_xdr(Limits::none()).unwrap();
-            let obj = Operation::from_xdr_object(op).unwrap();
 
-            match obj.get("type").unwrap() {
-                operation::Value::Single(x) => assert_eq!(x, "accountMerge"),
-                _ => panic!("Invalid operation"),
-            };
+        if let Ok(op) = result {
+            if let xdr::OperationBody::AccountMerge(xdr::MuxedAccount::Ed25519(xdr::Uint256(mpk))) =
+                op.body
+            {
+                if let Strkey::PublicKeyEd25519(ed25519::PublicKey(pk)) =
+                    Strkey::from_str(destination).unwrap()
+                {
+                    assert_eq!(mpk, pk);
+                } else {
+                    panic!("Fail")
+                }
+            } else {
+                panic!("Fail")
+            }
+
+            assert_eq!(
+                op.source_account,
+                Some(xdr::MuxedAccount::from_str(source).unwrap())
+            );
         } else {
             panic!("Fail")
         }

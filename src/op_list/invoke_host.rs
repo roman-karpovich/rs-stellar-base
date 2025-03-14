@@ -32,6 +32,8 @@ impl Operation {
 
 #[cfg(test)]
 mod tests {
+    use stellar_strkey::Strkey;
+
     use crate::contract::ContractBehavior;
     use crate::contract::Contracts;
     use crate::xdr::WriteXdr;
@@ -41,14 +43,16 @@ mod tests {
     #[test]
     fn test_invoke_host_function() {
         let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
-        // let contract = Contracts::new(contract_id).expect("Failed to create contract");
-        let binding = hex::encode(contract_id);
-        let hex_id = binding.as_bytes();
-        let mut array = [0u8; 32];
-        array.copy_from_slice(&hex_id[0..32]);
+        let id = if let Strkey::Contract(stellar_strkey::Contract(id)) =
+            Strkey::from_str(contract_id).unwrap()
+        {
+            id
+        } else {
+            panic!("Fail")
+        };
 
         let func = xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
-            contract_address: xdr::ScAddress::Contract(xdr::Hash::from(array)),
+            contract_address: xdr::ScAddress::Contract(xdr::Hash::from(id)),
             function_name: xdr::ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![xdr::ScVal::String(xdr::ScString::from(
                 xdr::StringM::from_str("world").unwrap(),
@@ -57,14 +61,24 @@ mod tests {
             .unwrap(),
         });
 
-        let op = Operation::new().invoke_host_function(func, None).unwrap();
+        let op = Operation::new()
+            .invoke_host_function(func.clone(), None)
+            .unwrap();
 
-        let xdr = op.to_xdr(xdr::Limits::none()).unwrap();
-        let obj = Operation::from_xdr_object(op).unwrap();
-
-        match obj.get("type").unwrap() {
-            operation::Value::Single(x) => assert_eq!(x, "invokeHostFunction"),
-            _ => panic!("Invalid operation"),
-        };
+        if let xdr::OperationBody::InvokeHostFunction(f) = op.body {
+            assert_eq!(f.host_function, func);
+            if let xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
+                contract_address,
+                function_name,
+                args,
+            }) = f.host_function
+            {
+                if let xdr::ScAddress::Contract(xdr::Hash(cid)) = contract_address {
+                    assert_eq!(cid, id);
+                } else {
+                    panic!("Fail")
+                }
+            }
+        }
     }
 }
