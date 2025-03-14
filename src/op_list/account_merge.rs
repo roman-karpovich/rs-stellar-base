@@ -43,15 +43,11 @@ mod tests {
                     Strkey::from_str(destination).unwrap()
                 {
                     assert_eq!(mpk, pk);
-                } else {
-                    panic!("Fail")
+                    return;
                 }
-            } else {
-                panic!("Fail")
             }
-        } else {
-            panic!("Fail")
         }
+        panic!("Fail")
     }
     #[test]
     fn test_account_merge_with_source() {
@@ -69,19 +65,25 @@ mod tests {
                     Strkey::from_str(destination).unwrap()
                 {
                     assert_eq!(mpk, pk);
-                } else {
-                    panic!("Fail")
+                    assert_eq!(
+                        op.source_account,
+                        Some(xdr::MuxedAccount::from_str(source).unwrap())
+                    );
+                    return;
                 }
-            } else {
-                panic!("Fail")
             }
-
-            assert_eq!(
-                op.source_account,
-                Some(xdr::MuxedAccount::from_str(source).unwrap())
-            );
-        } else {
-            panic!("Fail")
         }
+        panic!("Fail")
+    }
+
+    #[test]
+    fn test_account_merge_bad_destination() {
+        let dest = &Strkey::Contract(stellar_strkey::Contract([0; 32])).to_string();
+        let r = Operation::new().account_merge(dest);
+
+        assert_eq!(
+            r.err().unwrap(),
+            operation::Error::InvalidField("destination".into())
+        );
     }
 }
