@@ -40,9 +40,10 @@ pub struct Operation {
     pub source: Option<xdr::MuxedAccount>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     InvalidField(String),
+    InvalidAmount(i64),
 }
 
 impl Operation {

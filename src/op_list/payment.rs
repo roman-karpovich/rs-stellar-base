@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use num_traits::Signed;
 use stellar_strkey::Strkey;
 
 use crate::{
@@ -15,6 +16,9 @@ impl Operation {
         asset: &Asset,
         amount: i64,
     ) -> Result<xdr::Operation, operation::Error> {
+        if amount.is_negative() {
+            return Err(operation::Error::InvalidAmount(amount));
+        }
         let destination = xdr::MuxedAccount::from_str(destination)
             .map_err(|_| operation::Error::InvalidField("destination".into()))?;
         let asset: xdr::Asset = asset.to_xdr_object();
@@ -66,24 +70,16 @@ mod tests {
             {
                 if let Strkey::PublicKeyEd25519(PublicKey(pk)) = Strkey::from_string(dest).unwrap()
                 {
-                    match destination {
-                        xdr::MuxedAccount::Ed25519(Uint256(d)) => {
-                            assert_eq!(d, pk);
-                        }
-                        xdr::MuxedAccount::MuxedEd25519(muxed_account_med25519) => {
-                            panic!("Not a muxed account")
-                        }
+                    if let xdr::MuxedAccount::Ed25519(Uint256(d)) = destination {
+                        assert_eq!(d, pk);
+                        assert_eq!(asset, a.to_xdr_object());
+                        assert_eq!(amount, am);
+                        return;
                     }
-                } else {
-                    panic!("Fail")
                 }
-
-                assert_eq!(asset, a.to_xdr_object());
-                assert_eq!(amount, am);
             }
-        } else {
-            panic!("Fail")
         }
+        panic!("Fail")
     }
 
     #[test]
@@ -111,24 +107,40 @@ mod tests {
                 if let Strkey::MuxedAccountEd25519(ed25519::MuxedAccount { ed25519, id }) =
                     Strkey::from_string(dest).unwrap()
                 {
-                    match destination {
-                        xdr::MuxedAccount::Ed25519(Uint256(d)) => {
-                            panic!("Fail")
-                        }
-                        xdr::MuxedAccount::MuxedEd25519(muxed_account_med25519) => {
-                            assert_eq!(ed25519, muxed_account_med25519.ed25519.0);
-                            assert_eq!(id, muxed_account_med25519.id);
-                        }
+                    if let xdr::MuxedAccount::MuxedEd25519(muxed_account_med25519) = destination {
+                        assert_eq!(ed25519, muxed_account_med25519.ed25519.0);
+                        assert_eq!(id, muxed_account_med25519.id);
+                        assert_eq!(asset, a.to_xdr_object());
+                        assert_eq!(amount, am);
+                        return;
                     }
-                } else {
-                    panic!("Fail")
                 }
-
-                assert_eq!(asset, a.to_xdr_object());
-                assert_eq!(amount, am);
             }
-        } else {
-            panic!("Fail")
         }
+
+        panic!("Fail")
+    }
+
+    #[test]
+    fn test_payment_bad_amount() {
+        let dest = &Keypair::random().unwrap().public_key();
+        let a = Asset::native();
+        let am = -operation::ONE;
+        let r = Operation::new().payment(dest, &a, am);
+
+        assert_eq!(r.err().unwrap(), operation::Error::InvalidAmount(am));
+    }
+
+    #[test]
+    fn test_payment_bad_destination() {
+        let dest = &Strkey::Contract(stellar_strkey::Contract([0; 32])).to_string();
+        let a = Asset::native();
+        let am = operation::ONE;
+        let r = Operation::new().payment(dest, &a, am);
+
+        assert_eq!(
+            r.err().unwrap(),
+            operation::Error::InvalidField("destination".into())
+        );
     }
 }
