@@ -2,7 +2,6 @@ use crate::address::Address;
 use crate::asset::Asset;
 use crate::keypair::Keypair;
 use crate::operation;
-use crate::operation::OpAttributes;
 use crate::operation::Operation;
 use crate::utils::decode_encode_muxed_account::encode_muxed_account_to_address;
 use crate::xdr;

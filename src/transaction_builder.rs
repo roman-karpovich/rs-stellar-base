@@ -249,7 +249,7 @@ mod tests {
         keypair::{self, Keypair},
         network::{NetworkPassphrase, Networks},
         op_list::invoke_host,
-        operation::{Operation, PaymentOpts},
+        operation::Operation,
         soroban_data_builder::{SorobanDataBuilder, SorobanDataBuilderBehavior},
         transaction::{self, TransactionBehavior},
         transaction_builder::{TransactionBuilder, TransactionBuilderBehavior, TIMEOUT_INFINITE},
