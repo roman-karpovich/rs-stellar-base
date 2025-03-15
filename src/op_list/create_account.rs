@@ -12,6 +12,9 @@ impl Operation {
         destination: &str,
         starting_balance: i64,
     ) -> Result<xdr::Operation, operation::Error> {
+        if starting_balance.is_negative() {
+            return Err(operation::Error::InvalidAmount(starting_balance));
+        }
         let destination = xdr::AccountId::from_str(destination)
             .map_err(|_| operation::Error::InvalidField("destination".into()))?;
         let body = xdr::OperationBody::CreateAccount(xdr::CreateAccountOp {
@@ -56,11 +59,36 @@ mod tests {
                 Strkey::from_str(destination).unwrap()
             {
                 assert_eq!(pk, from_pk);
-            } else {
-                panic!("Fail")
+                assert_eq!(op.starting_balance, starting_balance);
+                return;
             }
-        } else {
-            panic!("op is not the type expected");
         }
+        panic!("op is not the type expected");
+    }
+
+    #[test]
+    fn test_create_account_bad_amount() {
+        let destination = "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ";
+        let starting_balance = -1000 * operation::ONE;
+
+        let op = Operation::new().create_account(destination, starting_balance);
+
+        assert_eq!(
+            op.err().unwrap(),
+            operation::Error::InvalidAmount(starting_balance)
+        );
+    }
+
+    #[test]
+    fn test_payment_bad_destination() {
+        let destination = &Strkey::Contract(stellar_strkey::Contract([0; 32])).to_string();
+        let starting_balance = 1000 * operation::ONE;
+
+        let op = Operation::new().create_account(destination, starting_balance);
+
+        assert_eq!(
+            op.err().unwrap(),
+            operation::Error::InvalidField("destination".into())
+        );
     }
 }
