@@ -54,7 +54,6 @@ pub trait TransactionBehavior {
 
 impl Transaction {
     fn to_tx(&self) -> xdr::Transaction {
-        dbg!(&self);
         match self.envelope_type {
             xdr::EnvelopeType::TxV0 => xdr::Transaction {
                 source_account: xdr::MuxedAccount::from_str(
