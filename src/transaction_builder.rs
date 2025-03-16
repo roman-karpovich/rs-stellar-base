@@ -170,8 +170,6 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     fn build(&mut self) -> Transaction {
         let source = self.source.as_ref().expect("Source account not set");
         let mut source_ref = source.borrow_mut();
-        let current_seq_num = BigUint::from_str(source_ref.sequence_number().as_str()).unwrap();
-        let incremented_seq_num = current_seq_num.clone() + BigUint::from(1u32);
         source_ref.increment_sequence_number();
         let fee = self
             .fee
@@ -190,13 +188,19 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         } else {
             xdr::Preconditions::None
         };
+        let envelope_type = if self.soroban_data.is_some() {
+            xdr::EnvelopeType::Tx
+        } else {
+            xdr::EnvelopeType::TxV0
+        };
 
         let tx_obj = xdr::Transaction {
             source_account: vv,
             fee: fee.unwrap(),
             seq_num: xdr::SequenceNumber(
-                current_seq_num
-                    .try_into()
+                source_ref
+                    .sequence_number()
+                    .parse()
                     .unwrap_or_else(|_| panic!("Number too large for i64")),
             ),
             cond: tx_cond,
@@ -205,13 +209,13 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             ext: ext_on_the_fly,
         };
         Transaction {
-            tx: Some(tx_obj),
+            //tx: Some(tx_obj),
             network_passphrase: self.network_passphrase.clone().unwrap(),
             signatures: Vec::new(),
             fee: fee.unwrap(),
             envelope_type: xdr::EnvelopeType::Tx,
             memo: None,
-            sequence: Some(incremented_seq_num.clone().to_string()),
+            sequence: Some(source_ref.sequence_number()),
             source: Some(source_ref.account_id().to_string()),
             time_bounds: self.time_bounds.clone(),
             ledger_bounds: None,
@@ -222,7 +226,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             operations: self.operations.clone(),
             hash: None,
             soroban_data: self.soroban_data.clone(),
-            tx_v0: None,
+            //tx_v0: None,
         }
     }
 }
