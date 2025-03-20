@@ -1,8 +1,6 @@
-use stellar_xdr::next::ManageBuyOfferOp;
-
 use crate::{
     asset::{Asset, AssetBehavior},
-    operation::Operation,
+    operation::{self, Operation},
     xdr,
 };
 
@@ -15,10 +13,15 @@ impl Operation {
         buy_amount: i64,
         (n, d): (i32, i32),
         offer_id: i64,
-    ) -> Result<xdr::Operation, String> {
+    ) -> Result<xdr::Operation, operation::Error> {
         //
-
-        let body = xdr::OperationBody::ManageBuyOffer(ManageBuyOfferOp {
+        if buy_amount < 0 {
+            return Err(operation::Error::InvalidAmount(buy_amount));
+        }
+        if n <= 0 || d <= 0 {
+            return Err(operation::Error::InvalidPrice(n, d));
+        }
+        let body = xdr::OperationBody::ManageBuyOffer(xdr::ManageBuyOfferOp {
             selling: selling.to_xdr_object(),
             buying: selling.to_xdr_object(),
             buy_amount,

@@ -1,8 +1,6 @@
-use crate::xdr::CreatePassiveSellOfferOp;
-
 use crate::{
     asset::{Asset, AssetBehavior},
-    operation::Operation,
+    operation::{self, Operation},
     xdr,
 };
 
@@ -14,10 +12,15 @@ impl Operation {
         buying: Asset,
         amount: i64,
         (n, d): (i32, i32),
-    ) -> Result<xdr::Operation, String> {
+    ) -> Result<xdr::Operation, operation::Error> {
         //
-
-        let body = xdr::OperationBody::CreatePassiveSellOffer(CreatePassiveSellOfferOp {
+        if amount < 0 {
+            return Err(operation::Error::InvalidAmount(amount));
+        }
+        if n <= 0 || d <= 0 {
+            return Err(operation::Error::InvalidPrice(n, d));
+        }
+        let body = xdr::OperationBody::CreatePassiveSellOffer(xdr::CreatePassiveSellOfferOp {
             selling: selling.to_xdr_object(),
             buying: buying.to_xdr_object(),
             amount,
