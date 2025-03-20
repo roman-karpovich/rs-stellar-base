@@ -21,7 +21,6 @@ pub mod liquidity_pool_id;
 pub mod memo;
 pub mod muxed_account;
 pub mod network;
-pub mod op_list;
 pub mod operation;
 pub mod signer_key;
 pub mod signing;
@@ -50,3 +49,5 @@ pub mod xdr {
     #[cfg(feature = "next")]
     pub use stellar_xdr::next::*;
 }
+
+mod op_list;

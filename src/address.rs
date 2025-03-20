@@ -69,10 +69,7 @@ impl AddressTrait for Address {
                 AddressType::Account,
                 public_key.to_string().as_bytes().to_vec(),
             ),
-            Ok(Strkey::Contract(contract)) => (
-                AddressType::Contract,
-                contract.to_string().as_bytes().to_vec(),
-            ),
+            Ok(Strkey::Contract(contract)) => (AddressType::Contract, contract.0.to_vec()),
             Ok(Strkey::MuxedAccountEd25519(x)) => {
                 return Err("Unsupported address type MuxedAccount")
             }
@@ -146,13 +143,11 @@ impl AddressTrait for Address {
                 .unwrap(),
             )
             .to_string(),
-            AddressType::Contract => Strkey::Contract(
-                Contract::from_string(
-                    &String::from_utf8(self.key.clone()).expect("Invalid UTF-8 sequence"),
-                )
-                .unwrap(),
-            )
-            .to_string(),
+            AddressType::Contract => {
+                //
+                let id = self.key.last_chunk::<32>().expect("Not a 32 bytes id");
+                Strkey::Contract(Contract(*id)).to_string()
+            }
         }
     }
 
@@ -171,9 +166,8 @@ impl AddressTrait for Address {
             }
 
             AddressType::Contract => {
-                let original = String::from_utf8(self.key.clone()).unwrap();
-                let val = hashing::Sha256Hasher::hash(original);
-                Ok(xdr::ScAddress::Contract(xdr::Hash(val)))
+                let original = self.key.last_chunk::<32>().unwrap();
+                Ok(xdr::ScAddress::Contract(xdr::Hash(*original)))
             }
             _ => Err("Unsupported type"),
         }
@@ -403,7 +397,7 @@ mod tests {
 
         // Decode the expected bytes using stellar_strkey
         let expected = match Strkey::from_string(CONTRACT).expect("Invalid CONTRACT address") {
-            Strkey::Contract(contract) => contract.to_string().as_bytes().to_vec(),
+            Strkey::Contract(contract) => contract.0.to_vec(),
             _ => panic!("Expected a contract key"),
         };
 
