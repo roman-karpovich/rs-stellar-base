@@ -5,3 +5,4 @@ pub mod create_account;
 pub mod end_sponsoring_future_reserves;
 pub mod invoke_host;
 pub mod payment;
+pub mod revoke_sponsorship;
