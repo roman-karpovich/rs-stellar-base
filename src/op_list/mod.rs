@@ -2,6 +2,7 @@
 pub mod account_merge;
 pub mod bump_sequence;
 pub mod claim_claimable_balance;
+pub mod clawback_claimable_balance;
 pub mod create_account;
 pub mod create_claimable_balance;
 pub mod create_passive_sell_offer;
