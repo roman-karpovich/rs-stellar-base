@@ -5,6 +5,20 @@ use crate::{
 };
 
 impl Operation {
+    /// Deposits assets into a liquidity pool, increasing the reserves of a liquidity pool in
+    /// exchange for pool shares
+    ///
+    /// Parameters to this operation depend on the ordering of assets in the liquidity pool:
+    /// “A” refers to the first asset in the liquidity pool, and “B” refers to the second asset
+    /// in the liquidity pool.
+    ///
+    /// If the pool is empty, then this operation deposits `max_amount_a` of A and `max_amount_b`
+    /// of B into the pool. If the pool is not empty, then this operation deposits at most
+    /// `max_amount_a` of A and `max_amount_b` of B into the pool. The actual amounts deposited
+    /// are determined using the current reserves of the pool. You can use these parameters to
+    /// control a percentage of slippage.
+    ///
+    /// Threshold: Medium
     pub fn liquidity_pool_deposit(
         &self,
         pool_id: &str,

@@ -4,6 +4,13 @@ use crate::{
 };
 
 impl Operation {
+    /// Withdraw assets from a liquidity pool, reducing the number of pool shares in exchange
+    /// for reserves of a liquidity pool
+    ///
+    /// The `min_amount_a` and `min_amount_b` parameters can be used to control a percentage of slippage
+    /// from the "spot price" on the pool.
+    ///
+    /// Threshold: Medium
     pub fn liquidity_pool_withdraw(
         &self,
         pool_id: &str,
