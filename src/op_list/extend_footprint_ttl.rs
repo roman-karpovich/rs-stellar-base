@@ -30,6 +30,7 @@ impl Operation {
 mod tests {
     use crate::{operation::Operation, xdr};
 
+    #[test]
     fn test_extend_ttl() {
         let op = Operation::new().extend_footprint_ttl(12097).unwrap();
 
