@@ -10,6 +10,8 @@ pub mod create_claimable_balance;
 pub mod create_passive_sell_offer;
 pub mod extend_footprint_ttl;
 pub mod invoke_host;
+pub mod liquidity_pool_deposit;
+pub mod liquidity_pool_withdraw;
 pub mod manage_buy_offer;
 pub mod manage_sell_offer;
 pub mod path_payment_strict_receive;
