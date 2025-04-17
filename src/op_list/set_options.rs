@@ -5,6 +5,7 @@ use crate::{
     xdr,
 };
 
+#[derive(Debug, Clone, Copy)]
 pub enum AccountFlags {
     AuthRequired = 1,
     AuthRevocable = 2,
@@ -88,5 +89,102 @@ impl Operation {
             source_account: self.source.clone(),
             body,
         })
+    }
+
+    /// Set the [AccountFlags] of the source account
+    ///
+    /// Multiple flags can be combined using logical or.
+    pub fn set_account_flags(
+        &self,
+        flags: impl Into<u32>,
+    ) -> Result<xdr::Operation, operation::Error> {
+        self.set_options(None, None, flags.into(), None, None, None, None, None, None)
+    }
+
+    /// Clear the [AccountFlags] of the source account
+    ///
+    /// Multiple flags can be combined using logical or.
+    pub fn clear_account_flags(&self, flags: u32) -> Result<xdr::Operation, operation::Error> {
+        self.set_options(None, flags, None, None, None, None, None, None, None)
+    }
+
+    /// Set the weight of the master key of the source account
+    ///
+    /// The `weight` is a number from 0-255 (inclusive) representing the weight of the master key.
+    /// If the weight of the master key is updated to 0, it is effectively disabled.
+    ///
+    /// If the master key’s weight is set at 0, it cannot be used to sign transactions, even for
+    /// operations with a threshold value of 0.
+    ///
+    /// Be very careful setting your master key weight to 0. Doing so may permanently lock you out
+    /// of your account (although if there are other signers listed on the account, they can still
+    /// continue to sign transactions.)
+    pub fn set_master_weight(&self, weight: u8) -> Result<xdr::Operation, operation::Error> {
+        self.set_options(None, None, None, weight, None, None, None, None, None)
+    }
+
+    /// Set the `low`, `med` and `high` thresholds of the source account.
+    ///
+    /// The threshold is a number from 0-255 (inclusive) representing the signature weight required
+    /// to authorize operations that have the said threshold level (Low, Medium or High).
+    pub fn set_account_thresholds(
+        &self,
+        low: u8,
+        med: u8,
+        high: u8,
+    ) -> Result<xdr::Operation, operation::Error> {
+        self.set_options(None, None, None, None, low, med, high, None, None)
+    }
+
+    /// Add, update, or remove a signer from the source account.
+    ///
+    /// Signer weight is a number from 0-255 (inclusive). The signer is deleted if the weight is 0.
+    ///
+    /// The `signer` can be:
+    /// - [PublicKeyEd25519](stellar_strkey::Strkey::PublicKeyEd25519)
+    /// - [PreAuthTx](stellar_strkey::Strkey::PreAuthTx)
+    /// - [HashX](stellar_strkey::Strkey::HashX)
+    /// - [SignedPayloadEd25519](stellar_strkey::Strkey::SignedPayloadEd25519)
+    pub fn set_signer(&self, signer: &str, weight: u8) -> Result<xdr::Operation, operation::Error> {
+        self.set_options(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some((signer, weight)),
+        )
+    }
+
+    /// Sets the home domain of the source account.
+    pub fn set_home_domain(&self, home_domain: &str) -> Result<xdr::Operation, operation::Error> {
+        self.set_options(
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(home_domain),
+            None,
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::operation::Operation;
+
+    use super::AccountFlags;
+
+    #[test]
+    fn test_set_account_flags() {
+        let op = Operation::new()
+            .set_account_flags(AccountFlags::AuthImmutable)
+            .unwrap();
     }
 }
