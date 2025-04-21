@@ -104,8 +104,11 @@ impl Operation {
     /// Clear the [AccountFlags] of the source account
     ///
     /// Multiple flags can be combined using logical or.
-    pub fn clear_account_flags(&self, flags: u32) -> Result<xdr::Operation, operation::Error> {
-        self.set_options(None, flags, None, None, None, None, None, None, None)
+    pub fn clear_account_flags(
+        &self,
+        flags: impl Into<u32>,
+    ) -> Result<xdr::Operation, operation::Error> {
+        self.set_options(None, flags.into(), None, None, None, None, None, None, None)
     }
 
     /// Set the weight of the master key of the source account
@@ -177,14 +180,533 @@ impl Operation {
 
 #[cfg(test)]
 mod tests {
-    use crate::operation::Operation;
+    use std::str::FromStr;
+
+    use stellar_strkey::{
+        ed25519::{PublicKey, SignedPayload},
+        Contract, HashX, PreAuthTx, Strkey,
+    };
+
+    use crate::{
+        operation::{self, Operation},
+        xdr,
+    };
 
     use super::AccountFlags;
 
     #[test]
-    fn test_set_account_flags() {
+    fn test_set_options_account_flags() {
         let op = Operation::new()
             .set_account_flags(AccountFlags::AuthImmutable)
             .unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(set_flags, Some(AccountFlags::AuthImmutable.into()));
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_options_account_flags_combined() {
+        let op = Operation::new()
+            .set_account_flags(AccountFlags::AuthImmutable | AccountFlags::ClawbackEnabled)
+            .unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(
+                set_flags,
+                Some(AccountFlags::AuthImmutable | AccountFlags::ClawbackEnabled)
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+
+    #[test]
+    fn test_set_options_clear_flags() {
+        let op = Operation::new()
+            .clear_account_flags(AccountFlags::AuthImmutable)
+            .unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(clear_flags, Some(AccountFlags::AuthImmutable.into()));
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_options_clear_flags_combined() {
+        let op = Operation::new()
+            .clear_account_flags(AccountFlags::AuthImmutable | AccountFlags::AuthRequired)
+            .unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(
+                clear_flags,
+                Some(AccountFlags::AuthImmutable | AccountFlags::AuthRequired)
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_master_weight() {
+        let op = Operation::new().set_master_weight(10).unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(master_weight, Some(10));
+        } else {
+            panic!("Fail")
+        }
+    }
+
+    #[test]
+    fn test_set_account_thresholds() {
+        let op = Operation::new()
+            .set_account_thresholds(10, 123, 255)
+            .unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(low_threshold, Some(10));
+            assert_eq!(med_threshold, Some(123));
+            assert_eq!(high_threshold, Some(255));
+        } else {
+            panic!("Fail")
+        }
+    }
+
+    #[test]
+    fn test_set_signer_pk() {
+        let signer = Strkey::PublicKeyEd25519(PublicKey([0; 32])).to_string();
+        let weight = 100;
+        let op = Operation::new().set_signer(&signer, weight).unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+
+            assert_eq!(
+                signer,
+                Some(xdr::Signer {
+                    key: xdr::SignerKey::Ed25519(xdr::Uint256([0; 32])),
+                    weight: 100
+                })
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_signer_hash() {
+        let signer = Strkey::HashX(HashX([1; 32])).to_string();
+        let weight = 100;
+        let op = Operation::new().set_signer(&signer, weight).unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+
+            assert_eq!(
+                signer,
+                Some(xdr::Signer {
+                    key: xdr::SignerKey::HashX(xdr::Uint256([1; 32])),
+                    weight: 100
+                })
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_signer_preauth() {
+        let signer = Strkey::PreAuthTx(PreAuthTx([2; 32])).to_string();
+        let weight = 100;
+        let op = Operation::new().set_signer(&signer, weight).unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+
+            assert_eq!(
+                signer,
+                Some(xdr::Signer {
+                    key: xdr::SignerKey::PreAuthTx(xdr::Uint256([2; 32])),
+                    weight: 100
+                })
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_signer_payload() {
+        let payload = "payload".as_bytes();
+        let signer = Strkey::SignedPayloadEd25519(SignedPayload {
+            ed25519: [3; 32],
+            payload: payload.to_vec(),
+        })
+        .to_string();
+        let weight = 100;
+        let op = Operation::new().set_signer(&signer, weight).unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(home_domain, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+
+            assert_eq!(
+                signer,
+                Some(xdr::Signer {
+                    key: xdr::SignerKey::Ed25519SignedPayload(xdr::SignerKeyEd25519SignedPayload {
+                        ed25519: xdr::Uint256([3; 32]),
+                        payload: xdr::BytesM::from_str(&hex::encode("payload")).unwrap()
+                    }),
+                    weight: 100
+                })
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_signer_contract() {
+        let signer = Strkey::Contract(Contract([4; 32])).to_string();
+        let weight = 100;
+        let op = Operation::new().set_signer(&signer, weight);
+
+        assert_eq!(
+            op.err(),
+            Some(operation::Error::InvalidField("signer".into()))
+        );
+    }
+
+    #[test]
+    fn test_set_home_domain() {
+        let op = Operation::new().set_home_domain("example.com").unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(
+                home_domain,
+                Some(xdr::String32(
+                    xdr::StringM::from_str("example.com").unwrap()
+                ))
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_home_domain_empty() {
+        let op = Operation::new().set_home_domain("").unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(inflation_dest, None);
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(signer, None);
+
+            assert_eq!(
+                home_domain,
+                Some(xdr::String32(xdr::StringM::from_str("").unwrap()))
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_home_domain_too_long() {
+        let op = Operation::new().set_home_domain("this-example-is-really-too-long.com");
+
+        assert_eq!(
+            op.err(),
+            Some(operation::Error::InvalidField("home_domain".into()))
+        );
+    }
+    #[test]
+    fn test_set_options_inflation_dest() {
+        let inflation_dest = Strkey::PublicKeyEd25519(PublicKey([0; 32])).to_string();
+        let op = Operation::new()
+            .set_options(
+                Some(&inflation_dest),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        if let xdr::OperationBody::SetOptions(xdr::SetOptionsOp {
+            inflation_dest,
+            clear_flags,
+            set_flags,
+            master_weight,
+            low_threshold,
+            med_threshold,
+            high_threshold,
+            home_domain,
+            signer,
+        }) = op.body
+        {
+            //
+            assert_eq!(set_flags, None);
+            assert_eq!(clear_flags, None);
+            assert_eq!(master_weight, None);
+            assert_eq!(low_threshold, None);
+            assert_eq!(med_threshold, None);
+            assert_eq!(high_threshold, None);
+            assert_eq!(signer, None);
+            assert_eq!(home_domain, None);
+
+            assert_eq!(
+                inflation_dest,
+                Some(xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(
+                    xdr::Uint256([0; 32])
+                )))
+            );
+        } else {
+            panic!("Fail")
+        }
+    }
+    #[test]
+    fn test_set_options_inflation_dest_wrong_type() {
+        let inflation_dest = Strkey::Contract(Contract([0; 32])).to_string();
+        let op = Operation::new().set_options(
+            Some(&inflation_dest),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        assert_eq!(
+            op.err(),
+            Some(operation::Error::InvalidField("inflation_dest".into()))
+        );
     }
 }
