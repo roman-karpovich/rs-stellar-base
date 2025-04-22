@@ -24,6 +24,8 @@ use crate::utils::decode_encode_muxed_account::{
     decode_address_to_muxed_account, encode_muxed_account_to_address,
 };
 
+pub use super::op_list::set_trustline_flags::TrustlineFlags;
+
 pub const ONE: i64 = 10_000_000;
 const MAX_INT64: &str = "9223372036854775807";
 pub enum SignerKeyAttrs {
