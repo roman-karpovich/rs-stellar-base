@@ -25,6 +25,7 @@ use crate::utils::decode_encode_muxed_account::{
 };
 
 pub use super::op_list::set_trustline_flags::TrustlineFlags;
+pub use super::op_list::set_options::AccountFlags;
 
 pub const ONE: i64 = 10_000_000;
 const MAX_INT64: &str = "9223372036854775807";
@@ -33,10 +34,6 @@ pub enum SignerKeyAttrs {
     PreAuthTx(String),
     Sha256Hash(String),
 }
-
-pub const AUTH_REQUIRED_FLAG: u32 = 1 << 0;
-pub const AUTH_REVOCABLE_FLAG: u32 = 1 << 1;
-pub const AUTH_IMMUTABLE_FLAG: u32 = 1 << 2;
 
 pub struct Operation {
     pub source: Option<xdr::MuxedAccount>,
