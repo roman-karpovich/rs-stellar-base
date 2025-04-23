@@ -3,6 +3,7 @@ pub mod account_merge;
 pub mod allow_trust;
 pub mod begin_sponsoring_future_reserves;
 pub mod bump_sequence;
+pub mod change_trust;
 pub mod claim_claimable_balance;
 pub mod clawback;
 pub mod clawback_claimable_balance;
