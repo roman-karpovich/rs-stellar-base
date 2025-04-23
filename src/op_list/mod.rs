@@ -4,6 +4,7 @@ pub mod allow_trust;
 pub mod begin_sponsoring_future_reserves;
 pub mod bump_sequence;
 pub mod claim_claimable_balance;
+pub mod clawback;
 pub mod clawback_claimable_balance;
 pub mod create_account;
 pub mod create_claimable_balance;
