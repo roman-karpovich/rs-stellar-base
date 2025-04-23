@@ -15,6 +15,7 @@ pub mod invoke_host;
 pub mod liquidity_pool_deposit;
 pub mod liquidity_pool_withdraw;
 pub mod manage_buy_offer;
+pub mod manage_data;
 pub mod manage_sell_offer;
 pub mod path_payment_strict_receive;
 pub mod path_payment_strict_send;
