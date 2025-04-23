@@ -23,3 +23,4 @@ pub mod path_payment_strict_send;
 pub mod payment;
 pub mod restore_footprint;
 pub mod revoke_sponsorship;
+pub mod set_trustline_flags;
