@@ -1,6 +1,6 @@
 [package]
 name = "stellar-baselib"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "A low level Rust library that offers a comprehensive set of functions for reading, writing, hashing, and signing primitive XDR constructs utilized in the Stellar network"
 license = "Apache-2.0"
@@ -40,7 +40,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-libsodium-sys = "0.2.7"
+libsodium-sys-stable = "1.22.3"
 
 [features]
 default = []
