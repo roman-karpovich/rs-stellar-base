@@ -58,6 +58,7 @@ pub trait TransactionBuilderBehavior {
     fn add_memo(&mut self, memo_text: &str) -> &mut Self;
     fn set_timeout(&mut self, timeout_seconds: i64) -> Result<&mut Self, String>;
     fn set_time_bounds(&mut self, time_bounds: xdr::TimeBounds) -> &mut Self;
+    fn set_ledger_bounds(&mut self, ledger_bounds: xdr::LedgerBounds) -> &mut Self;
     fn set_soroban_data(&mut self, soroban_data: xdr::SorobanTransactionData) -> &mut Self;
     fn clear_operations(&mut self) -> &mut Self;
 }
@@ -147,6 +148,11 @@ impl TransactionBuilderBehavior for TransactionBuilder {
 
     fn set_time_bounds(&mut self, time_bounds: xdr::TimeBounds) -> &mut Self {
         self.time_bounds = Some(time_bounds);
+        self
+    }
+
+    fn set_ledger_bounds(&mut self, ledger_bounds: xdr::LedgerBounds) -> &mut Self {
+        self.ledger_bounds = Some(ledger_bounds);
         self
     }
 
