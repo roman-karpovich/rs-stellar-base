@@ -1,13 +1,17 @@
 use std::str::FromStr;
 
 use crate::xdr;
-use stellar_strkey::{ed25519::PublicKey, Contract, Strkey};
+use stellar_strkey::{
+    ed25519::{MuxedAccount, PublicKey},
+    Contract, Strkey,
+};
 
 use crate::hashing::{self, HashingBehavior};
 
 pub enum AddressType {
     Account,
     Contract,
+    MuxedAccount,
 }
 
 pub struct Address {
@@ -28,6 +32,10 @@ pub trait AddressTrait {
 
     /// Creates a new account Address object from a buffer of raw bytes.
     fn account(buffer: &[u8]) -> Result<Self, &'static str>
+    where
+        Self: Sized;
+
+    fn muxed_account(buffer: &[u8]) -> Result<Self, &'static str>
     where
         Self: Sized;
 
@@ -71,8 +79,9 @@ impl AddressTrait for Address {
             ),
             Ok(Strkey::Contract(contract)) => (AddressType::Contract, contract.0.to_vec()),
             Ok(Strkey::MuxedAccountEd25519(x)) => {
-                return Err("Unsupported address type MuxedAccount")
+                (AddressType::MuxedAccount, x.to_string().as_bytes().to_vec())
             }
+
             _ => return Err("Unsupported address type"),
         };
 
@@ -93,6 +102,15 @@ impl AddressTrait for Address {
         Self: Sized,
     {
         let acc = Strkey::PublicKeyEd25519(PublicKey::from_payload(buffer).unwrap()).to_string();
+        Self::new(&acc)
+    }
+
+    fn muxed_account(buffer: &[u8]) -> Result<Self, &'static str>
+    where
+        Self: Sized,
+    {
+        let acc =
+            Strkey::MuxedAccountEd25519(MuxedAccount::from_payload(buffer).unwrap()).to_string();
         Self::new(&acc)
     }
 
@@ -130,7 +148,9 @@ impl AddressTrait for Address {
 
                 Self::account(&m.0)
             }
-            xdr::ScAddress::Contract(hash) => Self::contract(&hash.0),
+            xdr::ScAddress::Contract(xdr::ContractId(hash)) => Self::contract(&hash.0),
+            xdr::ScAddress::MuxedAccount(_) => todo!(),
+            _ => todo!(),
         }
     }
 
@@ -147,6 +167,10 @@ impl AddressTrait for Address {
                 //
                 let id = self.key.last_chunk::<32>().expect("Not a 32 bytes id");
                 Strkey::Contract(Contract(*id)).to_string()
+            }
+            AddressType::MuxedAccount => {
+                //
+                todo!()
             }
         }
     }
@@ -167,7 +191,9 @@ impl AddressTrait for Address {
 
             AddressType::Contract => {
                 let original = self.key.last_chunk::<32>().unwrap();
-                Ok(xdr::ScAddress::Contract(xdr::Hash(*original)))
+                Ok(xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(
+                    *original,
+                ))))
             }
             _ => Err("Unsupported type"),
         }
@@ -273,7 +299,7 @@ mod tests {
         let contract = Contract::from_string(CONTRACT).expect("Failed to decode contract address");
 
         // Create ScAddress for contract
-        let sc_address = xdr::ScAddress::Contract(xdr::Hash(contract.0));
+        let sc_address = xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(contract.0)));
 
         // Convert ScAddress to Address
         let contract_address =
@@ -314,7 +340,7 @@ mod tests {
                 // Test passes if it's an Account type
                 assert!(true)
             }
-            xdr::ScAddress::Contract(_) => {
+            _ => {
                 panic!("Expected ScAddress to be an Account type")
             }
         }

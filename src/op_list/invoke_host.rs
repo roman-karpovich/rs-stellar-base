@@ -174,7 +174,7 @@ mod tests {
         };
 
         let func = xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
-            contract_address: xdr::ScAddress::Contract(xdr::Hash::from(id)),
+            contract_address: xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash::from(id))),
             function_name: xdr::ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![xdr::ScVal::String(xdr::ScString::from(
                 xdr::StringM::from_str("world").unwrap(),
@@ -182,7 +182,6 @@ mod tests {
             .try_into()
             .unwrap(),
         });
-
 
         let op = Operation::new()
             .invoke_host_function(func.clone(), None)
@@ -196,7 +195,8 @@ mod tests {
                 args,
             }) = f.host_function
             {
-                if let xdr::ScAddress::Contract(xdr::Hash(cid)) = contract_address {
+                if let xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(cid))) = contract_address
+                {
                     assert_eq!(cid, id);
                 } else {
                     panic!("Fail")
