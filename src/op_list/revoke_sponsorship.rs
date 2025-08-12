@@ -167,6 +167,8 @@ impl Operation {
 #[cfg(test)]
 mod tests {
 
+    use std::str::FromStr;
+
     use stellar_strkey::{ed25519::SignedPayload, HashX, PreAuthTx, Strkey};
 
     use crate::{
@@ -426,7 +428,10 @@ mod tests {
     fn test_revoke_claimable_balance() {
         let a1 = Keypair::random().unwrap().public_key();
         let a2 = Keypair::random().unwrap();
-        let balance_id = "0000000045e0365c3c292b267a0fdfc863f5bf63b2283a19be86f72ec1256b6bc68f678e";
+        let hh = "45e0365c3c292b267a0fdfc863f5bf63b2283a19be86f72ec1256b6bc68f678e";
+        let arr = *hex::decode(hh).unwrap().last_chunk::<32>().unwrap();
+
+        let balance_id = &stellar_strkey::ClaimableBalance::V0(arr).to_string();
 
         let op = Operation::with_source(&a1)
             .unwrap()
@@ -439,7 +444,7 @@ mod tests {
             }),
         )) = op.body
         {
-            assert_eq!(h, hex::decode(balance_id).unwrap().as_slice()[4..]);
+            assert_eq!(h, arr);
 
             //
         } else {
