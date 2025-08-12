@@ -8,12 +8,14 @@ use stellar_strkey::{
 
 use crate::hashing::{self, HashingBehavior};
 
+#[derive(Debug)]
 pub enum AddressType {
     Account,
     Contract,
     MuxedAccount,
 }
 
+#[derive(Debug)]
 pub struct Address {
     address_type: AddressType,
     key: Vec<u8>,
@@ -170,7 +172,13 @@ impl AddressTrait for Address {
             }
             AddressType::MuxedAccount => {
                 //
-                todo!()
+                Strkey::MuxedAccountEd25519(
+                    MuxedAccount::from_string(
+                        &String::from_utf8(self.key.clone()).expect("Invalid UTF-8 sequence"),
+                    )
+                    .unwrap(),
+                )
+                .to_string()
             }
         }
     }
@@ -195,7 +203,13 @@ impl AddressTrait for Address {
                     *original,
                 ))))
             }
-            _ => Err("Unsupported type"),
+            AddressType::MuxedAccount => {
+                let inner_uin256 = hex::encode(self.key.clone());
+                let original = String::from_utf8(self.key.clone()).unwrap();
+                Ok(xdr::ScAddress::MuxedAccount(
+                    xdr::MuxedEd25519Account::from_str(&original).unwrap(),
+                ))
+            }
         }
     }
 
@@ -234,24 +248,12 @@ mod tests {
     }
 
     #[test]
-    fn test_muxed_account_creation_fails() {
+    fn test_muxed_account_creation() {
         const MUXED_ADDRESS: &str =
             "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
 
-        // In Rust, this is typically done by checking for a specific error type or message
-        let result = Address::new(MUXED_ADDRESS);
-        assert!(result.is_err(), "Should fail for muxed account address");
-
-        // Optionally, you can check the specific error message
-        match result {
-            Err(error_msg) => {
-                assert!(
-                    error_msg.contains("MuxedAccount"),
-                    "Error should mention MuxedAccount"
-                );
-            }
-            _ => panic!("Should have failed for muxed account address"),
-        }
+        let result = Address::new(MUXED_ADDRESS).expect("Should create a muxed account address");
+        assert_eq!(result.to_string(), MUXED_ADDRESS);
     }
 
     #[test]
