@@ -5,7 +5,6 @@ use std::{
 
 use crate::claimant::ClaimantBehavior;
 use crate::keypair::Keypair;
-use crate::utils::util::trim_end;
 use crate::xdr;
 use stellar_strkey::{
     ed25519,
