@@ -99,33 +99,14 @@ impl AssetBehavior for Asset {
         match asset_xdr {
             xdr::Asset::Native => Ok(Asset::native()),
             xdr::Asset::CreditAlphanum4(alpha_num_4) => {
-                let anum = alpha_num_4;
-                let issuer = Some(anum.issuer.0);
-                let issuer = if let Some(xdr::PublicKey::PublicKeyTypeEd25519(inner)) = issuer {
-                    Some(ed25519::PublicKey(inner.0).to_string())
-                } else {
-                    None
-                };
-                let code = trim_end(
-                    String::from_utf8(anum.asset_code.as_slice().into()).unwrap(),
-                    '\0',
-                );
-                Ok(Asset::new(&code, issuer.as_deref())?)
+                let issuer = alpha_num_4.issuer.to_string();
+                let code = alpha_num_4.asset_code.to_string();
+                Ok(Asset::new(&code, Some(&issuer))?)
             }
             xdr::Asset::CreditAlphanum12(alpha_num_12) => {
-                let anum = alpha_num_12;
-                let issuer = Some(anum.issuer.0);
-                let issuer = if let Some(xdr::PublicKey::PublicKeyTypeEd25519(inner)) = issuer {
-                    Some(ed25519::PublicKey(inner.0).to_string())
-                } else {
-                    None
-                };
-
-                let code = trim_end(
-                    String::from_utf8(anum.asset_code.as_slice().into()).unwrap(),
-                    '\0',
-                );
-                Ok(Asset::new(&code, issuer.as_deref())?)
+                let issuer = alpha_num_12.issuer.to_string();
+                let code = alpha_num_12.asset_code.to_string();
+                Ok(Asset::new(&code, Some(&issuer))?)
             }
             _ => Err(format!("Invalid asset type: {:?}", asset_xdr)),
         }
@@ -135,47 +116,27 @@ impl AssetBehavior for Asset {
         if self.is_native() {
             xdr::TrustLineAsset::Native
         } else if self.code.len() <= 4 {
-            let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
-            let padded_code =
-                format!("{:width$}", self.code, width = pad_length).replace(' ', "\0");
+            let asset_code = xdr::AssetCode4::from_str(&self.code).expect("Asset code is invalid");
+            let issuer = xdr::AccountId::from_str(
+                &self
+                    .issuer
+                    .clone()
+                    .expect("Issuer is None while not native"),
+            )
+            .expect("Issuer is invalid");
 
-            let mut asset_code: [u8; 4] = [0; 4];
-
-            for (i, b) in self.code.as_bytes().iter().enumerate() {
-                asset_code[i] = *b;
-            }
-
-            let addr = xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
-                ed25519::PublicKey::from_string(&self.issuer.clone().unwrap())
-                    .unwrap()
-                    .0,
-            )));
-
-            xdr::TrustLineAsset::CreditAlphanum4(xdr::AlphaNum4 {
-                asset_code: xdr::AssetCode4(asset_code),
-                issuer: addr.clone(),
-            })
+            xdr::TrustLineAsset::CreditAlphanum4(xdr::AlphaNum4 { asset_code, issuer })
         } else {
-            let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
-            let padded_code =
-                format!("{:width$}", self.code, width = pad_length).replace(' ', "\0");
+            let asset_code = xdr::AssetCode12::from_str(&self.code).expect("Asset code is invalid");
+            let issuer = xdr::AccountId::from_str(
+                &self
+                    .issuer
+                    .clone()
+                    .expect("Issuer is None while not native"),
+            )
+            .expect("Issuer is invalid");
 
-            let mut asset_code: [u8; 12] = [0; 12];
-
-            for (i, b) in self.code.as_bytes().iter().enumerate() {
-                asset_code[i] = *b;
-            }
-
-            let addr = xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
-                ed25519::PublicKey::from_string(&self.issuer.clone().unwrap())
-                    .unwrap()
-                    .0,
-            )));
-
-            xdr::TrustLineAsset::CreditAlphanum12(xdr::AlphaNum12 {
-                asset_code: xdr::AssetCode12(asset_code),
-                issuer: addr.clone(),
-            })
+            xdr::TrustLineAsset::CreditAlphanum12(xdr::AlphaNum12 { asset_code, issuer })
         }
     }
 
@@ -183,47 +144,25 @@ impl AssetBehavior for Asset {
         if self.is_native() {
             xdr::ChangeTrustAsset::Native
         } else if self.code.len() <= 4 {
-            let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
-            let padded_code =
-                format!("{:width$}", self.code, width = pad_length).replace(' ', "\0");
-
-            let mut asset_code: [u8; 4] = [0; 4];
-
-            for (i, b) in self.code.as_bytes().iter().enumerate() {
-                asset_code[i] = *b;
-            }
-
-            let addr = xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
-                ed25519::PublicKey::from_string(&self.issuer.clone().unwrap())
-                    .unwrap()
-                    .0,
-            )));
-
-            xdr::ChangeTrustAsset::CreditAlphanum4(xdr::AlphaNum4 {
-                asset_code: xdr::AssetCode4(asset_code),
-                issuer: addr.clone(),
-            })
+            let asset_code = xdr::AssetCode4::from_str(&self.code).expect("Asset code is invalid");
+            let issuer = xdr::AccountId::from_str(
+                &self
+                    .issuer
+                    .clone()
+                    .expect("Issuer is None while not native"),
+            )
+            .expect("Issuer is invalid");
+            xdr::ChangeTrustAsset::CreditAlphanum4(xdr::AlphaNum4 { asset_code, issuer })
         } else {
-            let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
-            let padded_code =
-                format!("{:width$}", self.code, width = pad_length).replace(' ', "\0");
-
-            let mut asset_code: [u8; 12] = [0; 12];
-
-            for (i, b) in self.code.as_bytes().iter().enumerate() {
-                asset_code[i] = *b;
-            }
-
-            let addr = xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
-                ed25519::PublicKey::from_string(&self.issuer.clone().unwrap())
-                    .unwrap()
-                    .0,
-            )));
-
-            xdr::ChangeTrustAsset::CreditAlphanum12(xdr::AlphaNum12 {
-                asset_code: xdr::AssetCode12(asset_code),
-                issuer: addr.clone(),
-            })
+            let asset_code = xdr::AssetCode12::from_str(&self.code).expect("Asset code is invalid");
+            let issuer = xdr::AccountId::from_str(
+                &self
+                    .issuer
+                    .clone()
+                    .expect("Issuer is None while not native"),
+            )
+            .expect("Issuer is invalid");
+            xdr::ChangeTrustAsset::CreditAlphanum12(xdr::AlphaNum12 { asset_code, issuer })
         }
     }
 
@@ -231,46 +170,25 @@ impl AssetBehavior for Asset {
         if self.is_native() {
             xdr::Asset::Native
         } else if self.code.len() <= 4 {
-            let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
-
-            let mut asset_code: [u8; 4] = [0; 4];
-
-            for (i, b) in self.code.as_bytes().iter().enumerate() {
-                asset_code[i] = *b;
-            }
-
-            let addr = xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
-                ed25519::PublicKey::from_string(&self.issuer.clone().unwrap())
-                    .unwrap()
-                    .0,
-            )));
-
-            // println!("Padded Code {:?}", padded_code);
-
-            xdr::Asset::CreditAlphanum4(xdr::AlphaNum4 {
-                asset_code: xdr::AssetCode4(asset_code),
-                issuer: addr.clone(),
-            })
+            let asset_code = xdr::AssetCode4::from_str(&self.code).expect("Asset code is invalid");
+            let issuer = xdr::AccountId::from_str(
+                &self
+                    .issuer
+                    .clone()
+                    .expect("Issuer is None while not native"),
+            )
+            .expect("Issuer is invalid");
+            xdr::Asset::CreditAlphanum4(xdr::AlphaNum4 { asset_code, issuer })
         } else {
-            let pad_length = if self.code.len() <= 4 { 4 } else { 12 };
-            let padded_code =
-                format!("{:width$}", self.code, width = pad_length).replace(' ', "\0");
-            let mut asset_code: [u8; 12] = [0; 12];
-
-            for (i, b) in self.code.as_bytes().iter().enumerate() {
-                asset_code[i] = *b;
-            }
-
-            let addr = xdr::AccountId(xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(
-                ed25519::PublicKey::from_string(&self.issuer.clone().unwrap())
-                    .unwrap()
-                    .0,
-            )));
-
-            xdr::Asset::CreditAlphanum12(xdr::AlphaNum12 {
-                asset_code: xdr::AssetCode12(asset_code),
-                issuer: addr.clone(),
-            })
+            let asset_code = xdr::AssetCode12::from_str(&self.code).expect("Asset code is invalid");
+            let issuer = xdr::AccountId::from_str(
+                &self
+                    .issuer
+                    .clone()
+                    .expect("Issuer is None while not native"),
+            )
+            .expect("Issuer is invalid");
+            xdr::Asset::CreditAlphanum12(xdr::AlphaNum12 { asset_code, issuer })
         }
     }
 
