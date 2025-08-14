@@ -8,7 +8,7 @@ use crate::signing::{generate, sign, verify};
 use crate::xdr;
 use crate::xdr::WriteXdr;
 use hex::FromHex;
-use nacl::sign::{generate_keypair, signature};
+use rand_core::TryRngCore;
 use rand_core::{OsRng, RngCore};
 use sha2::Sha512;
 use std::str;
@@ -259,7 +259,7 @@ impl KeypairBehavior for Keypair {
     fn random() -> Result<Self, Box<dyn Error>> {
         let mut secret_seed = [0u8; 32];
         let mut rng = OsRng;
-        rng.fill_bytes(&mut secret_seed);
+        rng.try_fill_bytes(&mut secret_seed);
         Self::new_from_secret_key(secret_seed.to_vec())
     }
 
@@ -367,7 +367,6 @@ impl KeypairBehavior for Keypair {
 mod tests {
 
     use hex_literal::hex;
-    use lazy_static::__Deref;
     use sha2::digest::crypto_common::Key;
 
     use super::*;

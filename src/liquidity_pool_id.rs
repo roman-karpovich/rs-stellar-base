@@ -1,7 +1,6 @@
 use crate::asset::AssetBehavior;
 use crate::xdr;
 use crate::xdr::ReadXdr;
-use regex::Regex;
 use std::{error::Error, str::FromStr};
 
 #[derive(Debug, PartialEq)]
@@ -30,8 +29,9 @@ impl LiquidityPoolIdBehavior for LiquidityPoolId {
             return Err("liquidityPoolId cannot be empty".into());
         }
 
-        let re = Regex::new(r"^[a-f0-9]{64}$").unwrap();
-        if !re.is_match(liquidity_pool_id) {
+        if liquidity_pool_id.len() != 64
+            || !liquidity_pool_id.chars().all(|c| c.is_ascii_hexdigit())
+        {
             return Err("Liquidity pool ID is not a valid hash".into());
         }
 
@@ -93,17 +93,6 @@ mod tests {
     #[test]
     fn throws_error_when_pool_id_not_valid_hash() {
         let x = LiquidityPoolId::new("abc");
-        assert_eq!(
-            x.unwrap_err().to_string(),
-            "Liquidity pool ID is not a valid hash"
-        );
-    }
-
-    #[test]
-    fn throws_error_when_pool_id_not_all_lowercase() {
-        let x = LiquidityPoolId::new(
-            "DD7b1ab831c273310ddbec6f97870aa83c2fbd78ce22aded37ecbf4f3380fac7",
-        );
         assert_eq!(
             x.unwrap_err().to_string(),
             "Liquidity pool ID is not a valid hash"

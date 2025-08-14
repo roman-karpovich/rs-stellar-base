@@ -1,10 +1,4 @@
 //! This module provides the signing functionality used by the stellar network
-use hex_literal::hex;
-use lazy_static::lazy_static;
-
-lazy_static! {
-    static ref ACTUAL_METHODS: ActualMethods = check_fast_signing();
-}
 
 // Define a trait for signing behavior
 pub trait SigningBehavior {
@@ -21,16 +15,16 @@ struct ActualMethods {
 
 /// Sign the message with the given secrey key
 pub fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
-    (ACTUAL_METHODS.sign)(data, secret_key)
+    (check_fast_signing().sign)(data, secret_key)
 }
 /// Verify the signature
 pub fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
-    (ACTUAL_METHODS.verify)(data, signature, public_key)
+    (check_fast_signing().verify)(data, signature, public_key)
 }
 
 /// Generate Keypair
 pub fn generate(secret_key: &[u8]) -> [u8; 32] {
-    (ACTUAL_METHODS.generate)(secret_key)
+    (check_fast_signing().generate)(secret_key)
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
@@ -155,6 +149,7 @@ fn check_fast_signing_native() -> ActualMethods {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex_literal::hex;
 
     #[test]
     fn test_hash_string() {

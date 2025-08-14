@@ -1,4 +1,4 @@
-use rand_core::{OsRng, RngCore as _};
+use rand_core::{OsRng, RngCore as _, TryRngCore};
 
 use crate::address::{Address, AddressTrait};
 use crate::asset::{Asset, AssetBehavior};
@@ -146,7 +146,7 @@ impl Operation {
     fn get_salty() -> [u8; 32] {
         let mut salt = [0u8; 32];
         let mut rng = OsRng;
-        rng.fill_bytes(&mut salt);
+        rng.try_fill_bytes(&mut salt);
         salt
     }
 }

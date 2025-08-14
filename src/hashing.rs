@@ -1,5 +1,4 @@
 //! Utility Sha256 Hash Function
-use arrayref::array_ref;
 use sha2::{Digest, Sha256};
 
 // Define a trait for generic hashing behavior
@@ -16,7 +15,7 @@ impl HashingBehavior for Sha256Hasher {
         let mut hasher = Sha256::new();
         hasher.update(data.as_ref());
         let result = hasher.finalize();
-        *array_ref!(result, 0, 32)
+        *result.last_chunk::<32>().unwrap()
     }
 }
 

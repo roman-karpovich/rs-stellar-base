@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use crate::xdr;
-use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
 const MEMO_NONE: &str = "none";
@@ -98,19 +97,10 @@ impl MemoBehavior for Memo {
     fn _validate_id_value(value: &str) -> Result<(), String> {
         let error = format!("Expects an int64 as a string. Got {}", value);
 
-        let number = match BigInt::from_str(value) {
+        let number = match value.parse::<i64>() {
             Ok(num) => num,
             Err(_) => return Err(error.clone()),
         };
-
-        if let Some(val) = number.to_i64() {
-            let converted_back: BigInt = val.into();
-            if converted_back != number {
-                return Err(error.clone());
-            }
-        } else {
-            return Err(error.clone());
-        }
 
         Ok(())
     }

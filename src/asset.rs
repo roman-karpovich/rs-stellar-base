@@ -1,10 +1,12 @@
-use std::{cmp::Ordering, str::FromStr};
+use std::{
+    cmp::Ordering,
+    str::{Chars, FromStr},
+};
 
 use crate::claimant::ClaimantBehavior;
 use crate::keypair::Keypair;
 use crate::utils::util::trim_end;
 use crate::xdr;
-use regex::Regex;
 use stellar_strkey::{
     ed25519,
     Strkey::{self, PublicKeyEd25519},
@@ -47,9 +49,6 @@ pub trait AssetBehavior {
     fn to_xdr_object(&self) -> xdr::Asset;
     fn to_change_trust_xdr_object(&self) -> xdr::ChangeTrustAsset;
     fn to_trust_line_xdr_object(&self) -> xdr::TrustLineAsset;
-    fn _to_trustline_xdr_object(&self) -> xdr::TrustLineAsset;
-    fn _to_change_trust_xdr_object(&self) -> xdr::ChangeTrustAsset;
-    fn _to_xdr_object(&self) -> xdr::Asset;
     fn ascii_compare(a: &str, b: &str) -> i32;
     fn native() -> Self
     where
@@ -68,7 +67,7 @@ pub trait AssetBehavior {
 
 impl AssetBehavior for Asset {
     fn new(code: &str, issuer: Option<&str>) -> Result<Self, String> {
-        if !Regex::new(r"^[a-zA-Z0-9]{1,12}$").unwrap().is_match(code) {
+        if code.is_empty() || code.len() > 12 || !code.chars().all(|c| c.is_ascii_alphanumeric()) {
             return Err(
                 "Asset code is invalid (maximum alphanumeric, 12 characters at max)".to_string(),
             );
@@ -132,19 +131,7 @@ impl AssetBehavior for Asset {
         }
     }
 
-    fn to_xdr_object(&self) -> xdr::Asset {
-        self._to_xdr_object()
-    }
-
-    fn to_change_trust_xdr_object(&self) -> xdr::ChangeTrustAsset {
-        self._to_change_trust_xdr_object()
-    }
-
     fn to_trust_line_xdr_object(&self) -> xdr::TrustLineAsset {
-        self._to_trustline_xdr_object()
-    }
-
-    fn _to_trustline_xdr_object(&self) -> xdr::TrustLineAsset {
         if self.is_native() {
             xdr::TrustLineAsset::Native
         } else if self.code.len() <= 4 {
@@ -192,7 +179,7 @@ impl AssetBehavior for Asset {
         }
     }
 
-    fn _to_change_trust_xdr_object(&self) -> xdr::ChangeTrustAsset {
+    fn to_change_trust_xdr_object(&self) -> xdr::ChangeTrustAsset {
         if self.is_native() {
             xdr::ChangeTrustAsset::Native
         } else if self.code.len() <= 4 {
@@ -240,7 +227,7 @@ impl AssetBehavior for Asset {
         }
     }
 
-    fn _to_xdr_object(&self) -> xdr::Asset {
+    fn to_xdr_object(&self) -> xdr::Asset {
         if self.is_native() {
             xdr::Asset::Native
         } else if self.code.len() <= 4 {

@@ -6,8 +6,6 @@ use std::str::FromStr;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use hex_literal::hex;
-use num_bigint::BigUint;
 use serde_json::from_str;
 
 use crate::account::Account;
@@ -181,7 +179,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         } else {
             xdr::TransactionExt::V0
         };
-        let vv = decode_address_to_muxed_account_fix_for_g_address(account_id);
+        let vv = decode_address_to_muxed_account_fix_for_g_address(&account_id);
 
         let tx_cond = if let Some(tb) = self.time_bounds.clone() {
             xdr::Preconditions::Time(tb)

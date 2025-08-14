@@ -1,6 +1,5 @@
 use crate::muxed_account;
 use crate::xdr;
-use arrayref::array_ref;
 use std::str::FromStr;
 use stellar_strkey::ed25519::{MuxedAccount, PublicKey};
 use stellar_strkey::Strkey::MuxedAccountEd25519;
@@ -37,7 +36,7 @@ pub fn encode_muxed_account(address: &str, id: &str) -> xdr::MuxedAccount {
 
     xdr::MuxedAccount::MuxedEd25519(xdr::MuxedAccountMed25519 {
         id: id.parse::<u64>().unwrap(),
-        ed25519: xdr::Uint256(*array_ref!(vv, 0, 32)),
+        ed25519: xdr::Uint256(vv),
     })
 }
 
@@ -59,7 +58,7 @@ pub fn decode_address_fully_to_muxed_account(address: &str) -> xdr::MuxedAccount
     let key = binding.ed25519;
     xdr::MuxedAccount::MuxedEd25519(xdr::MuxedAccountMed25519 {
         id,
-        ed25519: xdr::Uint256(*array_ref!(key, 0, 32)),
+        ed25519: xdr::Uint256(key),
     })
 }
 
