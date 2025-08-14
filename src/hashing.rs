@@ -50,7 +50,7 @@ mod tests {
         let msg: [u8; 11] = [104, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100];
         let expected_hex =
             "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9".to_owned();
-        let actual_hash = Sha256Hasher::hash(&msg);
+        let actual_hash = Sha256Hasher::hash(msg);
         let actual_hex = hex::encode(actual_hash);
         assert_eq!(actual_hex, expected_hex);
     }

@@ -396,14 +396,12 @@ mod tests {
         let long_string = "12345678901234567890123456789";
         let scenario_1 = || {
             Memo::text(long_string);
-            ()
         };
         assert_panic(scenario_1, "String is longer than 28 bytes");
 
         let scenario_2 = || {
             let long_utf8_string = "三代之時三代之時三代之時";
             Memo::text(long_utf8_string);
-            ()
         };
         assert_panic(scenario_2, "String is longer than 28 bytes");
     }
@@ -536,7 +534,6 @@ mod tests {
             for input in &invalid_inputs {
                 let scenario_1 = || {
                     method(input.to_vec());
-                    ()
                 };
                 assert_panic(
                     scenario_1,

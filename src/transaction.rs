@@ -416,7 +416,7 @@ mod tests {
         tx.sign(&[signer.clone()]);
         let sig = &tx.signatures[0].signature.0;
         let verified = signer.verify(&tx.hash(), sig);
-        assert_eq!(verified, true);
+        assert!(verified);
     }
 
     #[test]

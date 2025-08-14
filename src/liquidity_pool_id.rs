@@ -137,11 +137,7 @@ mod tests {
         let tl_xdr = asset.to_xdr_object();
 
         let val = match tl_xdr {
-            xdr::TrustLineAsset::PoolShare(x) => {
-                let liquidity_pool_id = x.0.to_string();
-                liquidity_pool_id
-            }
-
+            xdr::TrustLineAsset::PoolShare(x) => x.0.to_string(),
             _ => panic!("Invalid type"),
         };
         assert_eq!(

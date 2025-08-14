@@ -1,8 +1,6 @@
 //! Contains passphrases for common networks
-
 /// - `Networks::PUBLIC`: `Public Global Stellar Network ; September 2015`
 /// - `Networks::TESTNET`: `Test SDF Network ; September 2015`
-
 pub trait NetworkPassphrase {
     fn public() -> &'static str;
     fn testnet() -> &'static str;
