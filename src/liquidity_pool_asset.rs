@@ -172,9 +172,7 @@ mod tests {
         let asset = LiquidityPoolAsset::new(asset_a.clone(), asset_b.clone(), fee).unwrap();
 
         let got_pool_params = asset.get_liquidity_pool_parameters();
-        let val = match got_pool_params {
-            xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
-        };
+        let xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(val) = got_pool_params;
         assert_eq!(val.asset_a, asset_a.to_xdr_object());
         assert_eq!(val.asset_b, asset_b.to_xdr_object());
         assert_eq!(val.fee, fee);
@@ -221,9 +219,7 @@ mod tests {
         };
 
         let got_pool_params: xdr::LiquidityPoolParameters = asset.get_liquidity_pool_parameters();
-        let val = match got_pool_params {
-            xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
-        };
+        let xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(val) = got_pool_params;
         assert_eq!(Asset::from_operation(val.asset_a).unwrap(), asset_a);
         assert_eq!(Asset::from_operation(val.asset_b).unwrap(), asset_b);
         assert_eq!(val.fee, fee);
@@ -237,9 +233,7 @@ mod tests {
 
         let val = "Invalid asset type".to_string();
 
-        if val == result {
-            ()
-        } else {
+        if val != result {
             panic!("Expected error with message containing 'Invalid asset type: assetTypeNative'")
         }
     }
@@ -311,9 +305,7 @@ mod tests {
 
         let asset = LiquidityPoolAsset::from_operation(&xdr).expect("Expected successful parsing");
         let got_pool_params = asset.get_liquidity_pool_parameters();
-        let x = match got_pool_params {
-            xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) => x,
-        };
+        let xdr::LiquidityPoolParameters::LiquidityPoolConstantProduct(x) = got_pool_params;
         assert_eq!(x.asset_a, asset_a.to_xdr_object());
         assert_eq!(x.asset_b, asset_b.to_xdr_object());
         assert_eq!(x.fee, fee);

@@ -6,7 +6,6 @@ use crate::{
         extract_base_address,
     },
 };
-use arrayref::array_ref;
 use std::{cell::RefCell, rc::Rc};
 use stellar_strkey::ed25519::PublicKey;
 
@@ -186,10 +185,7 @@ mod tests {
 
         let vv = key.clone().unwrap().0;
 
-        assert_eq!(
-            inner_mux.ed25519,
-            xdr::Uint256::from(*array_ref!(vv, 0, 32))
-        );
+        assert_eq!(inner_mux.ed25519, xdr::Uint256::from(vv));
 
         assert_eq!(
             inner_mux.id,

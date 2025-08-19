@@ -35,11 +35,15 @@ pub trait ContractBehavior {
 // Implement the trait for the Contracts struct
 impl ContractBehavior for Contracts {
     fn new(contract_id: &str) -> std::result::Result<Contracts, &'static str> {
-        let contract_id = Strkey::Contract(
-            Contract::from_str(contract_id).map_err(|_| "Failed to decode contract ID")?,
-        );
+        let contract_id = stellar_strkey::Contract::from_str(contract_id)
+            .map_err(|_| "Failed to decode contract ID")?;
+        /*
+                Strkey::Contract(
+                    Contract::from_str(contract_id).map_err(|_| "Failed to decode contract ID")?,
+                );
+        */
         Ok(Self {
-            id: contract_id.to_string().as_bytes().to_vec(),
+            id: contract_id.0.to_vec(),
         })
     }
 
@@ -48,9 +52,9 @@ impl ContractBehavior for Contracts {
             source_account: None,
             body: xdr::OperationBody::InvokeHostFunction(xdr::InvokeHostFunctionOp {
                 host_function: xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
-                    contract_address: xdr::ScAddress::Contract(xdr::Hash(
-                        contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0,
-                    )),
+                    contract_address: xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(
+                        self.get_id(),
+                    ))),
                     function_name: xdr::ScSymbol::from(xdr::StringM::from_str(method).unwrap()),
                     args: xdr::VecM::<xdr::ScVal>::try_from(params.unwrap_or_default()).unwrap(),
                 }),
@@ -60,9 +64,7 @@ impl ContractBehavior for Contracts {
     }
 
     fn contract_id(&self) -> String {
-        str::from_utf8(&self.id)
-            .map(|s| s.to_string())
-            .unwrap_or_else(|_| String::from(""))
+        stellar_strkey::Contract(self.get_id()).to_string()
     }
 
     fn to_string(&self) -> String {
@@ -70,26 +72,25 @@ impl ContractBehavior for Contracts {
     }
 
     fn address(&self) -> Address {
-        //TODO: Simplify this lol, wtf you doin
-        Address::contract(
-            &contract_id_strkey(String::from_utf8(self.id.clone()).unwrap().as_str()).0,
-        )
-        .unwrap()
+        Address::contract(&self.id).unwrap()
     }
 
     fn get_footprint(&self) -> xdr::LedgerKey {
         xdr::LedgerKey::ContractData(xdr::LedgerKeyContractData {
-            contract: xdr::ScAddress::Contract(xdr::Hash(
-                contract_id_strkey(&self.contract_id()).0,
-            )),
+            contract: xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(self.get_id()))),
             key: xdr::ScVal::LedgerKeyContractInstance,
             durability: xdr::ContractDataDurability::Persistent,
         })
     }
 }
 
-pub fn contract_id_strkey(contract_id: &str) -> stellar_strkey::Contract {
-    stellar_strkey::Contract::from_string(contract_id).unwrap()
+impl Contracts {
+    fn get_id(&self) -> [u8; 32] {
+        *self
+            .id
+            .last_chunk::<32>()
+            .expect("Contract ID is less than 32 bytes")
+    }
 }
 
 #[cfg(test)]
@@ -165,7 +166,11 @@ mod tests {
 
         // Build the expected footprint
         let expected_footprint = xdr::LedgerKey::ContractData(xdr::LedgerKeyContractData {
-            contract: xdr::ScAddress::Contract(xdr::Hash(contract_id_strkey(NULL_ADDRESS).0)),
+            contract: xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(
+                stellar_strkey::Contract::from_string(NULL_ADDRESS)
+                    .unwrap()
+                    .0,
+            ))),
             key: xdr::ScVal::LedgerKeyContractInstance,
             durability: xdr::ContractDataDurability::Persistent,
         });
@@ -191,8 +196,11 @@ mod tests {
         let operation = contract.call(method, Some(vec![arg1.clone(), arg2.clone()]));
 
         // Expected contract address
-        let expected_contract_address =
-            xdr::ScAddress::Contract(xdr::Hash(contract_id_strkey(NULL_ADDRESS).0));
+        let expected_contract_address = xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(
+            stellar_strkey::Contract::from_string(NULL_ADDRESS)
+                .unwrap()
+                .0,
+        )));
 
         // Verify the operation structure
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
@@ -280,8 +288,11 @@ mod tests {
         // Extract the args
         if let OperationBody::InvokeHostFunction(host_function_op) = operation.body {
             if let xdr::HostFunction::InvokeContract(args) = host_function_op.host_function {
-                let expected_address =
-                    xdr::ScAddress::Contract(xdr::Hash(contract_id_strkey(NULL_ADDRESS).0));
+                let expected_address = xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(
+                    stellar_strkey::Contract::from_string(NULL_ADDRESS)
+                        .unwrap()
+                        .0,
+                )));
                 assert_eq!(args.contract_address, expected_address);
             } else {
                 panic!("Expected InvokeContract host function");

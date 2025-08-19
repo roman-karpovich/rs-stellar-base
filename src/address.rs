@@ -1,15 +1,21 @@
 use std::str::FromStr;
 
 use crate::xdr;
-use stellar_strkey::{ed25519::PublicKey, Contract, Strkey};
+use stellar_strkey::{
+    ed25519::{self, MuxedAccount, PublicKey},
+    Contract, Strkey,
+};
 
 use crate::hashing::{self, HashingBehavior};
 
+#[derive(Debug)]
 pub enum AddressType {
     Account,
     Contract,
+    MuxedAccount,
 }
 
+#[derive(Debug)]
 pub struct Address {
     address_type: AddressType,
     key: Vec<u8>,
@@ -28,6 +34,10 @@ pub trait AddressTrait {
 
     /// Creates a new account Address object from a buffer of raw bytes.
     fn account(buffer: &[u8]) -> Result<Self, &'static str>
+    where
+        Self: Sized;
+
+    fn muxed_account(buffer: &[u8]) -> Result<Self, &'static str>
     where
         Self: Sized;
 
@@ -65,14 +75,18 @@ impl AddressTrait for Address {
         Self: Sized,
     {
         let value = match stellar_strkey::Strkey::from_string(address) {
-            Ok(Strkey::PublicKeyEd25519(public_key)) => (
-                AddressType::Account,
-                public_key.to_string().as_bytes().to_vec(),
-            ),
+            Ok(Strkey::PublicKeyEd25519(public_key)) => {
+                (AddressType::Account, public_key.0.to_vec())
+            }
             Ok(Strkey::Contract(contract)) => (AddressType::Contract, contract.0.to_vec()),
             Ok(Strkey::MuxedAccountEd25519(x)) => {
-                return Err("Unsupported address type MuxedAccount")
+                let mut payload: [u8; 40] = [0; 40];
+                let (ed25519, id) = payload.split_at_mut(32);
+                ed25519.copy_from_slice(&x.ed25519);
+                id.copy_from_slice(&x.id.to_be_bytes());
+                (AddressType::MuxedAccount, payload.to_vec())
             }
+
             _ => return Err("Unsupported address type"),
         };
 
@@ -93,6 +107,15 @@ impl AddressTrait for Address {
         Self: Sized,
     {
         let acc = Strkey::PublicKeyEd25519(PublicKey::from_payload(buffer).unwrap()).to_string();
+        Self::new(&acc)
+    }
+
+    fn muxed_account(buffer: &[u8]) -> Result<Self, &'static str>
+    where
+        Self: Sized,
+    {
+        let acc =
+            Strkey::MuxedAccountEd25519(MuxedAccount::from_payload(buffer).unwrap()).to_string();
         Self::new(&acc)
     }
 
@@ -125,28 +148,54 @@ impl AddressTrait for Address {
     {
         match sc_address {
             xdr::ScAddress::Account(account_id) => {
-                let public_key = account_id.0.clone();
-                let xdr::PublicKey::PublicKeyTypeEd25519(m) = public_key;
+                let xdr::PublicKey::PublicKeyTypeEd25519(m) = &account_id.0;
 
                 Self::account(&m.0)
             }
-            xdr::ScAddress::Contract(hash) => Self::contract(&hash.0),
+            xdr::ScAddress::Contract(xdr::ContractId(hash)) => Self::contract(&hash.0),
+            xdr::ScAddress::MuxedAccount(xdr::MuxedEd25519Account {
+                id,
+                ed25519: xdr::Uint256(edkey),
+            }) => {
+                let mut payload: [u8; 40] = [0; 40];
+                let (key, keyid) = payload.split_at_mut(32);
+                key.copy_from_slice(edkey);
+                keyid.copy_from_slice(&id.to_be_bytes());
+                Self::muxed_account(&payload)
+            }
+            _ => Err("Address type not supported"),
         }
     }
 
     fn to_string(&self) -> String {
         match &self.address_type {
-            AddressType::Account => Strkey::PublicKeyEd25519(
-                PublicKey::from_string(
-                    &String::from_utf8(self.key.clone()).expect("Invalid UTF-8 sequence"),
-                )
-                .unwrap(),
-            )
+            AddressType::Account => Strkey::PublicKeyEd25519(PublicKey(
+                *self
+                    .key
+                    .last_chunk::<32>()
+                    .expect("Public key is less than 32 bytes"),
+            ))
             .to_string(),
             AddressType::Contract => {
-                //
-                let id = self.key.last_chunk::<32>().expect("Not a 32 bytes id");
+                let id = self
+                    .key
+                    .last_chunk::<32>()
+                    .expect("Contract key is less than 32 bytes");
                 Strkey::Contract(Contract(*id)).to_string()
+            }
+            AddressType::MuxedAccount => {
+                //
+
+                let (ed25519, id) = self.key.split_at(32);
+                let id = u64::from_be_bytes(
+                    *id.last_chunk::<8>()
+                        .expect("Muxed account id is less than 8 bytes"),
+                );
+                let ed25519 = *ed25519
+                    .last_chunk::<32>()
+                    .expect("Muxed account key is less than 32 bytes");
+
+                Strkey::MuxedAccountEd25519(MuxedAccount { id, ed25519 }).to_string()
             }
         }
     }
@@ -158,18 +207,33 @@ impl AddressTrait for Address {
     fn to_sc_address(&self) -> Result<xdr::ScAddress, &'static str> {
         match &self.address_type {
             AddressType::Account => {
-                let inner_uin256 = hex::encode(self.key.clone());
-                let original = String::from_utf8(self.key.clone()).unwrap();
-                Ok(xdr::ScAddress::Account(
-                    xdr::AccountId::from_str(&original).unwrap(),
-                ))
+                let k = *self.key.last_chunk::<32>().expect("");
+                Ok(xdr::ScAddress::Account(xdr::AccountId(
+                    xdr::PublicKey::PublicKeyTypeEd25519(xdr::Uint256(k)),
+                )))
             }
 
             AddressType::Contract => {
                 let original = self.key.last_chunk::<32>().unwrap();
-                Ok(xdr::ScAddress::Contract(xdr::Hash(*original)))
+                Ok(xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(
+                    *original,
+                ))))
             }
-            _ => Err("Unsupported type"),
+            AddressType::MuxedAccount => {
+                let (ed25519, id) = self.key.split_at(32);
+                let id = u64::from_be_bytes(
+                    *id.last_chunk::<8>()
+                        .expect("Muxed account id is less than 8 bytes"),
+                );
+                let ed25519 = *ed25519
+                    .last_chunk::<32>()
+                    .expect("Muxed account key is less than 32 bytes");
+
+                Ok(xdr::ScAddress::MuxedAccount(xdr::MuxedEd25519Account {
+                    id,
+                    ed25519: xdr::Uint256(ed25519),
+                }))
+            }
         }
     }
 
@@ -208,24 +272,12 @@ mod tests {
     }
 
     #[test]
-    fn test_muxed_account_creation_fails() {
+    fn test_muxed_account_creation() {
         const MUXED_ADDRESS: &str =
             "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
 
-        // In Rust, this is typically done by checking for a specific error type or message
-        let result = Address::new(MUXED_ADDRESS);
-        assert!(result.is_err(), "Should fail for muxed account address");
-
-        // Optionally, you can check the specific error message
-        match result {
-            Err(error_msg) => {
-                assert!(
-                    error_msg.contains("MuxedAccount"),
-                    "Error should mention MuxedAccount"
-                );
-            }
-            _ => panic!("Should have failed for muxed account address"),
-        }
+        let result = Address::new(MUXED_ADDRESS).expect("Should create a muxed account address");
+        assert_eq!(result.to_string(), MUXED_ADDRESS);
     }
 
     #[test]
@@ -273,7 +325,7 @@ mod tests {
         let contract = Contract::from_string(CONTRACT).expect("Failed to decode contract address");
 
         // Create ScAddress for contract
-        let sc_address = xdr::ScAddress::Contract(xdr::Hash(contract.0));
+        let sc_address = xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(contract.0)));
 
         // Convert ScAddress to Address
         let contract_address =
@@ -281,6 +333,17 @@ mod tests {
 
         // Verify the string representation matches the original contract address
         assert_eq!(contract_address.to_string(), CONTRACT);
+    }
+    #[test]
+    fn creates_address_object_for_muxedaccounts() {
+        let sc_address = xdr::ScAddress::from_str(MUXED_ADDRESS).unwrap();
+
+        // Convert ScAddress to Address
+        let account =
+            Address::from_sc_address(&sc_address).expect("Failed to create Address from ScAddress");
+
+        // Verify the string representation matches the original account
+        assert_eq!(account.to_string(), MUXED_ADDRESS);
     }
 
     #[test]
@@ -312,9 +375,8 @@ mod tests {
         match sc_address {
             xdr::ScAddress::Account(_) => {
                 // Test passes if it's an Account type
-                assert!(true)
             }
-            xdr::ScAddress::Contract(_) => {
+            _ => {
                 panic!("Expected ScAddress to be an Account type")
             }
         }
@@ -342,16 +404,55 @@ mod tests {
         match sc_address {
             xdr::ScAddress::Contract(_) => {
                 // Test passes if it's a Contract type
-                assert!(true)
             }
             _ => panic!("Expected ScAddress::Contract"),
         }
     }
 
     #[test]
-    fn test_to_sc_val() {
+    fn test_to_sc_val_for_account() {
         // Create an Address instance
         let address = Address::new(ACCOUNT).expect("Failed to create Address");
+
+        // Convert the Address to ScVal
+        let sc_val = address.to_sc_val().expect("Failed to convert to ScVal");
+
+        // Ensure the ScVal is an Address type
+        match sc_val {
+            xdr::ScVal::Address(ref sc_address) => {
+                // Convert the Address to ScAddress and compare
+                let expected_sc_address = address
+                    .to_sc_address()
+                    .expect("Failed to convert to ScAddress");
+                assert_eq!(sc_address, &expected_sc_address, "ScAddress mismatch");
+            }
+            _ => panic!("ScVal is not an Address"),
+        }
+    }
+    #[test]
+    fn test_to_sc_val_for_contract() {
+        // Create an Address instance
+        let address = Address::new(CONTRACT).expect("Failed to create Address");
+
+        // Convert the Address to ScVal
+        let sc_val = address.to_sc_val().expect("Failed to convert to ScVal");
+
+        // Ensure the ScVal is an Address type
+        match sc_val {
+            xdr::ScVal::Address(ref sc_address) => {
+                // Convert the Address to ScAddress and compare
+                let expected_sc_address = address
+                    .to_sc_address()
+                    .expect("Failed to convert to ScAddress");
+                assert_eq!(sc_address, &expected_sc_address, "ScAddress mismatch");
+            }
+            _ => panic!("ScVal is not an Address"),
+        }
+    }
+    #[test]
+    fn test_to_sc_val_for_muxedaccount() {
+        // Create an Address instance
+        let address = Address::new(MUXED_ADDRESS).expect("Failed to create Address");
 
         // Convert the Address to ScVal
         let sc_val = address.to_sc_val().expect("Failed to convert to ScVal");
@@ -379,7 +480,7 @@ mod tests {
 
         // Decode the expected bytes using stellar_strkey
         let expected = match Strkey::from_string(ACCOUNT).expect("Invalid ACCOUNT address") {
-            Strkey::PublicKeyEd25519(public_key) => public_key.to_string().as_bytes().to_vec(),
+            Strkey::PublicKeyEd25519(PublicKey(k)) => k.to_vec(),
             _ => panic!("Expected an Ed25519 public key"),
         };
 
@@ -403,5 +504,29 @@ mod tests {
 
         // Compare the buffers
         assert_eq!(buffer, expected, "Buffer for contract does not match");
+    }
+    #[test]
+    fn test_to_buffer_for_muxedaccount() {
+        // Create an Address instance for an account
+        let address = Address::new(MUXED_ADDRESS).expect("Failed to create Address");
+
+        // Convert the Address to raw public key bytes
+        let buffer = address.to_buffer();
+
+        // Decode the expected bytes using stellar_strkey
+        let expected =
+            match Strkey::from_string(MUXED_ADDRESS).expect("Invalid MUXED ACCOUNT address") {
+                Strkey::MuxedAccountEd25519(MuxedAccount { ed25519, id }) => {
+                    let mut payload: [u8; 40] = [0; 40];
+                    let (key, keyid) = payload.split_at_mut(32);
+                    key.copy_from_slice(&ed25519);
+                    keyid.copy_from_slice(&id.to_be_bytes());
+                    payload
+                }
+                _ => panic!("Expected an Ed25519 public key"),
+            };
+
+        // Compare the buffers
+        assert_eq!(buffer, expected, "Buffer for account does not match");
     }
 }

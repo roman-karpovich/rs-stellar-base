@@ -1,4 +1,4 @@
-use rand_core::{OsRng, RngCore as _};
+use rand_core::{OsRng, RngCore as _, TryRngCore};
 
 use crate::address::{Address, AddressTrait};
 use crate::asset::{Asset, AssetBehavior};
@@ -146,7 +146,7 @@ impl Operation {
     fn get_salty() -> [u8; 32] {
         let mut salt = [0u8; 32];
         let mut rng = OsRng;
-        rng.fill_bytes(&mut salt);
+        rng.try_fill_bytes(&mut salt);
         salt
     }
 }
@@ -174,7 +174,7 @@ mod tests {
         };
 
         let func = xdr::HostFunction::InvokeContract(xdr::InvokeContractArgs {
-            contract_address: xdr::ScAddress::Contract(xdr::Hash::from(id)),
+            contract_address: xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash::from(id))),
             function_name: xdr::ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![xdr::ScVal::String(xdr::ScString::from(
                 xdr::StringM::from_str("world").unwrap(),
@@ -182,7 +182,6 @@ mod tests {
             .try_into()
             .unwrap(),
         });
-
 
         let op = Operation::new()
             .invoke_host_function(func.clone(), None)
@@ -196,7 +195,8 @@ mod tests {
                 args,
             }) = f.host_function
             {
-                if let xdr::ScAddress::Contract(xdr::Hash(cid)) = contract_address {
+                if let xdr::ScAddress::Contract(xdr::ContractId(xdr::Hash(cid))) = contract_address
+                {
                     assert_eq!(cid, id);
                 } else {
                     panic!("Fail")

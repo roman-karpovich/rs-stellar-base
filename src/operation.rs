@@ -3,10 +3,6 @@ use crate::liquidity_pool_asset::LiquidityPoolAssetBehavior;
 use crate::utils::decode_encode_muxed_account::decode_address_to_muxed_account_fix_for_g_address;
 use crate::xdr;
 use crate::xdr::WriteXdr;
-use hex_literal::hex;
-use num_bigint::BigInt;
-use num_bigint::BigUint;
-use num_rational::Rational32;
 use num_traits::identities::One;
 use num_traits::ToPrimitive;
 use num_traits::{FromPrimitive, Num, Signed, Zero};
@@ -24,8 +20,8 @@ use crate::utils::decode_encode_muxed_account::{
     decode_address_to_muxed_account, encode_muxed_account_to_address,
 };
 
-pub use super::op_list::set_trustline_flags::TrustlineFlags;
 pub use super::op_list::set_options::AccountFlags;
+pub use super::op_list::set_trustline_flags::TrustlineFlags;
 
 pub const ONE: i64 = 10_000_000;
 const MAX_INT64: &str = "9223372036854775807";
@@ -70,13 +66,13 @@ impl Default for Operation {
 /// Validates that a given amount is possible for a Stellar asset.
 pub fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
     if !value.is_empty() {
-        if let Ok(amount) = BigInt::from_str_radix(value, 10) {
+        if let Ok(amount) = value.parse::<i64>() {
             if !allow_zero && amount.is_zero() {
                 return false;
             }
 
-            let max_int64: BigInt = FromPrimitive::from_i64(i64::MAX).unwrap();
-            let one = BigInt::one();
+            let max_int64 = i64::MAX;
+            let one = 1i64;
 
             if amount.is_negative()
                 || amount > max_int64
@@ -102,15 +98,15 @@ pub fn is_valid_amount(value: &str, allow_zero: bool) -> bool {
 
 /// xdr representation of the amount value
 pub fn to_xdr_amount(value: &str) -> Result<xdr::Int64, Box<dyn std::error::Error>> {
-    let amount = BigInt::from_str_radix(value, 10)?;
-    let one = BigInt::one();
-    let xdr_amount = amount * &one;
+    let amount = value.parse::<i64>()?;
+    let one = 1i64;
+    let xdr_amount = amount * one;
     let xdr_string = xdr_amount.to_string();
     let xdr_int64 = xdr::Int64::from_str(&xdr_string)?;
     Ok(xdr_int64)
 }
 
-pub fn from_xdr_amount(value: BigUint) -> f64 {
+pub fn from_xdr_amount(value: u64) -> f64 {
     // Convert the value to f64, divide by ONE, and keep up to 7 decimal places
     round_to((value.to_f64().unwrap() / ONE as f64), 7)
 }
@@ -119,11 +115,6 @@ pub fn from_xdr_amount(value: BigUint) -> f64 {
 pub fn round_to(value: f64, decimal_places: u32) -> f64 {
     let multiplier = 10f64.powi(decimal_places as i32);
     (value * multiplier).round() / multiplier
-}
-
-fn from_xdr_price(price: xdr::Price) -> String {
-    let ratio = Rational32::new(price.n, price.d);
-    ratio.to_string()
 }
 
 fn account_id_to_address(account_id: &xdr::AccountId) -> String {

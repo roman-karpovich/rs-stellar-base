@@ -1,7 +1,5 @@
 use crate::hashing::HashingBehavior;
 use crate::utils::decode_encode_muxed_account::encode_muxed_account_to_address;
-use hex_literal::hex;
-use num_bigint::BigUint;
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
 use std::fmt;
@@ -418,7 +416,7 @@ mod tests {
         tx.sign(&[signer.clone()]);
         let sig = &tx.signatures[0].signature.0;
         let verified = signer.verify(&tx.hash(), sig);
-        assert_eq!(verified, true);
+        assert!(verified);
     }
 
     #[test]

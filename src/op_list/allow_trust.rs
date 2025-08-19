@@ -59,7 +59,6 @@ impl Operation {
 
 #[cfg(test)]
 mod tests {
-    use hyper::body::Buf;
     use stellar_strkey::Strkey;
 
     use crate::{

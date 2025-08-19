@@ -6,8 +6,6 @@ use std::str::FromStr;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 
-use hex_literal::hex;
-use num_bigint::BigUint;
 use serde_json::from_str;
 
 use crate::account::Account;
@@ -181,7 +179,7 @@ impl TransactionBuilderBehavior for TransactionBuilder {
         } else {
             xdr::TransactionExt::V0
         };
-        let vv = decode_address_to_muxed_account_fix_for_g_address(account_id);
+        let vv = decode_address_to_muxed_account_fix_for_g_address(&account_id);
 
         let tx_cond = if let Some(tb) = self.time_bounds.clone() {
             xdr::Preconditions::Time(tb)
@@ -434,7 +432,7 @@ mod tests {
         builder.fee(100_u32).add_operation(
             Operation::new()
                 .payment(
-                    "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2".into(),
+                    "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2",
                     &Asset::native(),
                     1000 * operation::ONE,
                 )
@@ -483,7 +481,7 @@ mod tests {
         array.copy_from_slice(&hex_id[0..32]);
 
         let func = HostFunction::InvokeContract(InvokeContractArgs {
-            contract_address: ScAddress::from(Contract(Hash::from(array))),
+            contract_address: Contract(xdr::ContractId(Hash::from(array))),
             function_name: ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![ScVal::String(ScString::from(
                 xdr::StringM::from_str("world").unwrap(),
@@ -527,7 +525,7 @@ mod tests {
         array.copy_from_slice(&hex_id[0..32]);
 
         let func = HostFunction::InvokeContract(InvokeContractArgs {
-            contract_address: ScAddress::from(Contract(Hash::from(array))),
+            contract_address: Contract(xdr::ContractId(Hash::from(array))),
             function_name: ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![xdr::ScVal::String(ScString::from(
                 xdr::StringM::from_str("world").unwrap(),
@@ -582,7 +580,7 @@ mod tests {
         array.copy_from_slice(&hex_id[0..32]);
 
         let func = HostFunction::InvokeContract(InvokeContractArgs {
-            contract_address: ScAddress::from(Contract(Hash::from(array))),
+            contract_address: Contract(xdr::ContractId(Hash::from(array))),
             function_name: ScSymbol::from(xdr::StringM::from_str("hello").unwrap()),
             args: vec![ScVal::String(ScString::from(
                 xdr::StringM::from_str("world").unwrap(),

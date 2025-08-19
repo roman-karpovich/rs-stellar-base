@@ -1,57 +1,28 @@
 //! This module provides the signing functionality used by the stellar network
-use hex_literal::hex;
-use lazy_static::lazy_static;
-
-lazy_static! {
-    static ref ACTUAL_METHODS: ActualMethods = check_fast_signing();
-}
-
-// Define a trait for signing behavior
-pub trait SigningBehavior {
-    fn generate(secret_key: &[u8]) -> [u8; 32];
-    fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64];
-    fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool;
-}
-
-struct ActualMethods {
-    generate: fn(&[u8]) -> [u8; 32],
-    sign: fn(&[u8], &[u8]) -> [u8; 64],
-    verify: fn(&[u8], &[u8], &[u8]) -> bool,
-}
 
 /// Sign the message with the given secrey key
 pub fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
-    (ACTUAL_METHODS.sign)(data, secret_key)
+    signing_impl::sign(data, secret_key)
 }
 /// Verify the signature
 pub fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
-    (ACTUAL_METHODS.verify)(data, signature, public_key)
+    signing_impl::verify(data, signature, public_key)
 }
 
 /// Generate Keypair
 pub fn generate(secret_key: &[u8]) -> [u8; 32] {
-    (ACTUAL_METHODS.generate)(secret_key)
+    signing_impl::generate(secret_key)
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-fn check_fast_signing() -> ActualMethods {
-    check_fast_signing_browser()
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-fn check_fast_signing() -> ActualMethods {
-    check_fast_signing_native()
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-fn check_fast_signing_browser() -> ActualMethods {
-    fn generate(secret_key: &[u8]) -> [u8; 32] {
+mod signing_impl {
+    pub fn generate(secret_key: &[u8]) -> [u8; 32] {
         let secret_key_u8: &[u8; 32] = secret_key.try_into().unwrap();
         let nacl_keys = nacl::sign::generate_keypair(secret_key_u8);
         nacl_keys.pkey
     }
 
-    fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
+    pub fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
         let mut data_u8 = data;
         let mut secret_key_u8 = secret_key;
         let signed_msg = nacl::sign::signature(&mut data_u8, &mut secret_key_u8).unwrap();
@@ -63,39 +34,33 @@ fn check_fast_signing_browser() -> ActualMethods {
         signature
     }
 
-    fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
+    pub fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
         let data_u8 = data;
         let signature_u8 = signature;
         let public_key_u8 = public_key;
         nacl::sign::verify(data_u8, signature_u8, public_key_u8).unwrap()
     }
-
-    ActualMethods {
-        generate,
-        sign,
-        verify,
-    }
-}
-
-macro_rules! raw_ptr_char {
-    ($name: ident) => {
-        $name.as_mut_ptr() as *mut libc::c_uchar
-    };
-}
-
-/// make invoking ffi functions more readable
-macro_rules! raw_ptr_char_immut {
-    ($name: ident) => {
-        $name.as_ptr() as *const libc::c_uchar
-    };
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn check_fast_signing_native() -> ActualMethods {
+mod signing_impl {
     use libsodium_sys::crypto_sign_detached;
     use libsodium_sys::crypto_sign_seed_keypair;
 
-    fn generate(secret_key: &[u8]) -> [u8; 32] {
+    macro_rules! raw_ptr_char {
+        ($name: ident) => {
+            $name.as_mut_ptr() as *mut libc::c_uchar
+        };
+    }
+
+    /// make invoking ffi functions more readable
+    macro_rules! raw_ptr_char_immut {
+        ($name: ident) => {
+            $name.as_ptr() as *const libc::c_uchar
+        };
+    }
+
+    pub fn generate(secret_key: &[u8]) -> [u8; 32] {
         unsafe {
             libsodium_sys::sodium_init();
         };
@@ -114,7 +79,7 @@ fn check_fast_signing_native() -> ActualMethods {
         }
     }
 
-    fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
+    pub fn sign(data: &[u8], secret_key: &[u8]) -> [u8; 64] {
         unsafe {
             unsafe {
                 let mut signature = [0u8; libsodium_sys::crypto_sign_BYTES as usize];
@@ -132,7 +97,7 @@ fn check_fast_signing_native() -> ActualMethods {
         }
     }
 
-    fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
+    pub fn verify(data: &[u8], signature: &[u8], public_key: &[u8]) -> bool {
         unsafe {
             let val = libsodium_sys::crypto_sign_verify_detached(
                 raw_ptr_char_immut!(signature),
@@ -144,17 +109,12 @@ fn check_fast_signing_native() -> ActualMethods {
             val == 0
         }
     }
-
-    ActualMethods {
-        generate,
-        sign,
-        verify,
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex_literal::hex;
 
     #[test]
     fn test_hash_string() {

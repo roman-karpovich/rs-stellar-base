@@ -1,43 +1,18 @@
-extern crate num_bigint;
-extern crate num_rational;
-extern crate num_traits;
-
-use num_bigint::BigInt;
-use num_rational::BigRational;
 use num_traits::{One, Zero};
 use std::str::FromStr;
 
 const MAX_INT: u32 = (1 << 31) - 1;
 
 fn best_r(raw_number: &str) -> Result<String, &'static str> {
-    let mut number = if raw_number.contains('.') {
-        let parts: Vec<&str> = raw_number.split('.').collect();
-        let integer_part = parts[0];
-        let decimal_part = parts[1];
-        let len = decimal_part.len();
+    let mut number = raw_number.parse::<f64>().unwrap();
 
-        let numerator = BigInt::from_str(&(integer_part.to_string() + decimal_part)).unwrap();
-        let denominator = BigInt::from(10).pow((len as u64).try_into().unwrap());
-
-        BigRational::new(numerator, denominator)
-    } else {
-        BigRational::from_str(raw_number).unwrap()
-    };
-
-    let mut fractions = vec![
-        (BigInt::zero(), BigInt::one()),
-        (BigInt::one(), BigInt::zero()),
-    ];
+    let mut fractions = vec![(0f64, 1f64), (1f64, 0f64)];
 
     loop {
-        if number.numer().clone() > MAX_INT.into() {
-            break;
-        }
-
-        let a = number.to_integer();
-        let f = &number - &a;
-        let h = &a * &fractions[fractions.len() - 1].0 + &fractions[fractions.len() - 2].0;
-        let k = &a * &fractions[fractions.len() - 1].1 + &fractions[fractions.len() - 2].1;
+        let a = (number as i64) as f64;
+        let f = number - a;
+        let h = a * fractions[fractions.len() - 1].0 + fractions[fractions.len() - 2].0;
+        let k = a * fractions[fractions.len() - 1].1 + fractions[fractions.len() - 2].1;
 
         if h > MAX_INT.into() || k > MAX_INT.into() {
             break;
@@ -45,11 +20,11 @@ fn best_r(raw_number: &str) -> Result<String, &'static str> {
 
         fractions.push((h, k));
 
-        if f == BigRational::zero() {
+        if f == 0f64 {
             break;
         }
 
-        number = BigRational::one() / f;
+        number = 1f64 / f;
     }
 
     let (n, d) = fractions.last().unwrap();
@@ -70,17 +45,13 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use num_traits::ToPrimitive;
 
     use super::*;
 
     #[test]
     fn correctly_calculates_best_rational_approximation() {
-        let binding = BigRational::new(
-            BigInt::from_str("118").unwrap(),
-            BigInt::from_str("37").unwrap(),
-        )
-        .to_string();
+        let binding = (118f64 / 37f64).to_string();
+        dbg!(&binding);
 
         let tests = vec![
             ("1,10", "0.1"),

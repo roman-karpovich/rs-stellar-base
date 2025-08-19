@@ -8,7 +8,7 @@ use crate::signing::{generate, sign, verify};
 use crate::xdr;
 use crate::xdr::WriteXdr;
 use hex::FromHex;
-use nacl::sign::{generate_keypair, signature};
+use rand_core::TryRngCore;
 use rand_core::{OsRng, RngCore};
 use sha2::Sha512;
 use std::str;
@@ -259,7 +259,7 @@ impl KeypairBehavior for Keypair {
     fn random() -> Result<Self, Box<dyn Error>> {
         let mut secret_seed = [0u8; 32];
         let mut rng = OsRng;
-        rng.fill_bytes(&mut secret_seed);
+        rng.try_fill_bytes(&mut secret_seed);
         Self::new_from_secret_key(secret_seed.to_vec())
     }
 
@@ -367,7 +367,6 @@ impl KeypairBehavior for Keypair {
 mod tests {
 
     use hex_literal::hex;
-    use lazy_static::__Deref;
     use sha2::digest::crypto_common::Key;
 
     use super::*;
@@ -399,9 +398,8 @@ mod tests {
 
     #[test]
     #[should_panic]
-
     fn test_create_keypair_from_invalid_secret() {
-        let invalid_secrets = vec![
+        let invalid_secrets = [
             "hel0",
             "SBWUBZ3SIPLLF5CCXLWUB2Z6UBTYAW34KVXOLRQ5HDAZG4ZY7MHNBWJ1",
             "masterpassphrasemasterpassphrase",
@@ -450,7 +448,7 @@ mod tests {
 
     #[test]
     fn test_create_keypair_from_invalid_public_key() {
-        let invalid_public_keys = vec![
+        let invalid_public_keys = [
             "hel0",
             "masterpassphrasemasterpassphrase",
             "sfyjodTxbwLtRToZvi6yQ1KnpZriwTJ7n6nrASFR6goRviCU3Ff",
@@ -476,9 +474,9 @@ mod tests {
     #[test]
     fn test_sign_decorated() {
         let the_secret = "SD7X7LEHBNMUIKQGKPARG5TDJNBHKC346OUARHGZL5ITC6IJPXHILY36";
-        let kp = Keypair::from_secret(&the_secret).unwrap();
+        let kp = Keypair::from_secret(the_secret).unwrap();
         let message = "test post please ignore".as_bytes();
-        let sign: xdr::DecoratedSignature = kp.sign_decorated(&message);
+        let sign: xdr::DecoratedSignature = kp.sign_decorated(message);
         assert_eq!(sign.hint.0.to_vec(), vec![0x0B, 0xFA, 0xD1, 0x34]);
     }
 }

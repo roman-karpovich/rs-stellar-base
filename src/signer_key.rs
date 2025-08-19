@@ -132,7 +132,6 @@ mod tests {
         for strkey in invalid_signers.iter() {
             let scenario_1 = || {
                 SignerKey::decode_address(strkey);
-                ()
             };
             assert_panic(scenario_1, "Invalid Type")
         }
@@ -143,7 +142,6 @@ mod tests {
         let strkey = "G47QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVP2I";
         let scenario_1 = || {
             SignerKey::decode_address(strkey);
-            ()
         };
         assert_panic(scenario_1, "Invalid Type")
     }
