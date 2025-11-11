@@ -1,7 +1,5 @@
-use std::cell::RefCell;
 use std::collections::hash_map::ValuesMut;
 use std::error::Error;
-use std::rc::Rc;
 use std::str::FromStr;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
@@ -21,8 +19,8 @@ use crate::xdr;
 use crate::xdr::ReadXdr;
 use crate::xdr::WriteXdr;
 
-#[derive(Default, Clone)]
-pub struct TransactionBuilder {
+#[derive(Default)]
+pub struct TransactionBuilder<'a> {
     tx: Option<xdr::Transaction>,
     tx_v0: Option<xdr::TransactionV0>,
     network_passphrase: Option<String>,
@@ -31,7 +29,7 @@ pub struct TransactionBuilder {
     envelope_type: Option<xdr::EnvelopeType>,
     memo: Option<xdr::Memo>,
     sequence: Option<String>,
-    source: Option<Rc<RefCell<Account>>>,
+    source: Option<&'a mut Account>,
     time_bounds: Option<xdr::TimeBounds>,
     ledger_bounds: Option<xdr::LedgerBounds>,
     min_account_sequence: Option<String>,
@@ -43,10 +41,11 @@ pub struct TransactionBuilder {
 }
 
 // Define a trait for TransactionBuilder behavior
-pub trait TransactionBuilderBehavior {
+pub trait TransactionBuilderBehavior<'a> {
+    fn build_for_simulation(&self) -> Transaction;
     fn set_soroban_data_from_xdr_base64(&mut self, soroban_data: &str) -> &mut Self;
     fn new(
-        source_account: Rc<RefCell<Account>>,
+        source_account: &'a mut Account,
         network: &str,
         time_bounds: Option<xdr::TimeBounds>,
     ) -> Self;
@@ -62,9 +61,9 @@ pub trait TransactionBuilderBehavior {
 
 pub const TIMEOUT_INFINITE: i64 = 0;
 
-impl TransactionBuilderBehavior for TransactionBuilder {
+impl<'a> TransactionBuilderBehavior<'a> for TransactionBuilder<'a> {
     fn new(
-        source_account: Rc<RefCell<Account>>,
+        source_account: &'a mut Account,
         network: &str,
         time_bounds: Option<xdr::TimeBounds>,
     ) -> Self {
@@ -166,14 +165,18 @@ impl TransactionBuilderBehavior for TransactionBuilder {
     }
 
     fn build(&mut self) -> Transaction {
-        let source = self.source.as_ref().expect("Source account not set");
-        let mut source_ref = source.borrow_mut();
-        source_ref.increment_sequence_number();
+        let source = self.source.as_mut().expect("Source account not set");
+
+        // Increment the sequence number directly on the mutable reference
+        source.increment_sequence_number();
+
         let fee = self
             .fee
             .unwrap()
             .checked_mul(self.operations.clone().unwrap().len().try_into().unwrap());
-        let account_id = source_ref.account_id();
+        let account_id = source.account_id();
+        let sequence_number = source.sequence_number();
+
         let ext_on_the_fly = if self.soroban_data.is_some() {
             xdr::TransactionExt::V1(self.soroban_data.clone().unwrap())
         } else {
@@ -196,13 +199,12 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             source_account: vv,
             fee: fee.unwrap(),
             seq_num: xdr::SequenceNumber(
-                source_ref
-                    .sequence_number()
+                sequence_number
                     .parse()
                     .unwrap_or_else(|_| panic!("Number too large for i64")),
             ),
             cond: tx_cond,
-            memo: xdr::Memo::None,
+            memo: self.memo.clone().unwrap_or(xdr::Memo::None),
             operations: self.operations.clone().unwrap().try_into().unwrap(),
             ext: ext_on_the_fly,
         };
@@ -212,9 +214,127 @@ impl TransactionBuilderBehavior for TransactionBuilder {
             signatures: Vec::new(),
             fee: fee.unwrap(),
             envelope_type: xdr::EnvelopeType::Tx,
-            memo: None,
-            sequence: Some(source_ref.sequence_number()),
-            source: Some(source_ref.account_id().to_string()),
+            memo: self.memo.clone(),
+            sequence: Some(sequence_number),
+            source: Some(account_id.to_string()),
+            time_bounds: self.time_bounds.clone(),
+            ledger_bounds: None,
+            min_account_sequence: Some("0".to_string()),
+            min_account_sequence_age: Some(0),
+            min_account_sequence_ledger_gap: Some(0),
+            extra_signers: Some(Vec::new()),
+            operations: self.operations.clone(),
+            hash: None,
+            soroban_data: self.soroban_data.clone(),
+            //tx_v0: None,
+        }
+    }
+
+    /// # Build a transaction for simulation only
+    ///
+    /// This method builds a transaction without incrementing the source account's sequence number.
+    /// It should be used when you only want to simulate a transaction and not actually submit it
+    /// to the network.
+    ///
+    /// Unlike [`build()`](TransactionBuilderBehavior::build), this method:
+    /// - Does NOT increment the source account's sequence number
+    /// - Only requires an immutable reference to self (`&self` instead of `&mut self`)
+    /// - Is safe to use for read-only operations like transaction simulation
+    ///
+    /// # When to use this method
+    ///
+    /// Use `build_for_simulation()` when:
+    /// - You want to call [`Server::simulate_transaction`](crate::Server::simulate_transaction)
+    /// - You're testing transaction logic without submitting to the network
+    /// - You need to preview transaction fees or resource requirements
+    /// - You want to build multiple "what-if" scenarios without affecting account state
+    ///
+    /// Use `build()` when:
+    /// - You're building a transaction to actually submit to the network
+    /// - You want the account's sequence number to be incremented
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use stellar_baselib::*;
+    /// use stellar_baselib::account::AccountBehavior;
+    /// use stellar_baselib::network::NetworkPassphrase;
+    /// use stellar_baselib::transaction_builder::{TransactionBuilder, TransactionBuilderBehavior};
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let mut source_account = account::Account::new("GABC...", "100")?;
+    /// # let network = network::Networks::testnet();
+    ///
+    /// // For simulation - doesn't mutate the account
+    /// let mut builder = TransactionBuilder::new(&mut source_account, network, None);
+    /// builder.fee(1000u32);
+    /// // ... add operations ...
+    /// let tx_for_simulation = builder.build_for_simulation();
+    ///
+    /// // source_account sequence number is unchanged
+    /// // You can now simulate: rpc.simulate_transaction(&tx_for_simulation, None).await?;
+    ///
+    /// // For actual submission - increments the sequence number
+    /// let tx_for_submission = builder.build();
+    /// // source_account sequence number is now incremented
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn build_for_simulation(&self) -> Transaction {
+        let source = self.source.as_ref().expect("Source account not set");
+
+        // Calculate the next sequence number (current + 1) without mutating the account
+        let current_seq: i64 = source
+            .sequence_number()
+            .parse()
+            .expect("Invalid sequence number");
+        let next_sequence_number = (current_seq + 1).to_string();
+        let account_id = source.account_id();
+
+        let fee = self
+            .fee
+            .unwrap()
+            .checked_mul(self.operations.clone().unwrap().len().try_into().unwrap());
+
+        let ext_on_the_fly = if self.soroban_data.is_some() {
+            xdr::TransactionExt::V1(self.soroban_data.clone().unwrap())
+        } else {
+            xdr::TransactionExt::V0
+        };
+        let vv = decode_address_to_muxed_account_fix_for_g_address(&account_id);
+
+        let tx_cond = if let Some(tb) = self.time_bounds.clone() {
+            xdr::Preconditions::Time(tb)
+        } else {
+            xdr::Preconditions::None
+        };
+        let envelope_type = if self.soroban_data.is_some() {
+            xdr::EnvelopeType::Tx
+        } else {
+            xdr::EnvelopeType::TxV0
+        };
+
+        let tx_obj = xdr::Transaction {
+            source_account: vv,
+            fee: fee.unwrap(),
+            seq_num: xdr::SequenceNumber(
+                next_sequence_number
+                    .parse()
+                    .unwrap_or_else(|_| panic!("Number too large for i64")),
+            ),
+            cond: tx_cond,
+            memo: self.memo.clone().unwrap_or(xdr::Memo::None),
+            operations: self.operations.clone().unwrap().try_into().unwrap(),
+            ext: ext_on_the_fly,
+        };
+        Transaction {
+            //tx: Some(tx_obj),
+            network_passphrase: self.network_passphrase.clone().unwrap(),
+            signatures: Vec::new(),
+            fee: fee.unwrap(),
+            envelope_type: xdr::EnvelopeType::Tx,
+            memo: self.memo.clone(),
+            sequence: Some(next_sequence_number),
+            source: Some(account_id.to_string()),
             time_bounds: self.time_bounds.clone(),
             ledger_bounds: None,
             min_account_sequence: Some("0".to_string()),
@@ -259,17 +379,15 @@ mod tests {
 
     #[test]
     fn test_creates_and_signs() {
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
-                "20",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GBBM6BKZPEHWYO3E3YKREDPQXMS4VK35YLNU7NFBRI26RAN7GI5POFBB",
+            "20",
+        )
+        .unwrap();
 
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let signer = Keypair::master(Some(Networks::testnet())).unwrap();
-        let mut tx = TransactionBuilder::new(source, Networks::testnet(), None)
+        let mut tx = TransactionBuilder::new(&mut source, Networks::testnet(), None)
             .fee(100_u32)
             .add_operation(
                 Operation::new()
@@ -286,19 +404,17 @@ mod tests {
 
     #[test]
     fn test_constructs_native_payment_transaction() {
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-                "0",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
 
         let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let amount = 1000 * operation::ONE;
         let asset = Asset::native();
         let memo = xdr::Memo::Id(100);
-        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
 
         builder
             .fee(100_u32)
@@ -313,26 +429,20 @@ mod tests {
 
         let transaction = builder.build();
 
-        // Use RefCell::borrow() explicitly
-        assert_eq!(
-            transaction.source,
-            Some(RefCell::borrow(&source).account_id().to_string())
-        );
+        assert_eq!(transaction.source, Some(source.account_id().to_string()));
         assert_eq!(transaction.sequence.unwrap(), "1");
-        assert_eq!(RefCell::borrow(&source).sequence_number(), "1");
+        assert_eq!(source.sequence_number(), "1");
         assert_eq!(transaction.operations.unwrap().len(), 1);
         assert_eq!(transaction.fee, 100);
     }
 
     #[test]
     fn test_constructs_native_payment_transaction_with_two_operations() {
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-                "0",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
 
         let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let amount1 = 1000 * operation::ONE;
@@ -340,7 +450,7 @@ mod tests {
         let amount2 = 2000 * operation::ONE;
         let asset = Asset::native();
 
-        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
 
         builder
             .fee(100_u32)
@@ -359,13 +469,9 @@ mod tests {
 
         let transaction = builder.build();
 
-        // Use RefCell::borrow() explicitly
-        assert_eq!(
-            transaction.source,
-            Some(RefCell::borrow(&source).account_id().to_string())
-        );
+        assert_eq!(transaction.source, Some(source.account_id().to_string()));
         assert_eq!(transaction.sequence.unwrap(), "1");
-        assert_eq!(RefCell::borrow(&source).sequence_number(), "1");
+        assert_eq!(source.sequence_number(), "1");
         assert_eq!(transaction.operations.unwrap().len(), 2);
         assert_eq!(transaction.fee, 200);
     }
@@ -373,13 +479,11 @@ mod tests {
     #[test]
     fn constructs_native_payment_transaction_with_custom_base_fee() {
         // Set up test data
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-                "0",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
 
         let destination1 = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
         let amount1 = 1000 * operation::ONE;
@@ -388,7 +492,7 @@ mod tests {
         let asset = Asset::native();
 
         // Create transaction
-        let mut builder = TransactionBuilder::new(source.clone(), Networks::testnet(), None);
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
         let transaction = builder
             .fee(1000_u32) // Set custom base fee
             .add_operation(
@@ -411,24 +515,19 @@ mod tests {
 
     #[test]
     fn constructs_native_payment_transaction_with_integer_timebounds() {
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-                "0",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
 
         let timebounds = xdr::TimeBounds {
             min_time: xdr::TimePoint(1455287522),
             max_time: xdr::TimePoint(1455297545),
         };
 
-        let mut builder = TransactionBuilder::new(
-            source.clone(),
-            Networks::testnet(),
-            Some(timebounds.clone()),
-        );
+        let mut builder =
+            TransactionBuilder::new(&mut source, Networks::testnet(), Some(timebounds.clone()));
         builder.fee(100_u32).add_operation(
             Operation::new()
                 .payment(
@@ -460,13 +559,11 @@ mod tests {
     #[test]
     fn constructs_a_transaction_with_soroban_data() {
         // Arrange
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-                "0",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
 
         let mut soroban_data_builder = SorobanDataBuilder::new(None);
         soroban_data_builder
@@ -492,7 +589,7 @@ mod tests {
 
         // Act
         let mut transaction_builder =
-            TransactionBuilder::new(source.clone(), Networks::testnet(), None);
+            TransactionBuilder::new(&mut source, Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
             .add_operation(Operation::new().invoke_host_function(func, None).unwrap())
@@ -510,13 +607,11 @@ mod tests {
     #[test]
     fn test_set_soroban_data_from_xdr() {
         // Arrange
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-                "0",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
 
         let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
         let binding = hex::encode(contract_id);
@@ -542,7 +637,7 @@ mod tests {
 
         // Act
         let mut transaction_builder =
-            TransactionBuilder::new(source.clone(), Networks::testnet(), None);
+            TransactionBuilder::new(&mut source, Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
             .add_operation(Operation::new().invoke_host_function(func, None).unwrap())
@@ -565,13 +660,11 @@ mod tests {
     #[test]
     fn test_set_transaction_ext_when_soroban_data_present() {
         // Arrange
-        let source = Rc::new(RefCell::new(
-            Account::new(
-                "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
-                "0",
-            )
-            .unwrap(),
-        ));
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
 
         let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
         let binding = hex::encode(contract_id);
@@ -597,7 +690,7 @@ mod tests {
 
         // Act
         let mut transaction_builder =
-            TransactionBuilder::new(source.clone(), Networks::testnet(), None);
+            TransactionBuilder::new(&mut source, Networks::testnet(), None);
         let transaction = transaction_builder
             .fee(100_u32)
             .add_operation(Operation::new().invoke_host_function(func, None).unwrap())
@@ -622,5 +715,104 @@ mod tests {
 
         let inner_val = val.tx.ext;
         assert_eq!(inner_val, xdr::TransactionExt::V1(soroban_transaction_data));
+    }
+
+    #[test]
+    fn test_build_for_simulation_does_not_increment_sequence() {
+        // Arrange
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "100",
+        )
+        .unwrap();
+
+        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
+        let asset = Asset::native();
+
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
+        builder
+            .fee(100_u32)
+            .add_operation(
+                Operation::new()
+                    .payment(destination, &asset, 1000 * operation::ONE)
+                    .unwrap(),
+            )
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap();
+
+        // Act - build for simulation
+        let tx_for_simulation = builder.build_for_simulation();
+
+        // Assert - transaction uses next sequence (101) but doesn't mutate the account
+        assert_eq!(tx_for_simulation.sequence.unwrap(), "101");
+
+        // Drop the builder to release the mutable borrow
+        drop(builder);
+
+        // Assert - sequence number should NOT be incremented (still 100)
+        assert_eq!(source.sequence_number(), "100");
+    }
+
+    #[test]
+    fn test_build_increments_sequence_number() {
+        // Arrange
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "50",
+        )
+        .unwrap();
+
+        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
+        let asset = Asset::native();
+
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
+        builder
+            .fee(100_u32)
+            .add_operation(
+                Operation::new()
+                    .payment(destination, &asset, 1000 * operation::ONE)
+                    .unwrap(),
+            )
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap();
+
+        // Act
+        let transaction = builder.build();
+
+        // Assert - sequence number should be incremented
+        assert_eq!(source.sequence_number(), "51");
+        assert_eq!(transaction.sequence.unwrap(), "51");
+    }
+
+    #[test]
+    fn test_multiple_simulations_without_incrementing() {
+        // Arrange
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "200",
+        )
+        .unwrap();
+
+        let destination = "GDJJRRMBK4IWLEPJGIE6SXD2LP7REGZODU7WDC3I2D6MR37F4XSHBKX2";
+        let asset = Asset::native();
+
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
+        builder
+            .fee(100_u32)
+            .add_operation(
+                Operation::new()
+                    .payment(destination, &asset, 1000 * operation::ONE)
+                    .unwrap(),
+            )
+            .set_timeout(TIMEOUT_INFINITE)
+            .unwrap();
+
+        // Act - build multiple times for simulation
+        let _tx1 = builder.build_for_simulation();
+        let _tx2 = builder.build_for_simulation();
+        let _tx3 = builder.build_for_simulation();
+
+        // Assert - sequence number should still be unchanged
+        assert_eq!(source.sequence_number(), "200");
     }
 }
