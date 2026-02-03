@@ -149,6 +149,16 @@ impl<'a> TransactionBuilderBehavior<'a> for TransactionBuilder<'a> {
     }
 
     fn set_ledger_bounds(&mut self, ledger_bounds: xdr::LedgerBounds) -> &mut Self {
+        if self.ledger_bounds.is_some() {
+            panic!(
+                "LedgerBounds has been already set - setting ledgerbounds would overwrite it."
+            );
+        }
+
+        if ledger_bounds.max_ledger > 0 && ledger_bounds.min_ledger > ledger_bounds.max_ledger {
+            panic!("min_ledger cannot be greater than max_ledger");
+        }
+
         self.ledger_bounds = Some(ledger_bounds);
         self
     }
@@ -668,6 +678,45 @@ mod tests {
             transaction.ledger_bounds.as_ref().unwrap().max_ledger,
             ledger_bounds.max_ledger
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "min_ledger cannot be greater than max_ledger")]
+    fn set_ledger_bounds_rejects_min_greater_than_max() {
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
+
+        let ledger_bounds = xdr::LedgerBounds {
+            min_ledger: 2000,
+            max_ledger: 1000,
+        };
+
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
+        builder.set_ledger_bounds(ledger_bounds);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "LedgerBounds has been already set - setting ledgerbounds would overwrite it."
+    )]
+    fn set_ledger_bounds_rejects_overwrite() {
+        let mut source = Account::new(
+            "GCEZWKCA5VLDNRLN3RPRJMRZOX3Z6G5CHCGSNFHEYVXM3XOJMDS674JZ",
+            "0",
+        )
+        .unwrap();
+
+        let ledger_bounds = xdr::LedgerBounds {
+            min_ledger: 1000,
+            max_ledger: 2000,
+        };
+
+        let mut builder = TransactionBuilder::new(&mut source, Networks::testnet(), None);
+        builder.set_ledger_bounds(ledger_bounds.clone());
+        builder.set_ledger_bounds(ledger_bounds);
     }
 
     //TODO: Compatibilty of TimeBounds with chrono date
