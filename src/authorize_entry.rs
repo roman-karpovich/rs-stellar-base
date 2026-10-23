@@ -73,6 +73,13 @@ pub fn authorize_entry(
         ),
     };
 
+    if matches!(
+        credentials.address,
+        crate::xdr::ScAddress::MuxedAccount(_) | crate::xdr::ScAddress::MuxedContract(_)
+    ) {
+        return Err("Muxed addresses cannot authorize Soroban entries".into());
+    }
+
     // V2 unless explicitly opted out (CAP-71 default flip, Protocol 28), and
     // always V2 if the incoming entry was already V2.
     let output_v2 = use_address_v2.unwrap_or(true) || incoming_is_v2;
@@ -154,9 +161,7 @@ fn build_signature_scval(public_key: [u8; 32], sig: &[u8]) -> ScVal {
         .unwrap(),
     );
 
-    ScVal::Vec(Some(
-        vec![ScVal::Map(Some(inner_map))].try_into().unwrap(),
-    ))
+    ScVal::Vec(Some(vec![ScVal::Map(Some(inner_map))].try_into().unwrap()))
 }
 
 #[cfg(test)]
@@ -303,7 +308,7 @@ mod tests {
 
     #[test]
     fn address_with_delegates_keeps_delegates() {
-        use crate::xdr::{SorobanDelegateSignature, SorobanAddressCredentialsWithDelegates};
+        use crate::xdr::{SorobanAddressCredentialsWithDelegates, SorobanDelegateSignature};
 
         let kp = Keypair::random().unwrap();
         let kp_delegate = Keypair::random().unwrap();
