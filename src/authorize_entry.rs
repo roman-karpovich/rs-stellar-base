@@ -193,6 +193,23 @@ mod tests {
     }
 
     #[test]
+    fn authorize_entry_rejects_muxed_contract() {
+        let kp = Keypair::random().unwrap();
+        let entry = make_address_entry(ScAddress::MuxedContract(crate::xdr::MuxedContract {
+            id: 1,
+            contract_id: ContractId(Hash([1; 32])),
+        }));
+        assert!(authorize_entry(AuthorizeEntryParams {
+            entry,
+            signer: &kp,
+            valid_until_ledger_seq: 1000,
+            network_passphrase: Networks::testnet(),
+            use_address_v2: None,
+        })
+        .is_err());
+    }
+
+    #[test]
     fn authorize_entry_v1_produces_address_credentials() {
         let kp = Keypair::random().unwrap();
         let address = ScAddress::Account(crate::xdr::AccountId(

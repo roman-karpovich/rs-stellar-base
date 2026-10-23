@@ -297,6 +297,47 @@ mod tests {
         "MA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAAAJLK";
 
     #[test]
+    fn test_muxed_contract_address() {
+        // SEP-23 vectors: zero and an unsigned ID above i64::MAX.
+        for (encoded, id) in [
+            (
+                "WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAAAWWC",
+                0,
+            ),
+            (
+                "WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAAAAAAAAAAACWJY",
+                1_u64 << 63,
+            ),
+        ] {
+            let address = Address::new(encoded).unwrap();
+            let expected = xdr::ScAddress::MuxedContract(xdr::MuxedContract {
+                id,
+                contract_id: xdr::ContractId(xdr::Hash(
+                    hex::decode("3f0c34bf93ad0d9971d04ccc90f705511c838aad9734a4a2fb0d7a03fc7fe89a")
+                        .unwrap()
+                        .try_into()
+                        .unwrap(),
+                )),
+            });
+            assert_eq!(address.to_string(), encoded);
+            assert_eq!(address.to_sc_address().unwrap(), expected);
+            assert_eq!(
+                Address::from_sc_val(&xdr::ScVal::Address(expected)).unwrap(),
+                address
+            );
+            assert_eq!(
+                Address::muxed_contract(&address.to_buffer()).unwrap(),
+                address
+            );
+        }
+    }
+
+    #[test]
+    fn test_muxed_contract_invalid_buffer() {
+        assert!(Address::muxed_contract(&[0; 39]).is_err());
+    }
+
+    #[test]
     fn test_invalid_address_creation() {
         let result = Address::new("GBBB");
         assert!(result.is_err(), "Should fail for invalid address");

@@ -249,6 +249,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_reject_muxed_contract_target_and_deployer() {
+        let address = "WA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJUAAAAAAAAAAAAAWWC";
+        let op = Operation::new();
+        assert!(op.invoke_contract(address, "hello", vec![], None).is_err());
+        assert!(op
+            .create_contract(address, [0; 32], Some([0; 32]), None, vec![])
+            .is_err());
+        assert!(op
+            .create_contract_from_external_ref(
+                address,
+                "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE",
+                b"tag",
+                Some([0; 32]),
+                None,
+                vec![],
+            )
+            .is_err());
+    }
+
+    #[test]
     fn test_invoke_host_function() {
         let contract_id = "CA3D5KRYM6CB7OWQ6TWYRR3Z4T7GNZLKERYNZGGA5SOAOPIFY6YQGAXE";
         let id = if let Strkey::Contract(stellar_strkey::Contract(id)) =
